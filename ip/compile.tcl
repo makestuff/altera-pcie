@@ -28,14 +28,14 @@ proc ensure_lib { lib } { if ![file isdirectory $lib] { vlib $lib } }
 ensure_lib           ./libraries/altera_mf/
 vmap       altera_mf ./libraries/altera_mf/
 ensure_lib           ./libraries/makestuff/
-vmap       makestuff    ./libraries/makestuff/
+vmap       makestuff ./libraries/makestuff/
 
 # Compile Altera VHDL components
 vcom               $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf_components.vhd            -work altera_mf
 vcom               $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf.vhd                       -work altera_mf
 vlog               $QSYS_SIMDIR/pcie_tb/simulation/submodules/altpcierd_tl_cfg_sample.v -work pcie
 
-# Compile MAKESTUFF stuff
+# Compile makestuff components
 vcom -93   -novopt util/util_pkg.vhdl                        -check_synthesis -work makestuff
 vcom -93   -novopt util/hex_util.vhdl                        -check_synthesis -work makestuff
 vcom -93   -novopt buffer-fifo/buffer_fifo_impl.vhdl         -check_synthesis -work makestuff
