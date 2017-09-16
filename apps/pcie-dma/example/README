@@ -1,0 +1,8 @@
+# See first few qwords in human-readable form:
+build/example 1 | od -tx8 -w8 -An | tr '[a-f]' '[A-F]' | sed 's/ //g' | head
+
+# Readback 64KiB of random data and compare against the RNG functional model:
+rm -f random.bin
+build/example 1 > random.bin
+../../../ip/dvr-rng/gen-rng/get_seq64 | head -c 65536 > expected.bin
+cmp expected.bin random.bin

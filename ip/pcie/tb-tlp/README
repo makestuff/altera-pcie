@@ -1,0 +1,4 @@
+Low-level unit-test of tlp-core. This is the thing that translates the TLP interface provided by
+pcie.vhdl into a (configurable) number of 32-bit CPU read/write channels, and a single FPGA->CPU
+DMA pipe. In other words it's able to decode the incoming TLP packets coming over the bus from the
+CPU, and it is able to compose suitable TLP packets to send back over the bus to the CPU.

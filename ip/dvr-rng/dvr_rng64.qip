@@ -1,0 +1,2 @@
+set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) "dvr_rng64.vhdl"]                    -library makestuff
+set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) "rng_n2048_r64_t3_k32_s5f81cb.vhdl"] -library makestuff

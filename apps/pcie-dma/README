@@ -1,0 +1,4 @@
+Simple DMA test: copy qwords from a 64-bit RNG into host memory.
+
+quartus_sh --flow compile gt.qpf -c gt
+quartus_pgm --mode=JTAG -o 'p;gt-out/gt.sof'

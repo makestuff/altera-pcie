@@ -1,0 +1,8 @@
+The Linux device driver implements a few ioctl()s enabling the application to read and write FPGA
+registers, and a minimal read()-based stream-read operation for bulk data copy from the FPGA. This
+works by maintaining a circular buffer of DMA blocks; DMA requests are submitted to the FPGA, and
+when they complete, the interrupt routine marks them available for consumption by the "read"
+syscall. As userspace read()s consume buffers, the driver requests additional buffers from the
+FPGA, thus keeping the PCIe bus busy. Everything is optimized for throughput (big buffers, so
+infrequent interrupts, driver copies kernel-space DMA buffers into userspace buffers provided by
+read() calls, etc).

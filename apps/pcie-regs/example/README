@@ -1,0 +1,2 @@
+Write six 32-bit values to registers 2-7, and read them back. Remember that registers 0 and 1 are
+internal to the tlp_core and handle DMA transfers.

@@ -1,0 +1,4 @@
+Various IP blocks. You can do the required generation (& optional ModelSim compilation) using the
+build.sh script: run it without args to generate only; run it with "-c" to also compile. You will
+not be able to do any simulation if you do not compile. The compiled libraries are placed in a
+"sim-libs" subdir.

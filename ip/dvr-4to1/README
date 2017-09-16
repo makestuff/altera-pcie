@@ -1,0 +1,2 @@
+A generic 4:1 DVR pipe narrowing adaptor. For example, allowing a 32-bit pipe to drive an 8-bit
+port, or a 48-bit pipe to drive a 12-bit port.

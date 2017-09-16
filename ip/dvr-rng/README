@@ -1,0 +1,40 @@
+Random number generators. See David Thomas's paper:
+
+"FPGA-Optimised Uniform Random Number Generators using LUTs and Shift Registers"
+
+http://cas.ee.ic.ac.uk/people/dt10/research/rngs-fpga-lut_sr.html
+
+Generate a VHDL random-number generator that can produce a pseudo-random sequence that can be
+verified in software (see gen-rng subdir).
+
+$ # Building...
+$ cd gen-rng; ./build.sh; cd ..
+
+$ # Generate 32-bit RNG, and test:
+$ gen-rng/write_vhdl 1024 32 5 32 1c48
+$ cd tb-wrap32
+$ vsim -do sim.do
+$ cd ..
+$ gen-rng/get_seq32 | od -tx1 -w4 -An | awk '{print $4$3$2$1}' | tr '[a-f]' '[A-F]' | head -256 > expected32.txt
+$ grep RAND tb-wrap32/transcript | awk '{print $5}' > actual32.txt
+$ diff expected32.txt actual32.txt 
+
+$ # Generate 64-bit RNG, and test:
+$ gen-rng/write_vhdl 2048 64 3 32 5f81cb
+$ cd tb-wrap64
+$ vsim -do sim.do
+$ cd ..
+$ gen-rng/get_seq64 | od -tx1 -w8 -An | awk '{print $8$7$6$5$4$3$2$1}' | tr '[a-f]' '[A-F]' | head -256 > expected64.txt
+$ grep RAND tb-wrap64/transcript | awk '{print $5}' > actual64.txt
+$ diff expected64.txt actual64.txt 
+
+$ # Generate 96-bit RNG, and test:
+$ gen-rng/write_vhdl 3060 96 3 32 0x79e56
+$ cd tb-wrap96
+$ vsim -do sim.do
+$ cd ..
+$ gen-rng/get_seq96 | od -tx1 -w12 -An | awk '{print $12$11$10$9$8$7$6$5$4$3$2$1}' | tr '[a-f]' '[A-F]' | head -256 > expected96.txt
+$ grep RAND tb-wrap96/transcript | awk '{print $5}' > actual96.txt
+$ diff expected96.txt actual96.txt 
+
+Eventually the wrapper VHDL could be generated too, but for now it's hard-coded.

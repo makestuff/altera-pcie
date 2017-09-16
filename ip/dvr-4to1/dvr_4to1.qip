@@ -1,0 +1,1 @@
+set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) "dvr_4to1.vhdl"] -library makestuff

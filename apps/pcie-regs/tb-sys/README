@@ -1,0 +1,6 @@
+Fullchip simulation of the register-readback example.
+
+The altpcietb_bfm_driver_chaining.v testbench is modified from the Altera-generated file, and
+implements the behaviour of the CPU side. Similarly the pcie_tb.vhdl file is also based on the
+Altera-generated file, and implements the FPGA-side behaviour. Since this application is
+self-contained (i.e no external connections that must be mocked), it is pretty minimal.

@@ -1,0 +1,4 @@
+Instantiate six 32-bit registers, accessible over PCIe.
+
+quartus_sh --flow compile gt.qpf -c gt
+quartus_pgm --mode=JTAG -o 'p;gt-out/gt.sof'

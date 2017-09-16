@@ -1,0 +1,2 @@
+A generic 1:4 DVR pipe widening adaptor. For example, allowing an 8-bit pipe to drive a 32-bit
+port, or a 12-bit pipe to drive a 48-bit port.

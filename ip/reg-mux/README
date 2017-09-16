@@ -1,0 +1,2 @@
+Multiplex many bidirectional DVR pipes so they are accessible from just one "CPU" pipe. So kinda
+like a 74LS138 on steroids!
