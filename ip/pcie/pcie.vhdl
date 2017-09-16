@@ -955,7 +955,7 @@ architecture rtl of pcie is
 	-- Declare the config demultiplexer.
 	--
 	component altpcierd_tl_cfg_sample is
-		port(
+		port (
 			pld_clk           : in  std_logic;
 			rstn              : in  std_logic;
 			tl_cfg_add        : in  std_logic_vector(3 downto 0);
@@ -1874,7 +1874,7 @@ begin
 
 	-- Instantiate the Verilog config-region sampler unit provided by Altera
 	sampler : component altpcierd_tl_cfg_sample
-		port map(
+		port map (
 			pld_clk          => pcieClk,
 			rstn             => '1',
 			tl_cfg_add       => tl_cfg_add,
@@ -1887,12 +1887,12 @@ begin
 
 	-- Small FIFO to avoid rxData being lost because of the two-clock latency from the PCIe IP.
 	recv_fifo : entity makestuff.buffer_fifo
-		generic map(
+		generic map (
 			WIDTH            => 66,    -- space for 64-bit data word and the SOP & EOP flags
 			DEPTH            => 2,     -- space for four entries
 			BLOCK_RAM        => "OFF"  -- just use regular registers
 		)
-		port map(
+		port map (
 			clk_in           => pcieClk,
 			depth_out        => open,
 

@@ -68,10 +68,10 @@ architecture behavioural of tlp_core_tb is
 begin
 	-- Instantiate the memory controller for testing
 	uut: entity makestuff.tlp_core
-		generic map(
+		generic map (
 			REG_ABITS        => REG_ABITS
 		)
-		port map(
+		port map (
 			pcieClk_in       => pcieClk,
 			cfgBusDev_in     => cfgBusDev,
 			msiReq_out       => msiReq,

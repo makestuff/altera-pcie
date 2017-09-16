@@ -41,7 +41,7 @@ LIBRARY altera_mf;
 USE altera_mf.all;
 
 ENTITY buffer_fifo_impl IS
-	generic(
+	generic (
 		WIDTH  : natural;
 		DEPTH  : natural;
 		AF_THR : natural;

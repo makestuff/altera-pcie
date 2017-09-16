@@ -34,7 +34,7 @@ architecture behavioural of dvr_rng_tb is
 begin
 	-- Instantiate random-number generator
 	uut: entity makestuff.dvr_rng32
-		port map(
+		port map (
 			clk_in           => clk,
 			data_out         => data,
 			valid_out        => valid,
@@ -43,7 +43,8 @@ begin
 
 	-- Drive clock
 	clk <= not clk after 5 ns;
-  
+
+	-- Get sequence from random number generator
 	drive: process
 		variable i : natural;
 	begin

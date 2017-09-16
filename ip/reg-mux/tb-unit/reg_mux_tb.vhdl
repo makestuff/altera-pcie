@@ -64,10 +64,10 @@ architecture behavioural of reg_mux_tb is
 begin
 	-- Instantiate the memory controller for testing
 	uut: entity makestuff.reg_mux
-		generic map(
+		generic map (
 			NUM_RGNS         => NUM_RGNS
 		)
-		port map(
+		port map (
 			cpuChan_in       => cpuChan,
 			cpuWrValid_in    => cpuWrValid,
 			cpuWrReady_out   => cpuWrReady,

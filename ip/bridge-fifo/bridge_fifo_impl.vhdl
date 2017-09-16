@@ -40,7 +40,7 @@ LIBRARY altera_mf;
 USE altera_mf.all;
 
 ENTITY bridge_fifo_impl IS
-	generic(
+	generic (
 		WIDTH      : natural;
 		DEPTH      : natural;
 		FI_CLR     : string;

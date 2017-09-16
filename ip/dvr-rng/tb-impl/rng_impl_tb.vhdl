@@ -2095,7 +2095,7 @@ architecture behavioural of rng_impl_tb is
 begin
 	-- Instantiate random-number generator
 	uut: entity makestuff.rng
-		port map(
+		port map (
 			clk              => clk,
 			ce               => rng_ce,
 			mode             => rng_mode,
