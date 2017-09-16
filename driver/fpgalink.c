@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2014,2017 Chris McClelland
+// Copyright (C) 2014, 2017 Chris McClelland
 // Copyright (C) 2008 Leon Woestenberg    <leon.woestenberg@axon.tv>
 // Copyright (C) 2008 Nickolas Heppermann <heppermannwdt@gmail.com>
 //
