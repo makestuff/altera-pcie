@@ -35,7 +35,7 @@ vcom               $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf_components.vhd    
 vcom               $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf.vhd                       -work altera_mf
 vlog               $QSYS_SIMDIR/pcie_tb/simulation/submodules/altpcierd_tl_cfg_sample.v -work pcie
 
-# Compile makestuff components
+# Compile MakeStuff components
 vcom -93   -novopt util/util_pkg.vhdl                        -check_synthesis -work makestuff
 vcom -93   -novopt util/hex_util.vhdl                        -check_synthesis -work makestuff
 vcom -93   -novopt buffer-fifo/buffer_fifo_impl.vhdl         -check_synthesis -work makestuff
