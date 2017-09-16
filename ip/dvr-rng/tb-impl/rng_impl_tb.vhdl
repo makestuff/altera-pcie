@@ -2106,7 +2106,7 @@ begin
 
 	-- Drive clock
 	clk <= not clk after 5 ns;
-  
+
 	s_out_buff: process
 	begin
 		wait until rising_edge(clk);
@@ -2120,22 +2120,22 @@ begin
 		rng_ce <= '1';
 		rng_mode <= '1';
 		rng_s_in <= initState(0);
-		
+
 		-- Continue loading state
 		for i in 1 to N-1 loop
 			wait until rising_edge(clk);
 			rng_s_in <= initState(i);
 		end loop;
-		
+
 		-- Switch to rng mode
 		wait until rising_edge(clk);
 		rng_mode <= '0';
-		
+
 		-- Here the checker is looking at the output
 		for i in 1 to 2*N-1 loop
 			wait until rising_edge(clk);
 		end loop;
-       
+
 		-- Start reading (and loading) state
 		wait until rising_edge(clk);
 		rng_mode <= '1';
