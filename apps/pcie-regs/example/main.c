@@ -20,7 +20,10 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include "fpgalink.h"
+
+#define PAGE_SIZE 4096
 
 int main(int argc, const char *argv[]) {
 	int retVal = 0, dev, i;
@@ -46,8 +49,14 @@ int main(int argc, const char *argv[]) {
 		retVal = 1; goto exit;
 	}
 
+	uint32_t *const address = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 0);
+	if (address == MAP_FAILED) {
+		fprintf(stderr, "Call to mmap() failed!\n");
+		retVal = 2; goto dev_close;
+	}
+
 	// Write six registers & readback
-	printf("Write six registers & readback:\n");
+	printf("Write FPGA registers & readback using ioctl() interface:\n");
 	flCmdList(dev, cmds);
 	for ( i = 0; i < 6; i++ ) {
 		printf("  %d: 0x%08X", i+2, cmds[6+i].val);
@@ -58,6 +67,19 @@ int main(int argc, const char *argv[]) {
 		}
 	}
 
+	// Direct userspace readback
+	printf("\nReadback FPGA registers via I/O region mmap()'d into userspace:\n");
+	for ( i = 2; i < 8; i++ ) {
+		const uint32_t val = address[2*i+1];
+		printf("  %d: 0x%08X", i, val);
+		if ( cmds[i-2].val == val ) {
+			printf(" (✓)\n");
+		} else {
+			printf(" (✗)\n");
+		}
+	}
+
+dev_close:
 	// Close device
 	close(dev);
 exit:

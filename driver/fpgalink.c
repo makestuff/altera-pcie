@@ -227,7 +227,19 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
 }
 
 static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
-	//unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+	int rc;
+	const unsigned long offset = (vma->vm_pgoff << PAGE_SHIFT) + ape.barStart;
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	rc = io_remap_pfn_range(
+		vma,
+		vma->vm_start,
+		offset >> PAGE_SHIFT,
+		vma->vm_end - vma->vm_start,
+		vma->vm_page_prot
+	);
+	if ( rc ) {
+		return -EAGAIN;
+	}
 	return 0;
 }
 
