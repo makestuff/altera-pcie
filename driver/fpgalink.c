@@ -31,14 +31,6 @@
 // The number of DMA buffers to use in the circular queue
 #define NUM_BUFS 32
 
-// Allow numeric macros to be stringified by the preprocessor
-#define STR(a) _STR(a)
-#define _STR(a) #a
-
-// These attributes were removed as of kernel 3.8: define them empty for now
-#define __devinit
-#define __devexit
-
 // FPGA hardware registers
 #define DMABASE(x) ((x)+0*2+1)
 #define DMACTRL(x) ((x)+1*2+1)
@@ -89,44 +81,22 @@ struct AlteraDevice {
 	struct cdev charDevice;
 };
 
-// Using the subsystem vendor id and subsystem id, it is possible to
-// distinguish between different cards bases around the same
-// (third-party) logic core.
+// Userspace is opening the device
 //
-// Default Altera vendor and device ID's, and some (non-reserved)
-// ID's are now used here that are used amongst the testers/developers.
-//
-static const struct pci_device_id ids[] = {
-	{ PCI_DEVICE(0x1172, 0xE001), },
-	{ PCI_DEVICE(0x2071, 0x2071), },
-	{ 0, }
-};
-MODULE_DEVICE_TABLE(pci, ids);
+static int cdevOpen(struct inode *inode, struct file *filp) {
+	struct AlteraDevice *const ape = container_of(inode->i_cdev, struct AlteraDevice, charDevice);
+	filp->private_data = ape;	
+	printk(KERN_DEBUG "cdevOpen()\n");
+	ape->numAvailable = ape->outIndex = ape->numSubmitted = 0;
+	return 0;
+}
 
-// Used to register the driver with the PCI kernel subsystem (see LDD3 page 311)
+// Userspace is closing the device
 //
-static int  __devinit pcieProbe(struct pci_dev *dev, const struct pci_device_id *id);
-static void __devexit pcieRemove(struct pci_dev *dev);
-static struct pci_driver pciDriver = {
-	.name = DRV_NAME,
-	.id_table = ids,
-	.probe = pcieProbe,
-	.remove = pcieRemove
-};
-
-// Callbacks for file operations on /dev/fpga0
-//
-static int cdevOpen(struct inode *inode, struct file *filp);
-static int cdevRelease(struct inode *inode, struct file *filp);
-static ssize_t cdevRead(struct file *filp, char __user *buf, size_t count, loff_t *filePos);
-static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg);
-static const struct file_operations cdevFileOps = {
-	.owner          = THIS_MODULE,
-	.open           = cdevOpen,
-	.release        = cdevRelease,
-	.read           = cdevRead,
-	.unlocked_ioctl = cdevIOCtl
-};
+static int cdevRelease(struct inode *inode, struct file *filp) {
+	printk(KERN_DEBUG "cdevRelease()\n");
+	return 0;
+}
 
 // Submit a DMA request for the given number of TLPs at the specified address
 //
@@ -162,6 +132,118 @@ static irqreturn_t serviceInterrupt(int irq, void *devID) {
 	return IRQ_HANDLED;
 }
 
+// Userspace is asking for data
+//
+static ssize_t cdevRead(struct file *filp, char __user *buf, size_t count, loff_t *filePos) {
+	// Allow numeric macros to be stringified by the preprocessor
+	#define STR(a) _STR(a)
+	#define _STR(a) #a
+	struct AlteraDevice *ape = filp->private_data;
+	unsigned long rc, flags;
+	if ( count < BUF_SIZE ) {
+		printk(KERN_DEBUG "cdevRead(): can't read into a buffer smaller than " STR(BUF_SIZE) " bytes!\n");
+		return -EINVAL;
+	}
+	wait_event_interruptible(ape->wq, ape->numAvailable > 0);
+	rc = copy_to_user(buf, ape->bufferArrayVirt[ape->outIndex].data, BUF_SIZE);
+	spin_lock_irqsave(&ape->lock, flags);
+	submitDmaReq(ape, ape->bufferArrayBus + ape->outIndex * sizeof(struct Buffer), BUF_SIZE/128);
+	ape->numSubmitted++;
+	ape->outIndex++;
+	ape->outIndex &= NUM_BUFS - 1;
+	ape->numAvailable--;
+	spin_unlock_irqrestore(&ape->lock, flags);
+	return BUF_SIZE;
+	(void)filePos;
+	(void)rc;
+}
+
+// The ioctl() implementation
+//
+static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
+	struct AlteraDevice *const ape = filp->private_data;
+	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar;
+	struct CmdList kl;
+	struct Cmd kc;
+	struct Cmd __user *ucp;
+	u32 numCmds, reg;
+	int err = 0;
+
+	// Extract the type and number bitfields, and don't decode
+	// wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
+	//
+	if ( _IOC_TYPE(cmd) != FPGALINK_IOC_MAGIC ) {
+		return -ENOTTY;
+	}
+	if ( _IOC_NR(cmd) > FPGALINK_IOC_MAXNR ) {
+		return -ENOTTY;
+	}
+
+	//
+	// the direction is a bitmask, and VERIFY_WRITE catches R/W
+	// transfers. `Type' is user-oriented, while
+	// access_ok is kernel-oriented, so the concept of "read" and
+	// "write" is reversed
+	//
+	if ( _IOC_DIR(cmd) & _IOC_READ ) {
+		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+	} else if ( _IOC_DIR(cmd) & _IOC_WRITE ) {
+		err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+	}
+	if ( err ) {
+		return -EFAULT;
+	}
+
+	switch ( cmd ) {
+	case FPGALINK_CMDLIST:
+		err = copy_from_user(&kl, (struct CmdList __user *)arg, sizeof(struct CmdList));
+		if ( err ) {
+			return -EFAULT;
+		}
+		numCmds = kl.numCmds;
+		ucp = (struct Cmd __user *)kl.cmds;
+		while ( numCmds ) {
+			err = copy_from_user(&kc, ucp, sizeof(struct Cmd));
+			if ( err ) {
+				return -EFAULT;
+			}
+			reg = 1 + kc.reg * 2;
+			if ( kc.op == OP_RD ) {
+				// Read the specified register and copy the result over to userspace
+				err = put_user(ioread32(regSpace + reg), &ucp->val);
+				if ( err ) {
+					return -EFAULT;
+				}
+			} else if ( kc.op == OP_WR ) {
+				// Write to the specified register
+				iowrite32(kc.val, regSpace + reg);
+			} else if ( kc.op == OP_SD ) {
+				// Start DMA
+				ape->numAvailable = ape->outIndex = 0;
+				ape->numSubmitted = 1;
+				submitDmaReq(ape, ape->bufferArrayBus, BUF_SIZE/128);
+			} else {
+				// Unrecognised operation
+				return -EFAULT;
+			}
+			ucp++;
+			numCmds--;
+		}
+		break;
+	}
+	return 0;
+}
+
+// Callbacks for file operations on /dev/fpga0
+//
+static const struct file_operations cdevFileOps = {
+	.owner          = THIS_MODULE,
+	.open           = cdevOpen,
+	.release        = cdevRelease,
+	.read           = cdevRead,
+	.unlocked_ioctl = cdevIOCtl
+};
+
 // Unmap the BAR regions that had been mapped earlier using mapBars()
 //
 static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
@@ -177,7 +259,7 @@ static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 //
 // TODO: Sort out return code mess!
 //
-static int __devinit mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
+static int mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	int rc;
 	const unsigned long barStart = pci_resource_start(dev, 0);
 	const unsigned long barEnd = pci_resource_end(dev, 0);
@@ -218,7 +300,7 @@ fail:
 
 // Dump some info about each BAR to syslog
 //
-static int __devinit scanBars(struct AlteraDevice *ape, struct pci_dev *dev) {
+static int scanBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	const unsigned long barStart = pci_resource_start(dev, 0);
 	if ( barStart ) {
 		const unsigned long barEnd = pci_resource_end(dev, 0);
@@ -246,7 +328,7 @@ static int __devinit scanBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 // - allocate DMA buffer
 // - allocate char driver major/minor
 //
-static int __devinit pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
+static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	int rc, devno, alreadyInUse = 0;
 	struct AlteraDevice *ape = NULL;
 	dev_t charDevice;
@@ -392,7 +474,7 @@ err_ape:
 
 // Called when the module is removed with rmmod
 //
-static void __devexit pcieRemove(struct pci_dev *dev) {
+static void pcieRemove(struct pci_dev *dev) {
 	struct AlteraDevice *const ape = dev_get_drvdata(&dev->dev);
 	const dev_t devno = MKDEV(ape->major, 0);
 
@@ -426,121 +508,28 @@ static void __devexit pcieRemove(struct pci_dev *dev) {
 	kfree(ape);
 }
 
-// Userspace is opening the device
+// Using the subsystem vendor id and subsystem id, it is possible to
+// distinguish between different cards bases around the same
+// (third-party) logic core.
 //
-static int cdevOpen(struct inode *inode, struct file *filp) {
-	struct AlteraDevice *const ape = container_of(inode->i_cdev, struct AlteraDevice, charDevice);
-	filp->private_data = ape;	
-	printk(KERN_DEBUG "cdevOpen()\n");
-	ape->numAvailable = ape->outIndex = ape->numSubmitted = 0;
-	return 0;
-}
-
-// Userspace is closing the device
+// Default Altera vendor and device ID's, and some (non-reserved)
+// ID's are now used here that are used amongst the testers/developers.
 //
-static int cdevRelease(struct inode *inode, struct file *filp) {
-	printk(KERN_DEBUG "cdevRelease()\n");
-	return 0;
-}
+static const struct pci_device_id ids[] = {
+	{ PCI_DEVICE(0x1172, 0xE001), },
+	{ PCI_DEVICE(0x2071, 0x2071), },
+	{ 0, }
+};
+MODULE_DEVICE_TABLE(pci, ids);
 
-// Userspace is asking for data
+// Used to register the driver with the PCI kernel subsystem (see LDD3 page 311)
 //
-static ssize_t cdevRead(struct file *filp, char __user *buf, size_t count, loff_t *filePos) {
-	struct AlteraDevice *ape = filp->private_data;
-	unsigned long rc, flags;
-	if ( count < BUF_SIZE ) {
-		printk(KERN_DEBUG "cdevRead(): can't read into a buffer smaller than " STR(BUF_SIZE) " bytes!\n");
-		return -EINVAL;
-	}
-	wait_event_interruptible(ape->wq, ape->numAvailable > 0);
-	rc = copy_to_user(buf, ape->bufferArrayVirt[ape->outIndex].data, BUF_SIZE);
-	spin_lock_irqsave(&ape->lock, flags);
-	submitDmaReq(ape, ape->bufferArrayBus + ape->outIndex * sizeof(struct Buffer), BUF_SIZE/128);
-	ape->numSubmitted++;
-	ape->outIndex++;
-	ape->outIndex &= NUM_BUFS - 1;
-	ape->numAvailable--;
-	spin_unlock_irqrestore(&ape->lock, flags);
-	return BUF_SIZE;
-	(void)filePos;
-	(void)rc;
-}
-
-// The ioctl() implementation
-//
-static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
-	struct AlteraDevice *const ape = filp->private_data;
-	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar;
-	struct CmdList kl;
-	struct Cmd kc;
-	struct Cmd __user *ucp;
-	u32 numCmds, reg;
-	int err = 0;
-
-	// Extract the type and number bitfields, and don't decode
-	// wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
-	//
-	if ( _IOC_TYPE(cmd) != FPGALINK_IOC_MAGIC ) {
-		return -ENOTTY;
-	}
-	if ( _IOC_NR(cmd) > FPGALINK_IOC_MAXNR ) {
-		return -ENOTTY;
-	}
-
-	//
-	// the direction is a bitmask, and VERIFY_WRITE catches R/W
-	// transfers. `Type' is user-oriented, while
-	// access_ok is kernel-oriented, so the concept of "read" and
-	// "write" is reversed
-	//
-	if ( _IOC_DIR(cmd) & _IOC_READ ) {
-		err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
-	} else if ( _IOC_DIR(cmd) & _IOC_WRITE ) {
-		err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
-	}
-	if ( err ) {
-		return -EFAULT;
-	}
-
-	switch ( cmd ) {
-	case FPGALINK_CMDLIST:
-		err = copy_from_user(&kl, (struct CmdList __user *)arg, sizeof(struct CmdList));
-		if ( err ) {
-			return -EFAULT;
-		}
-		numCmds = kl.numCmds;
-		ucp = (struct Cmd __user *)kl.cmds;
-		while ( numCmds ) {
-			err = copy_from_user(&kc, ucp, sizeof(struct Cmd));
-			if ( err ) {
-				return -EFAULT;
-			}
-			reg = 1 + kc.reg * 2;
-			if ( kc.op == OP_RD ) {
-				// Read the specified register and copy the result over to userspace
-				err = put_user(ioread32(regSpace + reg), &ucp->val);
-				if ( err ) {
-					return -EFAULT;
-				}
-			} else if ( kc.op == OP_WR ) {
-				// Write to the specified register
-				iowrite32(kc.val, regSpace + reg);
-			} else if ( kc.op == OP_SD ) {
-				// Start DMA
-				ape->numAvailable = ape->outIndex = 0;
-				ape->numSubmitted = 1;
-				submitDmaReq(ape, ape->bufferArrayBus, BUF_SIZE/128);
-			} else {
-				// Unrecognised operation
-				return -EFAULT;
-			}
-			ucp++;
-			numCmds--;
-		}
-		break;
-	}
-	return 0;
-}
+static struct pci_driver pciDriver = {
+	.name = DRV_NAME,
+	.id_table = ids,
+	.probe = pcieProbe,
+	.remove = pcieRemove
+};
 
 // Module initialization, registers devices.
 //
