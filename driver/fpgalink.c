@@ -38,9 +38,6 @@
 // Driver name
 #define DRV_NAME "fpgalink"
 
-// Minimum number of bytes in the FPGA's BAR region
-#define BAR_MIN_LEN 256UL
-
 // The form of this struct is known also to ip/pcie/tlp_core.vhdl, so if you
 // edit it here, you'll probably have to edit something there too. One important
 // thing to remember is that each buffer must be aligned to a 128-byte (TLP)
@@ -253,9 +250,7 @@ static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	}
 }
 
-// Map the device memory regions into kernel virtual address space after
-// verifying their sizes respect the minimum sizes needed, given by the
-// barMinLen[] array.
+// Map the device memory region into kernel virtual address space after verifying its size
 //
 // TODO: Sort out return code mess!
 //
@@ -264,6 +259,7 @@ static int mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	const unsigned long barStart = pci_resource_start(dev, 0);
 	const unsigned long barEnd = pci_resource_end(dev, 0);
 	const unsigned long barLength = barEnd - barStart + 1;
+	const unsigned long barMinLen = 256UL;
 	ape->bar = NULL;
 	
 	// Do not map BARs with address 0
@@ -273,22 +269,22 @@ static int mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	}
 	
 	// BAR length is less than driver requires?
-	if ( barLength < BAR_MIN_LEN ) {
+	if ( barLength < barMinLen ) {
 		printk(
 			KERN_DEBUG "BAR length = %lu bytes but driver requires at least %lu bytes\n",
-			barLength, BAR_MIN_LEN
+			barLength, barMinLen
 		);
 		rc = -1; goto fail;
 	}
 	
 	// Map the device memory or IO region into kernel virtual address space
-	ape->bar = pci_iomap(dev, 0, BAR_MIN_LEN);
+	ape->bar = pci_iomap(dev, 0, barMinLen);
 	if ( !ape->bar ) {
 		printk(KERN_DEBUG "Could not map BAR!\n");
 		rc = -1; goto fail;
 	}
 	printk(KERN_DEBUG "BAR mapped at 0x%p with length %lu(/%lu).\n",
-		ape->bar, BAR_MIN_LEN, barLength);
+		ape->bar, barMinLen, barLength);
 
 	// Successfully mapped BAR region
 	return 0;
