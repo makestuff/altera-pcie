@@ -52,14 +52,17 @@ struct Buffer {
 // Keeps state of the PCIe core and the Chaining DMA controller
 // application.
 //
-struct AlteraDevice {
+static struct AlteraDevice {
 	// The kernel pci device data structure provided by probe()
 	struct pci_dev *pciDevice;
 
 	// Kernel virtual address of the mapped BAR memory and IO regions of
 	// the End Point. Used by mapBars()/unmapBars().
 	//
-	void __iomem *bar;
+	void __iomem *barAddr;
+
+	// BAR start offset (physical addr?)
+	unsigned long barStart;
 
 	// Board revision
 	u8 revision;
@@ -73,18 +76,16 @@ struct AlteraDevice {
 	spinlock_t lock;
 	wait_queue_head_t wq;
 
-	// Character device and major number
-	int major;
+	// Character device and device number
 	struct cdev charDevice;
-};
+	dev_t devNum;
+} ape;
 
 // Userspace is opening the device
 //
 static int cdevOpen(struct inode *inode, struct file *filp) {
-	struct AlteraDevice *const ape = container_of(inode->i_cdev, struct AlteraDevice, charDevice);
-	filp->private_data = ape;	
 	printk(KERN_DEBUG "cdevOpen()\n");
-	ape->numAvailable = ape->outIndex = ape->numSubmitted = 0;
+	ape.numAvailable = ape.outIndex = ape.numSubmitted = 0;
 	return 0;
 }
 
@@ -97,8 +98,8 @@ static int cdevRelease(struct inode *inode, struct file *filp) {
 
 // Submit a DMA request for the given number of TLPs at the specified address
 //
-static inline void submitDmaReq(struct AlteraDevice *ape, dma_addr_t addr, u32 numTLPs) {
-	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar;
+static inline void submitDmaReq(dma_addr_t addr, u32 numTLPs) {
+	u32 __iomem *const regSpace = (u32 __iomem *)ape.barAddr;
 	iowrite32((u32)addr, DMABASE(regSpace));
 	iowrite32(numTLPs, DMACTRL(regSpace));
 }
@@ -106,26 +107,22 @@ static inline void submitDmaReq(struct AlteraDevice *ape, dma_addr_t addr, u32 n
 // Interrupt service routine
 //
 static irqreturn_t serviceInterrupt(int irq, void *devID) {
-	struct AlteraDevice *const ape = (struct AlteraDevice *)devID;
 	u32 submitCount, submitIndex;
 	unsigned long flags;
-	if ( !ape ) {
-		return IRQ_NONE;
-	}
-	spin_lock_irqsave(&ape->lock, flags);
-	ape->numAvailable++;
-	ape->numSubmitted--;
-	submitCount = NUM_BUFS - ape->numAvailable - ape->numSubmitted;
-	submitIndex = ape->outIndex + ape->numAvailable;
+	spin_lock_irqsave(&ape.lock, flags);
+	ape.numAvailable++;
+	ape.numSubmitted--;
+	submitCount = NUM_BUFS - ape.numAvailable - ape.numSubmitted;
+	submitIndex = ape.outIndex + ape.numAvailable;
 	submitIndex &= NUM_BUFS - 1;
 	while ( submitCount-- ) {
-		submitDmaReq(ape, ape->bufferArrayBus + submitIndex * sizeof(struct Buffer), BUF_SIZE/128);
+		submitDmaReq(ape.bufferArrayBus + submitIndex * sizeof(struct Buffer), BUF_SIZE/128);
 		submitIndex++;
 		submitIndex &= NUM_BUFS - 1;
-		ape->numSubmitted++;
+		ape.numSubmitted++;
 	}
-	spin_unlock_irqrestore(&ape->lock, flags);
-	wake_up_interruptible(&ape->wq);
+	spin_unlock_irqrestore(&ape.lock, flags);
+	wake_up_interruptible(&ape.wq);
 	return IRQ_HANDLED;
 }
 
@@ -135,21 +132,20 @@ static ssize_t cdevRead(struct file *filp, char __user *buf, size_t count, loff_
 	// Allow numeric macros to be stringified by the preprocessor
 	#define STR(a) _STR(a)
 	#define _STR(a) #a
-	struct AlteraDevice *ape = filp->private_data;
 	unsigned long rc, flags;
 	if ( count < BUF_SIZE ) {
 		printk(KERN_DEBUG "cdevRead(): can't read into a buffer smaller than " STR(BUF_SIZE) " bytes!\n");
 		return -EINVAL;
 	}
-	wait_event_interruptible(ape->wq, ape->numAvailable > 0);
-	rc = copy_to_user(buf, ape->bufferArrayVirt[ape->outIndex].data, BUF_SIZE);
-	spin_lock_irqsave(&ape->lock, flags);
-	submitDmaReq(ape, ape->bufferArrayBus + ape->outIndex * sizeof(struct Buffer), BUF_SIZE/128);
-	ape->numSubmitted++;
-	ape->outIndex++;
-	ape->outIndex &= NUM_BUFS - 1;
-	ape->numAvailable--;
-	spin_unlock_irqrestore(&ape->lock, flags);
+	wait_event_interruptible(ape.wq, ape.numAvailable > 0);
+	rc = copy_to_user(buf, ape.bufferArrayVirt[ape.outIndex].data, BUF_SIZE);
+	spin_lock_irqsave(&ape.lock, flags);
+	submitDmaReq(ape.bufferArrayBus + ape.outIndex * sizeof(struct Buffer), BUF_SIZE/128);
+	ape.numSubmitted++;
+	ape.outIndex++;
+	ape.outIndex &= NUM_BUFS - 1;
+	ape.numAvailable--;
+	spin_unlock_irqrestore(&ape.lock, flags);
 	return BUF_SIZE;
 	(void)filePos;
 	(void)rc;
@@ -158,8 +154,7 @@ static ssize_t cdevRead(struct file *filp, char __user *buf, size_t count, loff_
 // The ioctl() implementation
 //
 static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
-	struct AlteraDevice *const ape = filp->private_data;
-	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar;
+	u32 __iomem *const regSpace = (u32 __iomem *)ape.barAddr;
 	struct CmdList kl;
 	struct Cmd kc;
 	struct Cmd __user *ucp;
@@ -216,9 +211,9 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
 				iowrite32(kc.val, regSpace + reg);
 			} else if ( kc.op == OP_SD ) {
 				// Start DMA
-				ape->numAvailable = ape->outIndex = 0;
-				ape->numSubmitted = 1;
-				submitDmaReq(ape, ape->bufferArrayBus, BUF_SIZE/128);
+				ape.numAvailable = ape.outIndex = 0;
+				ape.numSubmitted = 1;
+				submitDmaReq(ape.bufferArrayBus, BUF_SIZE/128);
 			} else {
 				// Unrecognised operation
 				return -EFAULT;
@@ -231,6 +226,11 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
 	return 0;
 }
 
+static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
+	//unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+	return 0;
+}
+
 // Callbacks for file operations on /dev/fpga0
 //
 static const struct file_operations cdevFileOps = {
@@ -238,15 +238,16 @@ static const struct file_operations cdevFileOps = {
 	.open           = cdevOpen,
 	.release        = cdevRelease,
 	.read           = cdevRead,
-	.unlocked_ioctl = cdevIOCtl
+	.unlocked_ioctl = cdevIOCtl,
+	.mmap           = cdevMMap
 };
 
 // Unmap the BAR regions that had been mapped earlier using mapBars()
 //
-static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
-	if ( ape->bar ) {
-		pci_iounmap(dev, ape->bar);
-		ape->bar = NULL;
+static void unmapBars(struct pci_dev *dev) {
+	if ( ape.barAddr ) {
+		pci_iounmap(dev, ape.barAddr);
+		ape.barAddr = NULL;
 	}
 }
 
@@ -254,13 +255,14 @@ static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 //
 // TODO: Sort out return code mess!
 //
-static int mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
+static int mapBars(struct pci_dev *dev) {
 	int rc;
 	const unsigned long barStart = pci_resource_start(dev, 0);
 	const unsigned long barEnd = pci_resource_end(dev, 0);
 	const unsigned long barLength = barEnd - barStart + 1;
 	const unsigned long barMinLen = 256UL;
-	ape->bar = NULL;
+	ape.barAddr = NULL;
+	ape.barStart = 0;
 	
 	// Do not map BARs with address 0
 	if ( !barStart || !barEnd ) {
@@ -278,25 +280,26 @@ static int mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	}
 	
 	// Map the device memory or IO region into kernel virtual address space
-	ape->bar = pci_iomap(dev, 0, barMinLen);
-	if ( !ape->bar ) {
+	ape.barStart = barStart;
+	ape.barAddr = pci_iomap(dev, 0, barMinLen);
+	if ( !ape.barAddr ) {
 		printk(KERN_DEBUG "Could not map BAR!\n");
 		rc = -1; goto fail;
 	}
 	printk(KERN_DEBUG "BAR mapped at 0x%p with length %lu(/%lu).\n",
-		ape->bar, barMinLen, barLength);
+		ape.barAddr, barMinLen, barLength);
 
 	// Successfully mapped BAR region
 	return 0;
 fail:
 	// Unmap any BARs that we did map
-	unmapBars(ape, dev);
+	unmapBars(dev);
 	return rc;
 }
 
 // Dump some info about each BAR to syslog
 //
-static int scanBars(struct AlteraDevice *ape, struct pci_dev *dev) {
+static int scanBars(struct pci_dev *dev) {
 	const unsigned long barStart = pci_resource_start(dev, 0);
 	if ( barStart ) {
 		const unsigned long barEnd = pci_resource_end(dev, 0);
@@ -325,9 +328,7 @@ static int scanBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 // - allocate char driver major/minor
 //
 static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
-	int rc, devno, alreadyInUse = 0;
-	struct AlteraDevice *ape = NULL;
-	dev_t charDevice;
+	int rc, alreadyInUse = 0;
 	printk(KERN_DEBUG "pcieProbe(dev = 0x%p, pciid = 0x%p)\n", dev, id);
 
 	// Check alignment of Buffer struct. Ideally this check should be done at compile-time.
@@ -336,15 +337,9 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 		rc = -ENODEV; goto err_align;
 	}
 
-	// Allocate memory for per-board bookkeeping
-	ape = kzalloc(sizeof(struct AlteraDevice), GFP_KERNEL);
-	if ( !ape ) {
-		printk(KERN_DEBUG "kzalloc() of struct AlteraDevice failed!\n");
-		rc = -ENOMEM; goto err_ape;
-	}
-	ape->pciDevice = dev;
-	dev_set_drvdata(&dev->dev, ape);
-	printk(KERN_DEBUG "pcieProbe() ape = 0x%p\n", ape);
+	ape.pciDevice = dev;
+	dev_set_drvdata(&dev->dev, &ape);
+	printk(KERN_DEBUG "pcieProbe() ape = 0x%p\n", &ape);
 
 	// Enable device
 	rc = pci_enable_device(dev);
@@ -364,7 +359,7 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	}
 
 	// Get the revision ID (specified in QSys when PCIe IP is generated)
-	pci_read_config_byte(dev, PCI_REVISION_ID, &ape->revision);
+	pci_read_config_byte(dev, PCI_REVISION_ID, &ape.revision);
 
 	// Reserve I/O regions for all BARs
 	rc = pci_request_regions(dev, DRV_NAME);
@@ -386,17 +381,17 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	}
 
 	// Request an IRQ (see LDD3 page 259)
-	rc = request_irq(dev->irq, serviceInterrupt, IRQF_SHARED, DRV_NAME, (void*)ape);
+	rc = request_irq(dev->irq, serviceInterrupt, IRQF_SHARED, DRV_NAME, (void*)&ape);
 	if ( rc ) {
 		printk(KERN_DEBUG "request_irq(%d, ...) failed (rc=%d)!\n", dev->irq, rc);
 		goto err_irq;
 	}
 
 	// Show BARs in syslog
-	scanBars(ape, dev);
+	scanBars(dev);
 
 	// Map BARs
-	rc = mapBars(ape, dev);
+	rc = mapBars(dev);
 	if ( rc ) {
 		goto err_map;
 	}
@@ -404,54 +399,52 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	// Allocate and map coherently-cached memory for a DMA-able buffer (see
 	// Documentation/PCI/PCI-DMA-mapping.txt, near line 318)
 	//
-	ape->bufferArrayBus = 0;
-	ape->bufferArrayVirt = (struct Buffer *)pci_alloc_consistent(
-		dev, NUM_BUFS*sizeof(struct Buffer), &ape->bufferArrayBus
+	ape.bufferArrayBus = 0;
+	ape.bufferArrayVirt = (struct Buffer *)pci_alloc_consistent(
+		dev, NUM_BUFS*sizeof(struct Buffer), &ape.bufferArrayBus
 	);
-	if ( !ape->bufferArrayVirt ) {
+	if ( !ape.bufferArrayVirt ) {
 		printk(KERN_DEBUG "Could not allocate coherent DMA buffer!\n");
 		rc = -ENOMEM; goto err_buf_alloc;
 	}
 	printk(
 		KERN_DEBUG "Allocated cache-coherent DMA buffer (virt: %p; bus: 0x%016llX).\n",
-		ape->bufferArrayVirt, (u64)ape->bufferArrayBus
+		ape.bufferArrayVirt, (u64)ape.bufferArrayBus
 	);
 
 	// Allocate char driver major/minor
-	rc = alloc_chrdev_region(&charDevice, 0, 1, "fpga0");
+	rc = alloc_chrdev_region(&ape.devNum, 0, 1, "fpga0");
 	if ( rc ) {
 		printk(KERN_ERR "alloc_chrdev_region() failed (rc=%d)\n", rc);
 		goto err_cdev_alloc;
 	}
-	ape->major = MAJOR(charDevice);
-	devno = MKDEV(ape->major, 0);
 
 	// Initialise char device
-	cdev_init(&ape->charDevice, &cdevFileOps);
-	ape->charDevice.owner = THIS_MODULE;
-	ape->charDevice.ops = &cdevFileOps;
+	cdev_init(&ape.charDevice, &cdevFileOps);
+	ape.charDevice.owner = THIS_MODULE;
+	ape.charDevice.ops = &cdevFileOps;
 
 	// Add a single device node
-	rc = cdev_add(&ape->charDevice, devno, 1);
+	rc = cdev_add(&ape.charDevice, ape.devNum, 1);
 	if ( rc ) {
 		printk(KERN_ERR "cdev_add() failed (rc=%d)\n", rc);
 		goto err_cdev_add;
 	}
 
 	// Wait queue
-	init_waitqueue_head(&ape->wq);
+	init_waitqueue_head(&ape.wq);
 
 	// Successfully took the device
 	printk(KERN_DEBUG "pcieProbe() successful.\n");
 	return 0;
 err_cdev_add:
-	unregister_chrdev_region(devno, 1);
+	unregister_chrdev_region(ape.devNum, 1);
 err_cdev_alloc:
-	pci_free_consistent(dev, NUM_BUFS*sizeof(struct Buffer), (u8*)ape->bufferArrayVirt, ape->bufferArrayBus);
+	pci_free_consistent(dev, NUM_BUFS*sizeof(struct Buffer), (u8*)ape.bufferArrayVirt, ape.bufferArrayBus);
 err_buf_alloc:
-	unmapBars(ape, dev);
+	unmapBars(dev);
 err_map:
-	free_irq(dev->irq, (void*)ape);
+	free_irq(dev->irq, (void*)&ape);
 err_irq:
 err_mask:
 	pci_release_regions(dev);
@@ -462,34 +455,30 @@ err_msi:
 		pci_disable_device(dev); // only disable the device if we're sure it's really ours
 	}
 err_enable:
-	kfree(ape);
 err_align:
-err_ape:
 	return rc;
 }
 
 // Called when the module is removed with rmmod
 //
 static void pcieRemove(struct pci_dev *dev) {
-	struct AlteraDevice *const ape = dev_get_drvdata(&dev->dev);
-	const dev_t devno = MKDEV(ape->major, 0);
 
-	printk(KERN_DEBUG "pcieRemove(dev = 0x%p) where ape = 0x%p\n", dev, ape);
+	printk(KERN_DEBUG "pcieRemove(dev = 0x%p) where ape = 0x%p\n", dev, &ape);
 
 	// Remove the char device node
-	cdev_del(&ape->charDevice);
+	cdev_del(&ape.charDevice);
 
 	// Unregister char device
-	unregister_chrdev_region(devno, 1);	
+	unregister_chrdev_region(ape.devNum, 1);
 
 	// Free DMA buffer
-	pci_free_consistent(dev, NUM_BUFS*sizeof(struct Buffer), (u8 *)ape->bufferArrayVirt, ape->bufferArrayBus);
+	pci_free_consistent(dev, NUM_BUFS*sizeof(struct Buffer), (u8 *)ape.bufferArrayVirt, ape.bufferArrayBus);
 
 	// Unmap the BARs
-	unmapBars(ape, dev);
+	unmapBars(dev);
 
 	// Free IRQ
-	free_irq(dev->irq, (void*)ape);
+	free_irq(dev->irq, (void*)&ape);
 
 	// Release BAR mappings
 	pci_release_regions(dev);
@@ -499,9 +488,6 @@ static void pcieRemove(struct pci_dev *dev) {
 
 	// Disable the PCIe device
 	pci_disable_device(dev);
-
-	// Free the ape structure
-	kfree(ape);
 }
 
 // Using the subsystem vendor id and subsystem id, it is possible to
