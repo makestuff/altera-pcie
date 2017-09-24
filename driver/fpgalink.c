@@ -46,20 +46,8 @@
 // Driver name
 #define DRV_NAME "fpgalink"
 
-// Number of BARs on the device
-#define APE_BAR_NUM (1)
-
-// Specifies those BARs to be mapped and the length of each mapping.
-//
-// Zero (0) means do not map, otherwise specifies the BAR lengths to be mapped.
-// If the actual BAR length is less, this is considered an error; then
-// reconfigure your PCIe core.
-//
-// @see ug_pci_express 8.0, table 7-2 at page 7-13.
-//
-static const unsigned long barMinLen[APE_BAR_NUM] = {
-	256
-};
+// Minimum number of bytes in the FPGA's BAR region
+#define BAR_MIN_LEN 256UL
 
 // The form of this struct is known also to ip/pcie/tlp_core.vhdl, so if you
 // edit it here, you'll probably have to edit something there too. One important
@@ -82,7 +70,7 @@ struct AlteraDevice {
 	// Kernel virtual address of the mapped BAR memory and IO regions of
 	// the End Point. Used by mapBars()/unmapBars().
 	//
-	void __iomem *bar[APE_BAR_NUM];
+	void __iomem *bar;
 
 	// Board revision
 	u8 revision;
@@ -143,7 +131,7 @@ static const struct file_operations cdevFileOps = {
 // Submit a DMA request for the given number of TLPs at the specified address
 //
 static inline void submitDmaReq(struct AlteraDevice *ape, dma_addr_t addr, u32 numTLPs) {
-	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar[0];
+	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar;
 	iowrite32((u32)addr, DMABASE(regSpace));
 	iowrite32(numTLPs, DMACTRL(regSpace));
 }
@@ -177,12 +165,9 @@ static irqreturn_t serviceInterrupt(int irq, void *devID) {
 // Unmap the BAR regions that had been mapped earlier using mapBars()
 //
 static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
-	int i;
-	for ( i = 0; i < APE_BAR_NUM; i++ ) {
-		if ( ape->bar[i] ) {
-			pci_iounmap(dev, ape->bar[i]);
-			ape->bar[i] = NULL;
-		}
+	if ( ape->bar ) {
+		pci_iounmap(dev, ape->bar);
+		ape->bar = NULL;
 	}
 }
 
@@ -194,45 +179,36 @@ static void unmapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 //
 static int __devinit mapBars(struct AlteraDevice *ape, struct pci_dev *dev) {
 	int rc;
-	int i;
-
-	// Iterate through all the BARs
-	for ( i = 0; i < APE_BAR_NUM; i++ ) {
-		unsigned long barStart = pci_resource_start(dev, i);
-		unsigned long barEnd = pci_resource_end(dev, i);
-		unsigned long barLength = barEnd - barStart + 1;
-		ape->bar[i] = NULL;
-		// do not map, and skip, BARs with length 0
-		if ( !barMinLen[i] ) {
-			continue;
-		}
-
-		// Do not map BARs with address 0
-		if ( !barStart || !barEnd ) {
-			printk(KERN_DEBUG "BAR #%d is not present?!\n", i);
-			rc = -1; goto fail;
-		}
-		barLength = barEnd - barStart + 1;
-
-		// BAR length is less than driver requires?
-		if ( barLength < barMinLen[i] ) {
-			printk(
-				KERN_DEBUG "BAR #%d length = %lu bytes but driver requires at least %lu bytes\n",
-				i, barLength, barMinLen[i]
-			);
-			rc = -1; goto fail;
-		}
-
-		// Map the device memory or IO region into kernel virtual address space
-		ape->bar[i] = pci_iomap(dev, i, barMinLen[i]);
-		if ( !ape->bar[i] ) {
-			printk(KERN_DEBUG "Could not map BAR #%d.\n", i);
-			rc = -1; goto fail;
-		}
-		printk(KERN_DEBUG "BAR[%d] mapped at 0x%p with length %lu(/%lu).\n", i,
-		ape->bar[i], barMinLen[i], barLength);
+	const unsigned long barStart = pci_resource_start(dev, 0);
+	const unsigned long barEnd = pci_resource_end(dev, 0);
+	const unsigned long barLength = barEnd - barStart + 1;
+	ape->bar = NULL;
+	
+	// Do not map BARs with address 0
+	if ( !barStart || !barEnd ) {
+		printk(KERN_DEBUG "BAR is not present?\n");
+		rc = -1; goto fail;
 	}
-	// Successfully mapped all required BAR regions
+	
+	// BAR length is less than driver requires?
+	if ( barLength < BAR_MIN_LEN ) {
+		printk(
+			KERN_DEBUG "BAR length = %lu bytes but driver requires at least %lu bytes\n",
+			barLength, BAR_MIN_LEN
+		);
+		rc = -1; goto fail;
+	}
+	
+	// Map the device memory or IO region into kernel virtual address space
+	ape->bar = pci_iomap(dev, 0, BAR_MIN_LEN);
+	if ( !ape->bar ) {
+		printk(KERN_DEBUG "Could not map BAR!\n");
+		rc = -1; goto fail;
+	}
+	printk(KERN_DEBUG "BAR mapped at 0x%p with length %lu(/%lu).\n",
+		ape->bar, BAR_MIN_LEN, barLength);
+
+	// Successfully mapped BAR region
 	return 0;
 fail:
 	// Unmap any BARs that we did map
@@ -243,17 +219,14 @@ fail:
 // Dump some info about each BAR to syslog
 //
 static int __devinit scanBars(struct AlteraDevice *ape, struct pci_dev *dev) {
-	int i;
-	for ( i = 0; i < APE_BAR_NUM; i++ ) {
-		const unsigned long barStart = pci_resource_start(dev, i);
-		if ( barStart ) {
-			const unsigned long barEnd = pci_resource_end(dev, i);
-			const unsigned long barFlags = pci_resource_flags(dev, i);
-			printk(
-				KERN_DEBUG "BAR%d 0x%08lx-0x%08lx flags 0x%08lx\n",
-				i, barStart, barEnd, barFlags
-			);
-		}
+	const unsigned long barStart = pci_resource_start(dev, 0);
+	if ( barStart ) {
+		const unsigned long barEnd = pci_resource_end(dev, 0);
+		const unsigned long barFlags = pci_resource_flags(dev, 0);
+		printk(
+			KERN_DEBUG "BAR 0x%08lx-0x%08lx flags 0x%08lx\n",
+			barStart, barEnd, barFlags
+		);
 	}
 	return 0;
 }
@@ -497,7 +470,7 @@ static ssize_t cdevRead(struct file *filp, char __user *buf, size_t count, loff_
 //
 static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
 	struct AlteraDevice *const ape = filp->private_data;
-	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar[0];
+	u32 __iomem *const regSpace = (u32 __iomem *)ape->bar;
 	struct CmdList kl;
 	struct Cmd kc;
 	struct Cmd __user *ucp;
