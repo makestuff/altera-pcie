@@ -24,7 +24,7 @@ library makestuff;
 
 entity pcie_app is
 	port (
-		pcieClk_in            : in  std_logic;  -- 125MHz clock from PCIe PLL
+		pcieClk_in            : in  std_logic;  -- 100MHz clock from PCIe PLL
 		cfgBusDev_in          : in  std_logic_vector(12 downto 0);  -- the device ID assigned to the FPGA on enumeration
 		msiReq_out            : out std_logic;
 		msiAck_in             : in  std_logic;
@@ -46,10 +46,12 @@ entity pcie_app is
 end entity;
 
 architecture structural of pcie_app is
-	constant REG_ABITS        : natural := 1;  -- only the DMA controller registers
+	constant REG_ABITS        : natural := 1;  -- DMABASE & DMACTRL
 	signal dmaData            : std_logic_vector(63 downto 0);
 	signal dmaValid           : std_logic;
 	signal dmaReady           : std_logic;
+	signal cpuReading         : std_logic;
+	signal cpuChannel         : std_logic;  --_vector(REG_ABITS-1 downto 0);
 	signal rngReset           : std_logic;
 begin
 	-- Instantiate random-number generator
@@ -88,14 +90,19 @@ begin
 			txEOP_out        => txEOP_out,
 
 			-- Internal read/write interface
+			cpuChan_out(0)   => cpuChannel,
 			cpuWrReady_in    => '0',
-			cpuRdData_in     => x"CAFEF00D",  -- reading from any register returns CAFEF00D and resets the RNG
+			cpuRdData_in     => x"CAFEF00D",  -- reading from DMABASE or DMACTRL returns CAFEF00D
 			cpuRdValid_in    => '1',
-			cpuRdReady_out   => rngReset,
+			cpuRdReady_out   => cpuReading,
 
 			-- DMA stream
 			dmaData_in       => dmaData,
 			dmaValid_in      => dmaValid,
 			dmaReady_out     => dmaReady
 		);
+
+	-- Reset the RNG when reading register DMABASE
+	rngReset <= cpuReading and not cpuChannel;
+
 end architecture;

@@ -106,7 +106,7 @@ static inline void submitDmaReq(dma_addr_t addr, u32 numTLPs) {
 
 // Interrupt service routine
 //
-static irqreturn_t serviceInterrupt(int irq, void *devID) {
+/*static irqreturn_t serviceInterrupt(int irq, void *devID) {
 	u32 submitCount, submitIndex;
 	unsigned long flags;
 	spin_lock_irqsave(&ape.lock, flags);
@@ -124,7 +124,7 @@ static irqreturn_t serviceInterrupt(int irq, void *devID) {
 	spin_unlock_irqrestore(&ape.lock, flags);
 	wake_up_interruptible(&ape.wq);
 	return IRQ_HANDLED;
-}
+}*/
 
 // Userspace is asking for data
 //
@@ -228,15 +228,30 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
 
 static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
 	int rc;
-	const unsigned long offset = (vma->vm_pgoff << PAGE_SHIFT) + ape.barStart;
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-	rc = io_remap_pfn_range(
-		vma,
-		vma->vm_start,
-		offset >> PAGE_SHIFT,
-		vma->vm_end - vma->vm_start,
-		vma->vm_page_prot
-	);
+	const unsigned long length = vma->vm_end - vma->vm_start;
+	printk(KERN_DEBUG "Got vm_pgoff = 0x%lX, length = 0x%08lX\n", vma->vm_pgoff, length);
+	if (vma->vm_pgoff == 0) {
+		// FPGA registers
+		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+		rc = io_remap_pfn_range(
+			vma,
+			vma->vm_start,
+			ape.barStart >> PAGE_SHIFT,
+			vma->vm_end - vma->vm_start,
+			vma->vm_page_prot
+		);
+	} else if (vma->vm_pgoff == 1) {
+		// DMA buffers
+		rc = remap_pfn_range(
+			vma,
+			vma->vm_start,
+			ape.bufferArrayBus >> PAGE_SHIFT,
+			vma->vm_end - vma->vm_start,
+			vma->vm_page_prot
+		);
+	} else {
+		return -EFAULT;
+	}
 	if ( rc ) {
 		return -EAGAIN;
 	}
@@ -298,8 +313,8 @@ static int mapBars(struct pci_dev *dev) {
 		printk(KERN_DEBUG "Could not map BAR!\n");
 		rc = -1; goto fail;
 	}
-	printk(KERN_DEBUG "BAR mapped at 0x%p with length %lu(/%lu).\n",
-		ape.barAddr, barMinLen, barLength);
+	printk(KERN_DEBUG "BAR mapped at barStart = 0x%016lX, barAddr = 0x%p, barMinLen = 0x%08lX, barLength = 0x%08lX\n",
+		ape.barStart, ape.barAddr, barMinLen, barLength);
 
 	// Successfully mapped BAR region
 	return 0;
@@ -393,11 +408,11 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	}
 
 	// Request an IRQ (see LDD3 page 259)
-	rc = request_irq(dev->irq, serviceInterrupt, IRQF_SHARED, DRV_NAME, (void*)&ape);
-	if ( rc ) {
-		printk(KERN_DEBUG "request_irq(%d, ...) failed (rc=%d)!\n", dev->irq, rc);
-		goto err_irq;
-	}
+	//rc = request_irq(dev->irq, serviceInterrupt, IRQF_SHARED, DRV_NAME, (void*)&ape);
+	//if ( rc ) {
+	//	printk(KERN_DEBUG "request_irq(%d, ...) failed (rc=%d)!\n", dev->irq, rc);
+	//	goto err_irq;
+	//}
 
 	// Show BARs in syslog
 	scanBars(dev);

@@ -25,7 +25,7 @@
 
 #define PAGE_SIZE 4096
 
-int main(int argc, const char *argv[]) {
+int main(void) {
 	int retVal = 0, dev, i;
 	struct Cmd cmds[] = {
 		WR(2, 0x34D9E13F),
@@ -44,14 +44,14 @@ int main(int argc, const char *argv[]) {
 
 	// Connect to the kernel driver...
 	dev = open("/dev/fpga0", O_RDWR|O_SYNC);
-	if ( dev < 0 ) {
+	if (dev < 0) {
 		fprintf(stderr, "Unable to open /dev/fpga0. Did you forget to install the driver?\n");
 		retVal = 1; goto exit;
 	}
 
-	uint32_t *const address = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 0);
-	if (address == MAP_FAILED) {
-		fprintf(stderr, "Call to mmap() failed!\n");
+	volatile uint32_t *const fpgaBase = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 0);
+	if (fpgaBase == MAP_FAILED) {
+		fprintf(stderr, "Call to mmap() for fpgaBase failed!\n");
 		retVal = 2; goto dev_close;
 	}
 
@@ -70,7 +70,7 @@ int main(int argc, const char *argv[]) {
 	// Direct userspace readback
 	printf("\nReadback FPGA registers via I/O region mmap()'d into userspace:\n");
 	for ( i = 2; i < 8; i++ ) {
-		const uint32_t val = address[2*i+1];
+		const uint32_t val = fpgaBase[2*i+1];
 		printf("  %d: 0x%08X", i, val);
 		if ( cmds[i-2].val == val ) {
 			printf(" (✓)\n");
@@ -80,10 +80,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 dev_close:
-	// Close device
 	close(dev);
 exit:
 	return retVal;
-	(void)argc;
-	(void)argv;
 }
