@@ -321,7 +321,7 @@
   <parameter name="l2_async_logic_advanced_default_hwtcl" value="disable" />
   <parameter name="lane_mask_hwtcl" value="x1" />
   <parameter name="low_priority_vc_advanced_default_hwtcl" value="single_vc" />
-  <parameter name="max_payload_size_hwtcl" value="256" />
+  <parameter name="max_payload_size_hwtcl" value="128" />
   <parameter name="maximum_current_0_hwtcl" value="0" />
   <parameter name="maximum_current_1_hwtcl" value="0" />
   <parameter name="maximum_current_2_hwtcl" value="0" />

@@ -26,6 +26,7 @@
 #include "fpgalink.h"
 
 #define PAGE_SIZE 4096
+#define TLP_SIZE 128
 
 // FPGA hardware registers
 #define DMABASE(x) ((x)+0*2+1)
@@ -33,13 +34,13 @@
 
 int main(void) {
 	int retVal = 0, dev;
-	uint32_t buf[128/sizeof(uint32_t)], result = 0;
+	uint32_t buf[PAGE_SIZE/sizeof(uint32_t)], result = 0;
 
 	// Connect to the kernel driver...
 	dev = open("/dev/fpga0", O_RDWR|O_SYNC);
-	if ( dev < 0 ) {
+	if (dev < 0) {
 		fprintf(stderr, "Unable to open /dev/fpga0. Did you forget to install the driver?\n");
-		retVal = 3; goto exit;
+		retVal = 1; goto exit;
 	}
 
 	// Map FPGA registers into userspace
@@ -49,30 +50,26 @@ int main(void) {
 		retVal = 2; goto dev_close;
 	}
 
-	// Map DMA buffer into userspace
-	uint32_t *const dmaBase = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, PAGE_SIZE);
-	if (dmaBase == MAP_FAILED) {
-		fprintf(stderr, "Call to mmap() for dmaBase failed!\n");
+	// Map DMA buffer read-only into userspace. Technically this should also be volatile, but I think
+	// it's safe to assume that a real-world application will not inline the processing step (i.e it
+	// will actually make a function-call).
+	const uint32_t *const dmaBaseVA = mmap(NULL, PAGE_SIZE, PROT_READ, MAP_SHARED, dev, PAGE_SIZE);
+	if (dmaBaseVA == MAP_FAILED) {
+		fprintf(stderr, "Call to mmap() for dmaBaseVA failed!\n");
 		retVal = 3; goto dev_close;
 	}
-
-	// Clear DMA buffer
-	for (size_t i = 0; i < sizeof(buf)/sizeof(*buf); i++) {
-		dmaBase[i] = 0;
-	}
+	const uint32_t dmaBaseBA = dmaBaseVA[0];  // driver helpfully wrote the bus-address here for us
 
 	// Reset the RNG
 	result = *DMABASE(fpgaBase);
 
 	// Fetch 16 packets
 	for (int j = 0; j < 16; j++) {
-		// Give the FPGA the bus address of the mmap()'d DMA buffer. Don't use dmaBase because that
-		// is a userspace virtual memory address, not a bus address. TODO: don't get buffer address
-		// from syslog, add an ioctl() to fetch it.
-		*DMABASE(fpgaBase) = 0x32E00000;
+		// Give the FPGA the bus address of the mmap()'d DMA buffer.
+		*DMABASE(fpgaBase) = dmaBaseBA;
 
-		// Tell the FPGA to DMA just one TLP (128 bytes) into the buffer.
-		*DMACTRL(fpgaBase) = 1;
+		// Tell the FPGA to DMA an entire page into the buffer.
+		*DMACTRL(fpgaBase) = PAGE_SIZE/TLP_SIZE;
 
 		// Prevent CPU doing StoreLoad reordering (i.e we want the previous write to be done before
 		// the following read).
@@ -86,7 +83,7 @@ int main(void) {
 		__asm volatile("" ::: "memory");
 
 		// Copy the data out of the buffer, somewhere else (as a surrogate for "processing it").
-		memcpy(buf, dmaBase, sizeof(buf));
+		memcpy(buf, dmaBaseVA, sizeof(buf));
 
 		// And finally, log what we got
 		printf("TLP[%d] (result = 0x%08X):\n", j, result);

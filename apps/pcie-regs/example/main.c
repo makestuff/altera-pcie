@@ -25,22 +25,20 @@
 
 #define PAGE_SIZE 4096
 
+// FPGA hardware registers
+#define REG(x) (fpgaBase[2*((x)+2)+1])
+
 int main(void) {
 	int retVal = 0, dev, i;
-	struct Cmd cmds[] = {
-		WR(2, 0x34D9E13F),
-		WR(3, 0x863FFC01),
-		WR(4, 0x4954F539),
-		WR(5, 0x28B3C29E),
-		WR(6, 0x1B6B3B92),
-		WR(7, 0x92033EB1),
-		RD(2),
-		RD(3),
-		RD(4),
-		RD(5),
-		RD(6),
-		RD(7)
+	const uint32_t values[] = {
+		0x290A560B,
+		0x93DC78C3,
+		0x0B7D2CD4,
+		0x99011218,
+		0x05B928F0,
+		0x14FECB50
 	};
+	const int numValues = sizeof(values)/sizeof(*values);
 
 	// Connect to the kernel driver...
 	dev = open("/dev/fpga0", O_RDWR|O_SYNC);
@@ -49,30 +47,22 @@ int main(void) {
 		retVal = 1; goto exit;
 	}
 
+	// Map FPGA registers into userspace
 	volatile uint32_t *const fpgaBase = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 0);
 	if (fpgaBase == MAP_FAILED) {
 		fprintf(stderr, "Call to mmap() for fpgaBase failed!\n");
 		retVal = 2; goto dev_close;
 	}
 
-	// Write six registers & readback
-	printf("Write FPGA registers & readback using ioctl() interface:\n");
-	flCmdList(dev, cmds);
-	for ( i = 0; i < 6; i++ ) {
-		printf("  %d: 0x%08X", i+2, cmds[6+i].val);
-		if ( cmds[6+i].val == cmds[i].val ) {
-			printf(" (✓)\n");
-		} else {
-			printf(" (✗)\n");
-		}
-	}
-
 	// Direct userspace readback
-	printf("\nReadback FPGA registers via I/O region mmap()'d into userspace:\n");
-	for ( i = 2; i < 8; i++ ) {
-		const uint32_t val = fpgaBase[2*i+1];
-		printf("  %d: 0x%08X", i, val);
-		if ( cmds[i-2].val == val ) {
+	printf("Write FPGA registers & readback using I/O region mmap()'d into userspace:\n");
+	for (i = 0; i < numValues; i++) {
+		REG(i) = values[i];
+	}
+	for (i = 0; i < numValues; i++) {
+		const uint32_t value = REG(i);
+		printf("  %d: 0x%08X", i, value);
+		if (values[i] == value) {
 			printf(" (✓)\n");
 		} else {
 			printf(" (✗)\n");
