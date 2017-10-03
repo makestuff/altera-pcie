@@ -35,8 +35,8 @@ entity pcie is
 		pcieRefClk_in         : in  std_logic := '0';
 		pcieNPOR_in           : in  std_logic := '0';
 		pciePERST_in          : in  std_logic := '0';
-		pcieRX_in             : in  std_logic_vector(3 downto 0) := (others => '0');
-		pcieTX_out            : out std_logic_vector(3 downto 0);
+		pcieRX_in             : in  std_logic := '0';
+		pcieTX_out            : out std_logic;
 
 		-- Application interface
 		pcieClk_out           : out std_logic;
@@ -701,13 +701,7 @@ architecture rtl of pcie is
 			coreclkout             : out std_logic;                                         -- clk
 			refclk                 : in  std_logic                      := 'X';             -- clk
 			rx_in0                 : in  std_logic                      := 'X';             -- rx_in0
-			rx_in1                 : in  std_logic                      := 'X';             -- rx_in1
-			rx_in2                 : in  std_logic                      := 'X';             -- rx_in2
-			rx_in3                 : in  std_logic                      := 'X';             -- rx_in3
 			tx_out0                : out std_logic;                                         -- tx_out0
-			tx_out1                : out std_logic;                                         -- tx_out1
-			tx_out2                : out std_logic;                                         -- tx_out2
-			tx_out3                : out std_logic;                                         -- tx_out3
 			rx_st_valid            : out std_logic;                                         -- valid
 			rx_st_sop              : out std_logic;                                         -- startofpacket
 			rx_st_eop              : out std_logic;                                         -- endofpacket
@@ -736,73 +730,22 @@ architecture rtl of pcie is
 			sim_pipe_rate          : out std_logic_vector(1 downto 0);                      -- sim_pipe_rate
 			sim_ltssmstate         : out std_logic_vector(4 downto 0);                      -- sim_ltssmstate
 			eidleinfersel0         : out std_logic_vector(2 downto 0);                      -- eidleinfersel0
-			eidleinfersel1         : out std_logic_vector(2 downto 0);                      -- eidleinfersel1
-			eidleinfersel2         : out std_logic_vector(2 downto 0);                      -- eidleinfersel2
-			eidleinfersel3         : out std_logic_vector(2 downto 0);                      -- eidleinfersel3
 			powerdown0             : out std_logic_vector(1 downto 0);                      -- powerdown0
-			powerdown1             : out std_logic_vector(1 downto 0);                      -- powerdown1
-			powerdown2             : out std_logic_vector(1 downto 0);                      -- powerdown2
-			powerdown3             : out std_logic_vector(1 downto 0);                      -- powerdown3
 			rxpolarity0            : out std_logic;                                         -- rxpolarity0
-			rxpolarity1            : out std_logic;                                         -- rxpolarity1
-			rxpolarity2            : out std_logic;                                         -- rxpolarity2
-			rxpolarity3            : out std_logic;                                         -- rxpolarity3
 			txcompl0               : out std_logic;                                         -- txcompl0
-			txcompl1               : out std_logic;                                         -- txcompl1
-			txcompl2               : out std_logic;                                         -- txcompl2
-			txcompl3               : out std_logic;                                         -- txcompl3
 			txdata0                : out std_logic_vector(7 downto 0);                      -- txdata0
-			txdata1                : out std_logic_vector(7 downto 0);                      -- txdata1
-			txdata2                : out std_logic_vector(7 downto 0);                      -- txdata2
-			txdata3                : out std_logic_vector(7 downto 0);                      -- txdata3
 			txdatak0               : out std_logic;                                         -- txdatak0
-			txdatak1               : out std_logic;                                         -- txdatak1
-			txdatak2               : out std_logic;                                         -- txdatak2
-			txdatak3               : out std_logic;                                         -- txdatak3
 			txdetectrx0            : out std_logic;                                         -- txdetectrx0
-			txdetectrx1            : out std_logic;                                         -- txdetectrx1
-			txdetectrx2            : out std_logic;                                         -- txdetectrx2
-			txdetectrx3            : out std_logic;                                         -- txdetectrx3
 			txelecidle0            : out std_logic;                                         -- txelecidle0
-			txelecidle1            : out std_logic;                                         -- txelecidle1
-			txelecidle2            : out std_logic;                                         -- txelecidle2
-			txelecidle3            : out std_logic;                                         -- txelecidle3
 			txswing0               : out std_logic;                                         -- txswing0
-			txswing1               : out std_logic;                                         -- txswing1
-			txswing2               : out std_logic;                                         -- txswing2
-			txswing3               : out std_logic;                                         -- txswing3
 			txmargin0              : out std_logic_vector(2 downto 0);                      -- txmargin0
-			txmargin1              : out std_logic_vector(2 downto 0);                      -- txmargin1
-			txmargin2              : out std_logic_vector(2 downto 0);                      -- txmargin2
-			txmargin3              : out std_logic_vector(2 downto 0);                      -- txmargin3
 			txdeemph0              : out std_logic;                                         -- txdeemph0
-			txdeemph1              : out std_logic;                                         -- txdeemph1
-			txdeemph2              : out std_logic;                                         -- txdeemph2
-			txdeemph3              : out std_logic;                                         -- txdeemph3
 			phystatus0             : in  std_logic                      := 'X';             -- phystatus0
-			phystatus1             : in  std_logic                      := 'X';             -- phystatus1
-			phystatus2             : in  std_logic                      := 'X';             -- phystatus2
-			phystatus3             : in  std_logic                      := 'X';             -- phystatus3
 			rxdata0                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata0
-			rxdata1                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata1
-			rxdata2                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata2
-			rxdata3                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata3
 			rxdatak0               : in  std_logic                      := 'X';             -- rxdatak0
-			rxdatak1               : in  std_logic                      := 'X';             -- rxdatak1
-			rxdatak2               : in  std_logic                      := 'X';             -- rxdatak2
-			rxdatak3               : in  std_logic                      := 'X';             -- rxdatak3
 			rxelecidle0            : in  std_logic                      := 'X';             -- rxelecidle0
-			rxelecidle1            : in  std_logic                      := 'X';             -- rxelecidle1
-			rxelecidle2            : in  std_logic                      := 'X';             -- rxelecidle2
-			rxelecidle3            : in  std_logic                      := 'X';             -- rxelecidle3
 			rxstatus0              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus0
-			rxstatus1              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus1
-			rxstatus2              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus2
-			rxstatus3              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus3
 			rxvalid0               : in  std_logic                      := 'X';             -- rxvalid0
-			rxvalid1               : in  std_logic                      := 'X';             -- rxvalid1
-			rxvalid2               : in  std_logic                      := 'X';             -- rxvalid2
-			rxvalid3               : in  std_logic                      := 'X';             -- rxvalid3
 			reset_status           : out std_logic;                                         -- reset_status
 			serdes_pll_locked      : out std_logic;                                         -- serdes_pll_locked
 			pld_clk_inuse          : out std_logic;                                         -- pld_clk_inuse
@@ -819,8 +762,8 @@ architecture rtl of pcie is
 			pme_to_cr              : in  std_logic                      := 'X';             -- pme_to_cr
 			pm_event               : in  std_logic                      := 'X';             -- pm_event
 			pme_to_sr              : out std_logic;                                         -- pme_to_sr
-			reconfig_to_xcvr       : in  std_logic_vector(349 downto 0) := (others => 'X'); -- reconfig_to_xcvr
-			reconfig_from_xcvr     : out std_logic_vector(229 downto 0);                    -- reconfig_from_xcvr
+			reconfig_to_xcvr       : in  std_logic_vector(139 downto 0) := (others => 'X'); -- reconfig_to_xcvr
+			reconfig_from_xcvr     : out std_logic_vector(91 downto 0);                     -- reconfig_from_xcvr
 			app_msi_num            : in  std_logic_vector(4 downto 0)   := (others => 'X'); -- app_msi_num
 			app_msi_req            : in  std_logic                      := 'X';             -- app_msi_req
 			app_msi_tc             : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- app_msi_tc
@@ -848,10 +791,16 @@ architecture rtl of pcie is
 			ko_cpl_spc_header      : out std_logic_vector(7 downto 0);                      -- ko_cpl_spc_header
 			ko_cpl_spc_data        : out std_logic_vector(11 downto 0);                     -- ko_cpl_spc_data
 			dl_current_speed       : out std_logic_vector(1 downto 0);                      -- currentspeed
+			rx_in1                 : in  std_logic                      := 'X';             -- rx_in1
+			rx_in2                 : in  std_logic                      := 'X';             -- rx_in2
+			rx_in3                 : in  std_logic                      := 'X';             -- rx_in3
 			rx_in4                 : in  std_logic                      := 'X';             -- rx_in4
 			rx_in5                 : in  std_logic                      := 'X';             -- rx_in5
 			rx_in6                 : in  std_logic                      := 'X';             -- rx_in6
 			rx_in7                 : in  std_logic                      := 'X';             -- rx_in7
+			tx_out1                : out std_logic;                                         -- tx_out1
+			tx_out2                : out std_logic;                                         -- tx_out2
+			tx_out3                : out std_logic;                                         -- tx_out3
 			tx_out4                : out std_logic;                                         -- tx_out4
 			tx_out5                : out std_logic;                                         -- tx_out5
 			tx_out6                : out std_logic;                                         -- tx_out6
@@ -864,70 +813,121 @@ architecture rtl of pcie is
 			tx_fifo_full           : out std_logic;                                         -- tx_fifo_full
 			tx_fifo_rdp            : out std_logic_vector(3 downto 0);                      -- tx_fifo_rdp
 			tx_fifo_wrp            : out std_logic_vector(3 downto 0);                      -- tx_fifo_wrp
+			eidleinfersel1         : out std_logic_vector(2 downto 0);                      -- eidleinfersel1
+			eidleinfersel2         : out std_logic_vector(2 downto 0);                      -- eidleinfersel2
+			eidleinfersel3         : out std_logic_vector(2 downto 0);                      -- eidleinfersel3
 			eidleinfersel4         : out std_logic_vector(2 downto 0);                      -- eidleinfersel4
 			eidleinfersel5         : out std_logic_vector(2 downto 0);                      -- eidleinfersel5
 			eidleinfersel6         : out std_logic_vector(2 downto 0);                      -- eidleinfersel6
 			eidleinfersel7         : out std_logic_vector(2 downto 0);                      -- eidleinfersel7
+			powerdown1             : out std_logic_vector(1 downto 0);                      -- powerdown1
+			powerdown2             : out std_logic_vector(1 downto 0);                      -- powerdown2
+			powerdown3             : out std_logic_vector(1 downto 0);                      -- powerdown3
 			powerdown4             : out std_logic_vector(1 downto 0);                      -- powerdown4
 			powerdown5             : out std_logic_vector(1 downto 0);                      -- powerdown5
 			powerdown6             : out std_logic_vector(1 downto 0);                      -- powerdown6
 			powerdown7             : out std_logic_vector(1 downto 0);                      -- powerdown7
+			rxpolarity1            : out std_logic;                                         -- rxpolarity1
+			rxpolarity2            : out std_logic;                                         -- rxpolarity2
+			rxpolarity3            : out std_logic;                                         -- rxpolarity3
 			rxpolarity4            : out std_logic;                                         -- rxpolarity4
 			rxpolarity5            : out std_logic;                                         -- rxpolarity5
 			rxpolarity6            : out std_logic;                                         -- rxpolarity6
 			rxpolarity7            : out std_logic;                                         -- rxpolarity7
+			txcompl1               : out std_logic;                                         -- txcompl1
+			txcompl2               : out std_logic;                                         -- txcompl2
+			txcompl3               : out std_logic;                                         -- txcompl3
 			txcompl4               : out std_logic;                                         -- txcompl4
 			txcompl5               : out std_logic;                                         -- txcompl5
 			txcompl6               : out std_logic;                                         -- txcompl6
 			txcompl7               : out std_logic;                                         -- txcompl7
+			txdata1                : out std_logic_vector(7 downto 0);                      -- txdata1
+			txdata2                : out std_logic_vector(7 downto 0);                      -- txdata2
+			txdata3                : out std_logic_vector(7 downto 0);                      -- txdata3
 			txdata4                : out std_logic_vector(7 downto 0);                      -- txdata4
 			txdata5                : out std_logic_vector(7 downto 0);                      -- txdata5
 			txdata6                : out std_logic_vector(7 downto 0);                      -- txdata6
 			txdata7                : out std_logic_vector(7 downto 0);                      -- txdata7
+			txdatak1               : out std_logic;                                         -- txdatak1
+			txdatak2               : out std_logic;                                         -- txdatak2
+			txdatak3               : out std_logic;                                         -- txdatak3
 			txdatak4               : out std_logic;                                         -- txdatak4
 			txdatak5               : out std_logic;                                         -- txdatak5
 			txdatak6               : out std_logic;                                         -- txdatak6
 			txdatak7               : out std_logic;                                         -- txdatak7
+			txdetectrx1            : out std_logic;                                         -- txdetectrx1
+			txdetectrx2            : out std_logic;                                         -- txdetectrx2
+			txdetectrx3            : out std_logic;                                         -- txdetectrx3
 			txdetectrx4            : out std_logic;                                         -- txdetectrx4
 			txdetectrx5            : out std_logic;                                         -- txdetectrx5
 			txdetectrx6            : out std_logic;                                         -- txdetectrx6
 			txdetectrx7            : out std_logic;                                         -- txdetectrx7
+			txelecidle1            : out std_logic;                                         -- txelecidle1
+			txelecidle2            : out std_logic;                                         -- txelecidle2
+			txelecidle3            : out std_logic;                                         -- txelecidle3
 			txelecidle4            : out std_logic;                                         -- txelecidle4
 			txelecidle5            : out std_logic;                                         -- txelecidle5
 			txelecidle6            : out std_logic;                                         -- txelecidle6
 			txelecidle7            : out std_logic;                                         -- txelecidle7
+			txswing1               : out std_logic;                                         -- txswing1
+			txswing2               : out std_logic;                                         -- txswing2
+			txswing3               : out std_logic;                                         -- txswing3
 			txswing4               : out std_logic;                                         -- txswing4
 			txswing5               : out std_logic;                                         -- txswing5
 			txswing6               : out std_logic;                                         -- txswing6
 			txswing7               : out std_logic;                                         -- txswing7
+			txmargin1              : out std_logic_vector(2 downto 0);                      -- txmargin1
+			txmargin2              : out std_logic_vector(2 downto 0);                      -- txmargin2
+			txmargin3              : out std_logic_vector(2 downto 0);                      -- txmargin3
 			txmargin4              : out std_logic_vector(2 downto 0);                      -- txmargin4
 			txmargin5              : out std_logic_vector(2 downto 0);                      -- txmargin5
 			txmargin6              : out std_logic_vector(2 downto 0);                      -- txmargin6
 			txmargin7              : out std_logic_vector(2 downto 0);                      -- txmargin7
+			txdeemph1              : out std_logic;                                         -- txdeemph1
+			txdeemph2              : out std_logic;                                         -- txdeemph2
+			txdeemph3              : out std_logic;                                         -- txdeemph3
 			txdeemph4              : out std_logic;                                         -- txdeemph4
 			txdeemph5              : out std_logic;                                         -- txdeemph5
 			txdeemph6              : out std_logic;                                         -- txdeemph6
 			txdeemph7              : out std_logic;                                         -- txdeemph7
+			phystatus1             : in  std_logic                      := 'X';             -- phystatus1
+			phystatus2             : in  std_logic                      := 'X';             -- phystatus2
+			phystatus3             : in  std_logic                      := 'X';             -- phystatus3
 			phystatus4             : in  std_logic                      := 'X';             -- phystatus4
 			phystatus5             : in  std_logic                      := 'X';             -- phystatus5
 			phystatus6             : in  std_logic                      := 'X';             -- phystatus6
 			phystatus7             : in  std_logic                      := 'X';             -- phystatus7
+			rxdata1                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata1
+			rxdata2                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata2
+			rxdata3                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata3
 			rxdata4                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata4
 			rxdata5                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata5
 			rxdata6                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata6
 			rxdata7                : in  std_logic_vector(7 downto 0)   := (others => 'X'); -- rxdata7
+			rxdatak1               : in  std_logic                      := 'X';             -- rxdatak1
+			rxdatak2               : in  std_logic                      := 'X';             -- rxdatak2
+			rxdatak3               : in  std_logic                      := 'X';             -- rxdatak3
 			rxdatak4               : in  std_logic                      := 'X';             -- rxdatak4
 			rxdatak5               : in  std_logic                      := 'X';             -- rxdatak5
 			rxdatak6               : in  std_logic                      := 'X';             -- rxdatak6
 			rxdatak7               : in  std_logic                      := 'X';             -- rxdatak7
+			rxelecidle1            : in  std_logic                      := 'X';             -- rxelecidle1
+			rxelecidle2            : in  std_logic                      := 'X';             -- rxelecidle2
+			rxelecidle3            : in  std_logic                      := 'X';             -- rxelecidle3
 			rxelecidle4            : in  std_logic                      := 'X';             -- rxelecidle4
 			rxelecidle5            : in  std_logic                      := 'X';             -- rxelecidle5
 			rxelecidle6            : in  std_logic                      := 'X';             -- rxelecidle6
 			rxelecidle7            : in  std_logic                      := 'X';             -- rxelecidle7
+			rxstatus1              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus1
+			rxstatus2              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus2
+			rxstatus3              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus3
 			rxstatus4              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus4
 			rxstatus5              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus5
 			rxstatus6              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus6
 			rxstatus7              : in  std_logic_vector(2 downto 0)   := (others => 'X'); -- rxstatus7
+			rxvalid1               : in  std_logic                      := 'X';             -- rxvalid1
+			rxvalid2               : in  std_logic                      := 'X';             -- rxvalid2
+			rxvalid3               : in  std_logic                      := 'X';             -- rxvalid3
 			rxvalid4               : in  std_logic                      := 'X';             -- rxvalid4
 			rxvalid5               : in  std_logic                      := 'X';             -- rxvalid5
 			rxvalid6               : in  std_logic                      := 'X';             -- rxvalid6
@@ -993,7 +993,7 @@ begin
 	dut : component altpcie_cv_hip_ast_hwtcl
 		generic map (
 			ACDS_VERSION_HWTCL                        => "14.0",
-			lane_mask_hwtcl                           => "x4",
+			lane_mask_hwtcl                           => "x1",
 			gen12_lane_rate_mode_hwtcl                => "Gen1 (2.5 Gbps)",
 			pcie_spec_version_hwtcl                   => "2.1",
 			ast_width_hwtcl                           => "Avalon-ST 64-bit",
@@ -1040,7 +1040,7 @@ begin
 			class_code_0_hwtcl                        => 0,
 			subsystem_vendor_id_0_hwtcl               => 0,
 			subsystem_device_id_0_hwtcl               => 0,
-			max_payload_size_0_hwtcl                  => 256,
+			max_payload_size_0_hwtcl                  => 128,
 			extend_tag_field_0_hwtcl                  => "32",
 			completion_timeout_0_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_0_hwtcl => 1,
@@ -1067,10 +1067,10 @@ begin
 			rx_ei_l0s_0_hwtcl                         => 0,
 			endpoint_l0_latency_0_hwtcl               => 0,
 			endpoint_l1_latency_0_hwtcl               => 0,
-			reconfig_to_xcvr_width                    => 350,
+			reconfig_to_xcvr_width                    => 140,
 			hip_hard_reset_hwtcl                      => 1,
-			reconfig_from_xcvr_width                  => 230,
-			single_rx_detect_hwtcl                    => 4,
+			reconfig_from_xcvr_width                  => 92,
+			single_rx_detect_hwtcl                    => 1,
 			enable_l0s_aspm_hwtcl                     => "false",
 			aspm_optionality_hwtcl                    => "true",
 			enable_adapter_half_rate_mode_hwtcl       => "false",
@@ -1172,7 +1172,7 @@ begin
 			class_code_1_hwtcl                        => 0,
 			subsystem_vendor_id_1_hwtcl               => 0,
 			subsystem_device_id_1_hwtcl               => 0,
-			max_payload_size_1_hwtcl                  => 256,
+			max_payload_size_1_hwtcl                  => 128,
 			extend_tag_field_1_hwtcl                  => "32",
 			completion_timeout_1_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_1_hwtcl => 1,
@@ -1234,7 +1234,7 @@ begin
 			class_code_2_hwtcl                        => 0,
 			subsystem_vendor_id_2_hwtcl               => 0,
 			subsystem_device_id_2_hwtcl               => 0,
-			max_payload_size_2_hwtcl                  => 256,
+			max_payload_size_2_hwtcl                  => 128,
 			extend_tag_field_2_hwtcl                  => "32",
 			completion_timeout_2_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_2_hwtcl => 1,
@@ -1296,7 +1296,7 @@ begin
 			class_code_3_hwtcl                        => 0,
 			subsystem_vendor_id_3_hwtcl               => 0,
 			subsystem_device_id_3_hwtcl               => 0,
-			max_payload_size_3_hwtcl                  => 256,
+			max_payload_size_3_hwtcl                  => 128,
 			extend_tag_field_3_hwtcl                  => "32",
 			completion_timeout_3_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_3_hwtcl => 1,
@@ -1358,7 +1358,7 @@ begin
 			class_code_4_hwtcl                        => 0,
 			subsystem_vendor_id_4_hwtcl               => 0,
 			subsystem_device_id_4_hwtcl               => 0,
-			max_payload_size_4_hwtcl                  => 256,
+			max_payload_size_4_hwtcl                  => 128,
 			extend_tag_field_4_hwtcl                  => "32",
 			completion_timeout_4_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_4_hwtcl => 1,
@@ -1420,7 +1420,7 @@ begin
 			class_code_5_hwtcl                        => 0,
 			subsystem_vendor_id_5_hwtcl               => 0,
 			subsystem_device_id_5_hwtcl               => 0,
-			max_payload_size_5_hwtcl                  => 256,
+			max_payload_size_5_hwtcl                  => 128,
 			extend_tag_field_5_hwtcl                  => "32",
 			completion_timeout_5_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_5_hwtcl => 1,
@@ -1482,7 +1482,7 @@ begin
 			class_code_6_hwtcl                        => 0,
 			subsystem_vendor_id_6_hwtcl               => 0,
 			subsystem_device_id_6_hwtcl               => 0,
-			max_payload_size_6_hwtcl                  => 256,
+			max_payload_size_6_hwtcl                  => 128,
 			extend_tag_field_6_hwtcl                  => "32",
 			completion_timeout_6_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_6_hwtcl => 1,
@@ -1544,7 +1544,7 @@ begin
 			class_code_7_hwtcl                        => 0,
 			subsystem_vendor_id_7_hwtcl               => 0,
 			subsystem_device_id_7_hwtcl               => 0,
-			max_payload_size_7_hwtcl                  => 256,
+			max_payload_size_7_hwtcl                  => 128,
 			extend_tag_field_7_hwtcl                  => "32",
 			completion_timeout_7_hwtcl                => "ABCD",
 			enable_completion_timeout_disable_7_hwtcl => 1,
@@ -1597,14 +1597,8 @@ begin
 			refclk                 => pcieRefClk_in,
 			npor                   => pcieNPOR_in,
 			pin_perst              => pciePERST_in,
-			rx_in0                 => pcieRX_in(0),
-			rx_in1                 => pcieRX_in(1),
-			rx_in2                 => pcieRX_in(2),
-			rx_in3                 => pcieRX_in(3),
-			tx_out0                => pcieTX_out(0),
-			tx_out1                => pcieTX_out(1),
-			tx_out2                => pcieTX_out(2),
-			tx_out3                => pcieTX_out(3),
+			rx_in0                 => pcieRX_in,
+			tx_out0                => pcieTX_out,
 
 			-- Control & Pipe signals for simulation connection
 			test_in                => sim_test_in,
@@ -1718,10 +1712,16 @@ begin
 			ko_cpl_spc_header      => open,
 			ko_cpl_spc_data        => open,
 			dl_current_speed       => open,                             --   hip_currentspeed.currentspeed
+			rx_in1                 => '0',                              --        (terminated)
+			rx_in2                 => '0',                              --        (terminated)
+			rx_in3                 => '0',                              --        (terminated)
 			rx_in4                 => '0',                              --        (terminated)
 			rx_in5                 => '0',                              --        (terminated)
 			rx_in6                 => '0',                              --        (terminated)
 			rx_in7                 => '0',                              --        (terminated)
+			tx_out1                => open,                             --        (terminated)
+			tx_out2                => open,                             --        (terminated)
+			tx_out3                => open,                             --        (terminated)
 			tx_out4                => open,                             --        (terminated)
 			tx_out5                => open,                             --        (terminated)
 			tx_out6                => open,                             --        (terminated)
@@ -1734,70 +1734,121 @@ begin
 			tx_fifo_full           => open,                             --        (terminated)
 			tx_fifo_rdp            => open,                             --        (terminated)
 			tx_fifo_wrp            => open,                             --        (terminated)
+			eidleinfersel1         => open,                             --        (terminated)
+			eidleinfersel2         => open,                             --        (terminated)
+			eidleinfersel3         => open,                             --        (terminated)
 			eidleinfersel4         => open,                             --        (terminated)
 			eidleinfersel5         => open,                             --        (terminated)
 			eidleinfersel6         => open,                             --        (terminated)
 			eidleinfersel7         => open,                             --        (terminated)
+			powerdown1             => open,                             --        (terminated)
+			powerdown2             => open,                             --        (terminated)
+			powerdown3             => open,                             --        (terminated)
 			powerdown4             => open,                             --        (terminated)
 			powerdown5             => open,                             --        (terminated)
 			powerdown6             => open,                             --        (terminated)
 			powerdown7             => open,                             --        (terminated)
+			rxpolarity1            => open,                             --        (terminated)
+			rxpolarity2            => open,                             --        (terminated)
+			rxpolarity3            => open,                             --        (terminated)
 			rxpolarity4            => open,                             --        (terminated)
 			rxpolarity5            => open,                             --        (terminated)
 			rxpolarity6            => open,                             --        (terminated)
 			rxpolarity7            => open,                             --        (terminated)
+			txcompl1               => open,                             --        (terminated)
+			txcompl2               => open,                             --        (terminated)
+			txcompl3               => open,                             --        (terminated)
 			txcompl4               => open,                             --        (terminated)
 			txcompl5               => open,                             --        (terminated)
 			txcompl6               => open,                             --        (terminated)
 			txcompl7               => open,                             --        (terminated)
+			txdata1                => open,                             --        (terminated)
+			txdata2                => open,                             --        (terminated)
+			txdata3                => open,                             --        (terminated)
 			txdata4                => open,                             --        (terminated)
 			txdata5                => open,                             --        (terminated)
 			txdata6                => open,                             --        (terminated)
 			txdata7                => open,                             --        (terminated)
+			txdatak1               => open,                             --        (terminated)
+			txdatak2               => open,                             --        (terminated)
+			txdatak3               => open,                             --        (terminated)
 			txdatak4               => open,                             --        (terminated)
 			txdatak5               => open,                             --        (terminated)
 			txdatak6               => open,                             --        (terminated)
 			txdatak7               => open,                             --        (terminated)
+			txdetectrx1            => open,                             --        (terminated)
+			txdetectrx2            => open,                             --        (terminated)
+			txdetectrx3            => open,                             --        (terminated)
 			txdetectrx4            => open,                             --        (terminated)
 			txdetectrx5            => open,                             --        (terminated)
 			txdetectrx6            => open,                             --        (terminated)
 			txdetectrx7            => open,                             --        (terminated)
+			txelecidle1            => open,                             --        (terminated)
+			txelecidle2            => open,                             --        (terminated)
+			txelecidle3            => open,                             --        (terminated)
 			txelecidle4            => open,                             --        (terminated)
 			txelecidle5            => open,                             --        (terminated)
 			txelecidle6            => open,                             --        (terminated)
 			txelecidle7            => open,                             --        (terminated)
+			txswing1               => open,                             --        (terminated)
+			txswing2               => open,                             --        (terminated)
+			txswing3               => open,                             --        (terminated)
 			txswing4               => open,                             --        (terminated)
 			txswing5               => open,                             --        (terminated)
 			txswing6               => open,                             --        (terminated)
 			txswing7               => open,                             --        (terminated)
+			txmargin1              => open,                             --        (terminated)
+			txmargin2              => open,                             --        (terminated)
+			txmargin3              => open,                             --        (terminated)
 			txmargin4              => open,                             --        (terminated)
 			txmargin5              => open,                             --        (terminated)
 			txmargin6              => open,                             --        (terminated)
 			txmargin7              => open,                             --        (terminated)
+			txdeemph1              => open,                             --        (terminated)
+			txdeemph2              => open,                             --        (terminated)
+			txdeemph3              => open,                             --        (terminated)
 			txdeemph4              => open,                             --        (terminated)
 			txdeemph5              => open,                             --        (terminated)
 			txdeemph6              => open,                             --        (terminated)
 			txdeemph7              => open,                             --        (terminated)
+			phystatus1             => '0',                              --        (terminated)
+			phystatus2             => '0',                              --        (terminated)
+			phystatus3             => '0',                              --        (terminated)
 			phystatus4             => '0',                              --        (terminated)
 			phystatus5             => '0',                              --        (terminated)
 			phystatus6             => '0',                              --        (terminated)
 			phystatus7             => '0',                              --        (terminated)
+			rxdata1                => "00000000",                       --        (terminated)
+			rxdata2                => "00000000",                       --        (terminated)
+			rxdata3                => "00000000",                       --        (terminated)
 			rxdata4                => "00000000",                       --        (terminated)
 			rxdata5                => "00000000",                       --        (terminated)
 			rxdata6                => "00000000",                       --        (terminated)
 			rxdata7                => "00000000",                       --        (terminated)
+			rxdatak1               => '0',                              --        (terminated)
+			rxdatak2               => '0',                              --        (terminated)
+			rxdatak3               => '0',                              --        (terminated)
 			rxdatak4               => '0',                              --        (terminated)
 			rxdatak5               => '0',                              --        (terminated)
 			rxdatak6               => '0',                              --        (terminated)
 			rxdatak7               => '0',                              --        (terminated)
+			rxelecidle1            => '0',                              --        (terminated)
+			rxelecidle2            => '0',                              --        (terminated)
+			rxelecidle3            => '0',                              --        (terminated)
 			rxelecidle4            => '0',                              --        (terminated)
 			rxelecidle5            => '0',                              --        (terminated)
 			rxelecidle6            => '0',                              --        (terminated)
 			rxelecidle7            => '0',                              --        (terminated)
+			rxstatus1              => "000",                            --        (terminated)
+			rxstatus2              => "000",                            --        (terminated)
+			rxstatus3              => "000",                            --        (terminated)
 			rxstatus4              => "000",                            --        (terminated)
 			rxstatus5              => "000",                            --        (terminated)
 			rxstatus6              => "000",                            --        (terminated)
 			rxstatus7              => "000",                            --        (terminated)
+			rxvalid1               => '0',                              --        (terminated)
+			rxvalid2               => '0',                              --        (terminated)
+			rxvalid3               => '0',                              --        (terminated)
 			rxvalid4               => '0',                              --        (terminated)
 			rxvalid5               => '0',                              --        (terminated)
 			rxvalid6               => '0',                              --        (terminated)

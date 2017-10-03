@@ -221,8 +221,8 @@ architecture rtl of pcie_tb is
 	signal pcieRefClk         : std_logic;
 	signal pcieNPOR           : std_logic;
 	signal pciePERST          : std_logic;
-	signal pcieTX             : std_logic_vector(3 downto 0);
-	signal pcieRX             : std_logic_vector(3 downto 0);
+	signal pcieTX             : std_logic;
+	signal pcieRX             : std_logic;
 
 	-- Simulation pipe interface
 	signal sim_test           : std_logic_vector(31 downto 0);

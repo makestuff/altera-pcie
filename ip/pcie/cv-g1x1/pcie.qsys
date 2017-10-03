@@ -83,7 +83,7 @@
   <parameter name="device_family_hwtcl" value="Cyclone V" />
   <parameter name="extend_tag_field_hwtcl" value="32" />
   <parameter name="gen123_lane_rate_mode_hwtcl" value="Gen1 (2.5 Gbps)" />
-  <parameter name="lane_mask_hwtcl" value="x4" />
+  <parameter name="lane_mask_hwtcl" value="x1" />
   <parameter name="max_payload_size_hwtcl" value="128" />
   <parameter name="multiple_packets_per_cycle_hwtcl" value="0" />
   <parameter name="num_of_func_hwtcl" value="1" />
@@ -319,9 +319,9 @@
   <parameter name="l1_exit_latency_diffclock_advanced_default_hwtcl" value="0" />
   <parameter name="l1_exit_latency_sameclock_advanced_default_hwtcl" value="0" />
   <parameter name="l2_async_logic_advanced_default_hwtcl" value="disable" />
-  <parameter name="lane_mask_hwtcl" value="x4" />
+  <parameter name="lane_mask_hwtcl" value="x1" />
   <parameter name="low_priority_vc_advanced_default_hwtcl" value="single_vc" />
-  <parameter name="max_payload_size_hwtcl" value="256" />
+  <parameter name="max_payload_size_hwtcl" value="128" />
   <parameter name="maximum_current_0_hwtcl" value="0" />
   <parameter name="maximum_current_1_hwtcl" value="0" />
   <parameter name="maximum_current_2_hwtcl" value="0" />
