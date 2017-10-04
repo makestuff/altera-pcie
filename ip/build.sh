@@ -19,6 +19,9 @@
 #
 # Generate IP, and (if "-c" given), compile ModelSim libraries: (./build.sh 2>&1) > build.log
 
+FAMILY="Cyclone V"
+#FAMILY="Stratix V"
+
 # Clean beforehand
 rm -rf libraries sim-libs modelsim.ini
 
@@ -36,8 +39,8 @@ echo
 # Generate IP:
 echo "Starting PCIe IP generation..."
 cd pcie
-$ALTERA/sopc_builder/bin/qsys-generate --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie.qsys
-$ALTERA/sopc_builder/bin/qsys-generate --synthesis=Verilog pcie.qsys
+$ALTERA/sopc_builder/bin/qsys-generate --family="$FAMILY" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie.qsys
+$ALTERA/sopc_builder/bin/qsys-generate --family="$FAMILY" --synthesis=Verilog pcie.qsys
 sed -i s/DUT_pcie_tb/pcie_tb/g          pcie/testbench/mentor/msim_setup.tcl
 sed -i s/DUT/pcie/g                     pcie/testbench/mentor/msim_setup.tcl
 sed -i /altpcietb_bfm_driver_chaining/d pcie/testbench/mentor/msim_setup.tcl
