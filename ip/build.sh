@@ -22,6 +22,11 @@
 FAMILY="Cyclone V"
 #FAMILY="Stratix V"
 
+if [ "$#" -eq "1" -a "$1" != "-c" ]; then
+  echo "Synopsis: $0 [-c]"
+  exit 1
+fi
+
 # Clean beforehand
 rm -rf libraries sim-libs modelsim.ini
 

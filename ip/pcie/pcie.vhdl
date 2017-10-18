@@ -32,63 +32,114 @@ library makestuff;
 entity pcie is
 	port (
 		-- Clock, resets, PCIe physical RX & TX
-		pcieRefClk_in         : in  std_logic := '0';
-		pcieNPOR_in           : in  std_logic := '0';
-		pciePERST_in          : in  std_logic := '0';
-		pcieRX_in             : in  std_logic_vector(3 downto 0) := (others => '0');
-		pcieTX_out            : out std_logic_vector(3 downto 0);
+		pcieRefClk_in          : in  std_logic := '0';
+		pcieNPOR_in            : in  std_logic := '0';
+		pciePERST_in           : in  std_logic := '0';
+		pcieRX_in              : in  std_logic_vector(3 downto 0) := (others => '0');
+		pcieTX_out             : out std_logic_vector(3 downto 0);
 
 		-- Application interface
-		pcieClk_out           : out std_logic;
-		cfgBusDev_out         : out std_logic_vector(12 downto 0);
-		msiReq_in             : in  std_logic;
-		msiAck_out            : out std_logic;
+		pcieClk_out            : out std_logic;
+		cfgBusDev_out          : out std_logic_vector(12 downto 0);
+		msiReq_in              : in  std_logic;
+		msiAck_out             : out std_logic;
 
-		rxData_out            : out std_logic_vector(63 downto 0);
-		rxValid_out           : out std_logic;
-		rxReady_in            : in  std_logic;
-		rxSOP_out             : out std_logic;
-		rxEOP_out             : out std_logic;
+		rxData_out             : out std_logic_vector(63 downto 0);
+		rxValid_out            : out std_logic;
+		rxReady_in             : in  std_logic;
+		rxSOP_out              : out std_logic;
+		rxEOP_out              : out std_logic;
 
-		txData_in             : in  std_logic_vector(63 downto 0);
-		txValid_in            : in  std_logic;
-		txReady_out           : out std_logic;
-		txSOP_in              : in  std_logic;
-		txEOP_in              : in  std_logic;
+		txData_in              : in  std_logic_vector(63 downto 0);
+		txValid_in             : in  std_logic;
+		txReady_out            : out std_logic;
+		txSOP_in               : in  std_logic;
+		txEOP_in               : in  std_logic;
 		
 		-- Control & Pipe signals for simulation connection
-		sim_test_in           : in  std_logic_vector(31 downto 0) :=
-		                            x"00000" &  -- Reserved
-		                            "0011" &    -- Pipe interface
-		                            "1" &       -- Disable low power state
-		                            "0" &       -- Disable compliance mode
-		                            "1" &       -- Disable compliance mode
-		                            "0" &       -- Reserved
-		                            "0" &       -- FPGA Mode
-		                            "0" &       -- Reserved
-		                            "0" &       -- Reserved
-		                            "0";        -- Simulation mode
-		sim_simu_mode_pipe_in : in  std_logic := '0';
+		sim_test_in            : in  std_logic_vector(31 downto 0) :=
+		                             x"00000" &  -- Reserved
+		                             "0011" &    -- Pipe interface
+		                             "1" &       -- Disable low power state
+		                             "0" &       -- Disable compliance mode
+		                             "1" &       -- Disable compliance mode
+		                             "0" &       -- Reserved
+		                             "0" &       -- FPGA Mode
+		                             "0" &       -- Reserved
+		                             "0" &       -- Reserved
+		                             "0";        -- Simulation mode
+		sim_simu_mode_pipe_in  : in  std_logic := '0';
+		sim_ltssmstate_out     : out std_logic_vector(4 downto 0);
+		sim_pipe_pclk_in       : in  std_logic := '0';
+		sim_pipe_rate_out      : out std_logic_vector(1 downto 0);
 		sim_eidleinfersel0_out : out std_logic_vector(2 downto 0);
-		sim_ltssmstate_out    : out std_logic_vector(4 downto 0);
-		sim_phystatus0_in     : in  std_logic := '0';
-		sim_pipe_pclk_in      : in  std_logic := '0';
-		sim_pipe_rate_out     : out std_logic_vector(1 downto 0);
-		sim_powerdown0_out    : out std_logic_vector(1 downto 0);
-		sim_rxdata0_in        : in  std_logic_vector(7 downto 0)  := (others => '0');
-		sim_rxdatak0_in       : in  std_logic := '0';
-		sim_rxelecidle0_in    : in  std_logic := '0';
-		sim_rxpolarity0_out   : out std_logic;
-		sim_rxstatus0_in      : in  std_logic_vector(2 downto 0)  := (others => '0');
-		sim_rxvalid0_in       : in  std_logic := '0';
-		sim_txcompl0_out      : out std_logic;
-		sim_txdata0_out       : out std_logic_vector(7 downto 0);
-		sim_txdatak0_out      : out std_logic;
-		sim_txdeemph0_out     : out std_logic;
-		sim_txdetectrx0_out   : out std_logic;
-		sim_txelecidle0_out   : out std_logic;
-		sim_txmargin0_out     : out std_logic_vector(2 downto 0);
-		sim_txswing0_out      : out std_logic
+		sim_eidleinfersel1_out : out std_logic_vector(2 downto 0);
+		sim_eidleinfersel2_out : out std_logic_vector(2 downto 0);
+		sim_eidleinfersel3_out : out std_logic_vector(2 downto 0);
+		sim_phystatus0_in      : in  std_logic := '0';
+		sim_phystatus1_in      : in  std_logic := '0';
+		sim_phystatus2_in      : in  std_logic := '0';
+		sim_phystatus3_in      : in  std_logic := '0';
+		sim_powerdown0_out     : out std_logic_vector(1 downto 0);
+		sim_powerdown1_out     : out std_logic_vector(1 downto 0);
+		sim_powerdown2_out     : out std_logic_vector(1 downto 0);
+		sim_powerdown3_out     : out std_logic_vector(1 downto 0);
+		sim_rxdata0_in         : in  std_logic_vector(7 downto 0)  := (others => '0');
+		sim_rxdata1_in         : in  std_logic_vector(7 downto 0)  := (others => '0');
+		sim_rxdata2_in         : in  std_logic_vector(7 downto 0)  := (others => '0');
+		sim_rxdata3_in         : in  std_logic_vector(7 downto 0)  := (others => '0');
+		sim_rxdatak0_in        : in  std_logic := '0';
+		sim_rxdatak1_in        : in  std_logic := '0';
+		sim_rxdatak2_in        : in  std_logic := '0';
+		sim_rxdatak3_in        : in  std_logic := '0';
+		sim_rxelecidle0_in     : in  std_logic := '0';
+		sim_rxelecidle1_in     : in  std_logic := '0';
+		sim_rxelecidle2_in     : in  std_logic := '0';
+		sim_rxelecidle3_in     : in  std_logic := '0';
+		sim_rxpolarity0_out    : out std_logic;
+		sim_rxpolarity1_out    : out std_logic;
+		sim_rxpolarity2_out    : out std_logic;
+		sim_rxpolarity3_out    : out std_logic;
+		sim_rxstatus0_in       : in  std_logic_vector(2 downto 0)  := (others => '0');
+		sim_rxstatus1_in       : in  std_logic_vector(2 downto 0)  := (others => '0');
+		sim_rxstatus2_in       : in  std_logic_vector(2 downto 0)  := (others => '0');
+		sim_rxstatus3_in       : in  std_logic_vector(2 downto 0)  := (others => '0');
+		sim_rxvalid0_in        : in  std_logic := '0';
+		sim_rxvalid1_in        : in  std_logic := '0';
+		sim_rxvalid2_in        : in  std_logic := '0';
+		sim_rxvalid3_in        : in  std_logic := '0';
+		sim_txcompl0_out       : out std_logic;
+		sim_txcompl1_out       : out std_logic;
+		sim_txcompl2_out       : out std_logic;
+		sim_txcompl3_out       : out std_logic;
+		sim_txdata0_out        : out std_logic_vector(7 downto 0);
+		sim_txdata1_out        : out std_logic_vector(7 downto 0);
+		sim_txdata2_out        : out std_logic_vector(7 downto 0);
+		sim_txdata3_out        : out std_logic_vector(7 downto 0);
+		sim_txdatak0_out       : out std_logic;
+		sim_txdatak1_out       : out std_logic;
+		sim_txdatak2_out       : out std_logic;
+		sim_txdatak3_out       : out std_logic;
+		sim_txdeemph0_out      : out std_logic;
+		sim_txdeemph1_out      : out std_logic;
+		sim_txdeemph2_out      : out std_logic;
+		sim_txdeemph3_out      : out std_logic;
+		sim_txdetectrx0_out    : out std_logic;
+		sim_txdetectrx1_out    : out std_logic;
+		sim_txdetectrx2_out    : out std_logic;
+		sim_txdetectrx3_out    : out std_logic;
+		sim_txelecidle0_out    : out std_logic;
+		sim_txelecidle1_out    : out std_logic;
+		sim_txelecidle2_out    : out std_logic;
+		sim_txelecidle3_out    : out std_logic;
+		sim_txmargin0_out      : out std_logic_vector(2 downto 0);
+		sim_txmargin1_out      : out std_logic_vector(2 downto 0);
+		sim_txmargin2_out      : out std_logic_vector(2 downto 0);
+		sim_txmargin3_out      : out std_logic_vector(2 downto 0);
+		sim_txswing0_out       : out std_logic;
+		sim_txswing1_out       : out std_logic;
+		sim_txswing2_out       : out std_logic;
+		sim_txswing3_out       : out std_logic
 	);
 end entity pcie;
 
@@ -1613,22 +1664,73 @@ begin
 			sim_pipe_rate          => sim_pipe_rate_out,
 			sim_ltssmstate         => sim_ltssmstate_out,
 			eidleinfersel0         => sim_eidleinfersel0_out,
+			eidleinfersel1         => sim_eidleinfersel1_out,
+			eidleinfersel2         => sim_eidleinfersel2_out,
+			eidleinfersel3         => sim_eidleinfersel3_out,
 			powerdown0             => sim_powerdown0_out,
+			powerdown1             => sim_powerdown1_out,
+			powerdown2             => sim_powerdown2_out,
+			powerdown3             => sim_powerdown3_out,
 			rxpolarity0            => sim_rxpolarity0_out,
+			rxpolarity1            => sim_rxpolarity1_out,
+			rxpolarity2            => sim_rxpolarity2_out,
+			rxpolarity3            => sim_rxpolarity3_out,
 			txcompl0               => sim_txcompl0_out,
+			txcompl1               => sim_txcompl1_out,
+			txcompl2               => sim_txcompl2_out,
+			txcompl3               => sim_txcompl3_out,
 			txdata0                => sim_txdata0_out,
+			txdata1                => sim_txdata1_out,
+			txdata2                => sim_txdata2_out,
+			txdata3                => sim_txdata3_out,
 			txdatak0               => sim_txdatak0_out,
+			txdatak1               => sim_txdatak1_out,
+			txdatak2               => sim_txdatak2_out,
+			txdatak3               => sim_txdatak3_out,
 			txdetectrx0            => sim_txdetectrx0_out,
+			txdetectrx1            => sim_txdetectrx1_out,
+			txdetectrx2            => sim_txdetectrx2_out,
+			txdetectrx3            => sim_txdetectrx3_out,
 			txelecidle0            => sim_txelecidle0_out,
+			txelecidle1            => sim_txelecidle1_out,
+			txelecidle2            => sim_txelecidle2_out,
+			txelecidle3            => sim_txelecidle3_out,
 			txswing0               => sim_txswing0_out,
+			txswing1               => sim_txswing1_out,
+			txswing2               => sim_txswing2_out,
+			txswing3               => sim_txswing3_out,
 			txmargin0              => sim_txmargin0_out,
+			txmargin1              => sim_txmargin1_out,
+			txmargin2              => sim_txmargin2_out,
+			txmargin3              => sim_txmargin3_out,
 			txdeemph0              => sim_txdeemph0_out,
+			txdeemph1              => sim_txdeemph1_out,
+			txdeemph2              => sim_txdeemph2_out,
+			txdeemph3              => sim_txdeemph3_out,
 			phystatus0             => sim_phystatus0_in,
+			phystatus1             => sim_phystatus1_in,
+			phystatus2             => sim_phystatus2_in,
+			phystatus3             => sim_phystatus3_in,
 			rxdata0                => sim_rxdata0_in,
+			rxdata1                => sim_rxdata1_in,
+			rxdata2                => sim_rxdata2_in,
+			rxdata3                => sim_rxdata3_in,
 			rxdatak0               => sim_rxdatak0_in,
+			rxdatak1               => sim_rxdatak1_in,
+			rxdatak2               => sim_rxdatak2_in,
+			rxdatak3               => sim_rxdatak3_in,
 			rxelecidle0            => sim_rxelecidle0_in,
+			rxelecidle1            => sim_rxelecidle1_in,
+			rxelecidle2            => sim_rxelecidle2_in,
+			rxelecidle3            => sim_rxelecidle3_in,
 			rxstatus0              => sim_rxstatus0_in,
+			rxstatus1              => sim_rxstatus1_in,
+			rxstatus2              => sim_rxstatus2_in,
+			rxstatus3              => sim_rxstatus3_in,
 			rxvalid0               => sim_rxvalid0_in,
+			rxvalid1               => sim_rxvalid1_in,
+			rxvalid2               => sim_rxvalid2_in,
+			rxvalid3               => sim_rxvalid3_in,
 
 			-- -------------------------------------------------------------------------------------
 			-- Connections to the application
