@@ -27,8 +27,8 @@ entity top_level is
 		-- PCI Express interface
 		pcieRefClk_in         : in    std_logic;  -- 100MHz reference clock
 		pciePERST_in          : in    std_logic;
-		pcieRX_in             : in    std_logic;
-		pcieTX_out            : out   std_logic
+		pcieRX_in             : in    std_logic_vector(3 downto 0);
+		pcieTX_out            : out   std_logic_vector(3 downto 0)
 	);
 end entity;
 
