@@ -14,7 +14,7 @@
 #
 obj-m := fpgalink.o
 
-CHECK_SPARSE ?= 1
+CHECK_SPARSE ?= 0
 TARGET_KERNEL ?= $(shell uname -r)
 
 KERNELDIR ?= /lib/modules/$(TARGET_KERNEL)/build

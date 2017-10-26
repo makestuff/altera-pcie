@@ -19,8 +19,8 @@
 #
 # Generate IP, and (if "-c" given), compile ModelSim libraries: (./build.sh 2>&1) > build.log
 
-FAMILY="Cyclone V"
-#FAMILY="Stratix V"
+#FAMILY="Cyclone V"
+FAMILY="Stratix V"
 
 if [ "$#" -eq "1" -a "$1" != "-c" ]; then
   echo "Synopsis: $0 [-c]"
