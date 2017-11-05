@@ -1,40 +1,72 @@
 # Device config
-set_global_assignment -name FAMILY "Cyclone V"
-set_global_assignment -name DEVICE 5CGTFD9E5F35C7
+set_global_assignment -name FAMILY "Stratix V"
+set_global_assignment -name DEVICE 5SGXMA7H2F35C2
+set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 1152
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "2.5 V"
+set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
+set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
+set_global_assignment -name ENABLE_INIT_DONE_OUTPUT ON
+set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
+set_global_assignment -name CRC_ERROR_OPEN_DRAIN ON
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP "AS INPUT TRI-STATED"
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
+set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+
 set_global_assignment -name TOP_LEVEL_ENTITY top_level
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:25:49  MARCH 30, 2014"
-set_global_assignment -name LAST_QUARTUS_VERSION "16.1.0 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "gt-out"
-set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
-set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
-set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
 
 # Design files
-set_global_assignment -name SDC_FILE "top_level.sdc"
-set_global_assignment -name QIP_FILE "../../ip/pcie/pcie.qip"
-set_global_assignment -name QIP_FILE "../../ip/dvr-rng/dvr_rng64.qip"
+set_global_assignment -name SDC_FILE  "top_level.sdc"
+set_global_assignment -name QIP_FILE  "../../ip/pcie/pcie.qip"
+set_global_assignment -name QIP_FILE  "../../ip/dvr-rng/dvr_rng64.qip"
 set_global_assignment -name VHDL_FILE "pcie_app.vhdl"
 set_global_assignment -name VHDL_FILE "top_level.vhdl"
 
 # PCI Express 100MHz reference clock
-set_location_assignment PIN_W11 -to pcieRefClk_in
-set_location_assignment PIN_V10 -to "pcieRefClk_in(n)"
-set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRefClk_in
+set_location_assignment PIN_W29 -to pcieRefClk_in
+set_instance_assignment -name IO_STANDARD "HCSL" -to pcieRefClk_in
 
 # PCI Express reset
-set_location_assignment PIN_AA22 -to pciePERST_in
-set_instance_assignment -name IO_STANDARD "2.5 V" -to pciePERST_in
+set_location_assignment PIN_W26 -to pciePERST_in
+set_instance_assignment -name IO_STANDARD "3.3 V" -to pciePERST_in
 
 # PCI Express RX channel
-set_location_assignment PIN_AJ2 -to pcieRX_in
-set_location_assignment PIN_AJ1 -to "pcieRX_in(n)"
-set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRX_in
+set_location_assignment PIN_AL33 -to pcieRX_in[0]
+set_location_assignment PIN_AJ33 -to pcieRX_in[1]
+set_location_assignment PIN_AG33 -to pcieRX_in[2]
+set_location_assignment PIN_AE33 -to pcieRX_in[3]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRX_in[0]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRX_in[1]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRX_in[2]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRX_in[3]
+set_instance_assignment -name XCVR_VCCR_VCCT_VOLTAGE 1_0V -to pcieRX_in[0]
+set_instance_assignment -name XCVR_VCCR_VCCT_VOLTAGE 1_0V -to pcieRX_in[1]
+set_instance_assignment -name XCVR_VCCR_VCCT_VOLTAGE 1_0V -to pcieRX_in[2]
+set_instance_assignment -name XCVR_VCCR_VCCT_VOLTAGE 1_0V -to pcieRX_in[3]
+set_instance_assignment -name XCVR_VCCA_VOLTAGE 3_0V -to pcieRX_in[0]
+set_instance_assignment -name XCVR_VCCA_VOLTAGE 3_0V -to pcieRX_in[1]
+set_instance_assignment -name XCVR_VCCA_VOLTAGE 3_0V -to pcieRX_in[2]
+set_instance_assignment -name XCVR_VCCA_VOLTAGE 3_0V -to pcieRX_in[3]
 
 # PCI Express TX channel
-set_location_assignment PIN_AH4 -to pcieTX_out
-set_location_assignment PIN_AH3 -to "pcieTX_out(n)"
-set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieTX_out
+set_location_assignment PIN_AK31 -to pcieTX_out[0]
+set_location_assignment PIN_AH31 -to pcieTX_out[1]
+set_location_assignment PIN_AF31 -to pcieTX_out[2]
+set_location_assignment PIN_AD31 -to pcieTX_out[3]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieTX_out[0]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieTX_out[1]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieTX_out[2]
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieTX_out[3]
 
 # Partition stuff
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
