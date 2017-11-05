@@ -171,7 +171,7 @@
   <parameter name="advanced_default_hwtcl_wrong_device_id" value="disable" />
   <parameter name="advanced_default_parameter_override" value="0" />
   <parameter name="ast_width_hwtcl" value="Avalon-ST 64-bit" />
-  <parameter name="bar0_size_mask_hwtcl" value="28" />
+  <parameter name="bar0_size_mask_hwtcl" value="11" />
   <parameter name="bar0_type_hwtcl" value="1" />
   <parameter name="bar1_size_mask_hwtcl" value="0" />
   <parameter name="bar1_type_hwtcl" value="0" />
@@ -443,7 +443,7 @@
   <parameter name="hwtcl_override_g2_txvod" value="0" />
   <parameter name="hwtcl_override_g3rxcoef" value="0" />
   <parameter name="hwtcl_override_g3txcoef" value="0" />
-  <parameter name="in_cvp_mode_hwtcl" value="0" />
+  <parameter name="in_cvp_mode_hwtcl" value="1" />
   <parameter name="io_window_addr_width_hwtcl" value="0" />
   <parameter name="lane_mask_hwtcl" value="x4" />
   <parameter name="low_latency_mode_hwtcl" value="0" />

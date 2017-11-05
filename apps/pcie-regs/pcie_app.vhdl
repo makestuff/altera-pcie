@@ -23,6 +23,9 @@ use ieee.numeric_std.all;
 library makestuff;
 
 entity pcie_app is
+	generic (
+		EN_SWAP               : boolean
+	);
 	port (
 		pcieClk_in            : in  std_logic;  -- 100MHz clock from PCIe PLL
 		cfgBusDev_in          : in  std_logic_vector(12 downto 0);  -- the device ID assigned to the FPGA on enumeration
@@ -51,6 +54,7 @@ architecture rtl of pcie_app is
 	signal cpuWrData          : std_logic_vector(31 downto 0);
 	signal cpuWrValid         : std_logic;
 	signal cpuWrReady         : std_logic;
+	signal tempData           : std_logic_vector(31 downto 0);
 	signal cpuRdData          : std_logic_vector(31 downto 0);
 	signal cpuRdValid         : std_logic;
 
@@ -108,7 +112,8 @@ begin
 	end process;
 
 	-- Register reads
-	cpuRdData <= regArray(to_integer(to_01(unsigned(cpuChan))));
+	tempData <= regArray(to_integer(to_01(unsigned(cpuChan))));
+	cpuRdData <= tempData(15 downto 0) & tempData(31 downto 16) when EN_SWAP else tempData;
 	cpuRdValid <= '1';  -- always ready to supply data
 
 	-- Register update
