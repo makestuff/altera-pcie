@@ -100,7 +100,7 @@
   <parameter name="advanced_default_parameter_override" value="0" />
   <parameter name="altpcie_avmm_hwtcl" value="0" />
   <parameter name="ast_width_hwtcl" value="Avalon-ST 64-bit" />
-  <parameter name="bar0_size_mask_0_hwtcl" value="28" />
+  <parameter name="bar0_size_mask_0_hwtcl" value="11" />
   <parameter name="bar0_size_mask_1_hwtcl" value="28" />
   <parameter name="bar0_size_mask_2_hwtcl" value="28" />
   <parameter name="bar0_size_mask_3_hwtcl" value="28" />
@@ -213,7 +213,7 @@
   <parameter name="bridge_port_vga_enable_6_hwtcl" value="false" />
   <parameter name="bridge_port_vga_enable_7_hwtcl" value="false" />
   <parameter name="cdc_dummy_insert_limit_advanced_default_hwtcl" value="11" />
-  <parameter name="class_code_0_hwtcl" value="0" />
+  <parameter name="class_code_0_hwtcl" value="16711680" />
   <parameter name="class_code_1_hwtcl" value="0" />
   <parameter name="class_code_2_hwtcl" value="0" />
   <parameter name="class_code_3_hwtcl" value="0" />
@@ -302,7 +302,7 @@
   <parameter name="gen2_sameclock_nfts_count_advanced_default_hwtcl" value="255" />
   <parameter name="hip_reconfig_hwtcl" value="0" />
   <parameter name="hot_plug_support_advanced_default_hwtcl" value="0" />
-  <parameter name="in_cvp_mode_hwtcl" value="0" />
+  <parameter name="in_cvp_mode_hwtcl" value="1" />
   <parameter name="indicator_advanced_default_hwtcl" value="0" />
   <parameter name="interrupt_pin_0_hwtcl" value="inta" />
   <parameter name="interrupt_pin_1_hwtcl" value="inta" />

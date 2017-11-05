@@ -23,6 +23,9 @@ use ieee.numeric_std.all;
 library makestuff;
 
 entity top_level is
+	generic (
+		EN_SWAP               : boolean
+	);
 	port (
 		-- PCI Express interface
 		pcieRefClk_in         : in    std_logic;  -- 100MHz reference clock
@@ -82,6 +85,9 @@ begin
 
 	-- The actual "application" logic
 	pcie_app: entity work.pcie_app
+		generic map (
+			EN_SWAP          => EN_SWAP
+		)
 		port map (
 			pcieClk_in       => pcieClk,
 			cfgBusDev_in     => cfgBusDev,

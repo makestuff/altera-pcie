@@ -8,11 +8,14 @@ set_global_assignment -name LAST_QUARTUS_VERSION "16.1.0 Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "gt-out"
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
+set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:gt-out/defs.tcl"
 
 # Design files
-set_global_assignment -name SDC_FILE "top_level.sdc"
-set_global_assignment -name QIP_FILE "../../ip/pcie/pcie.qip"
+set_global_assignment -name SDC_FILE  "top_level.sdc"
+set_global_assignment -name QIP_FILE  "../../ip/pcie/pcie.qip"
 set_global_assignment -name VHDL_FILE "pcie_app.vhdl"
 set_global_assignment -name VHDL_FILE "top_level.vhdl"
 
@@ -40,3 +43,20 @@ set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+
+# Config stuff
+#set_global_assignment -name ENABLE_OCT_DONE OFF
+#set_global_assignment -name ENABLE_CONFIGURATION_PINS OFF
+#set_global_assignment -name ENABLE_BOOT_SEL_PIN OFF
+#set_global_assignment -name STRATIXV_CONFIGURATION_SCHEME "ACTIVE SERIAL X4"
+#set_global_assignment -name USE_CONFIGURATION_DEVICE ON
+#set_global_assignment -name STRATIXII_CONFIGURATION_DEVICE EPCQ256
+#set_global_assignment -name CRC_ERROR_OPEN_DRAIN ON
+#set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
+#set_global_assignment -name CVP_MODE "CORE INITIALIZATION AND UPDATE"
+#set_global_assignment -name ENABLE_CVP_CONFDONE ON
+#set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
+#set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
+#set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
+#set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
+#set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ
