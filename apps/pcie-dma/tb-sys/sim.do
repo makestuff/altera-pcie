@@ -23,17 +23,17 @@ vlib work
 vmap work_lib work
 
 vlog +incdir+$env(MAKESTUFF)/ip/pcie/pcie/testbench/pcie_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
-#vcom -93   -novopt ../../../ip/pcie/pcie.vhdl     -check_synthesis -work makestuff
+vcom -93   -novopt ../../../ip/pcie/pcie.vhdl     -check_synthesis -work makestuff
 #vcom -93   -novopt ../../../ip/pcie/tlp_core.vhdl -check_synthesis -work makestuff
 vcom -93   -novopt ../pcie_app.vhdl               -check_synthesis
 vcom -2008 -novopt pcie_tb.vhdl
 
-vsim -t ps -novopt \
-	-L work -L work_lib -L altera_common_sv_packages -L pcie -L pcie_tb \
-	-L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
-	-L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
-	-L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
-	pcie_tb
+vsim -novopt -t ps \
+  -L work -L work_lib -L altera_common_sv_packages -L pcie -L pcie_tb \
+  -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
+  -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
+  -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver \
+  pcie_tb
 
 add wave      pcie_app/pcieClk_in
 add wave -hex pcie_app/cfgBusDev_in
@@ -54,11 +54,6 @@ add wave      pcie_app/txReady_in
 add wave      pcie_app/txSOP_out
 add wave      pcie_app/txEOP_out
 
-add wave -div "DMA pipe"
-add wave -hex pcie_app/tlp_inst/dmaData_in
-add wave      pcie_app/tlp_inst/dmaValid_in
-add wave      pcie_app/tlp_inst/dmaReady_out
-
 add wave -div "Internals"
 add wave      pcie_app/tlp_inst/state
 add wave -hex pcie_app/tlp_inst/dmaAddr
@@ -70,7 +65,7 @@ configure wave -valuecolwidth 105
 onbreak resume
 run -all
 view wave
-bookmark add wave default {{65130ns} {65290ns}}
+bookmark add wave default {{56120ns} {56280ns}}
 bookmark goto wave default
 wave refresh
 echo Done
