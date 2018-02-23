@@ -13,7 +13,7 @@ On the dev machine:
 And on the test machine, in the driver directory:
   ./rmmod.sh
   echo 1 > /sys/bus/pci/devices/0000\:04\:00.0/remove
-  echo 1 > /sys/bus/pci/rescan
+  echo 1 | sudo tee -a /sys/bus/pci/rescan > /dev/null
   ./insmod.sh
   ../apps/pcie-regs/example/build/example
 

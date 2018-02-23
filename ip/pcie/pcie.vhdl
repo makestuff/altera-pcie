@@ -58,16 +58,14 @@ entity pcie is
 		
 		-- Control & Pipe signals for simulation connection
 		sim_test_in            : in  std_logic_vector(31 downto 0) :=
-		                             x"00000" &  -- Reserved
-		                             "0011" &    -- Pipe interface
-		                             "1" &       -- Disable low power state
-		                             "0" &       -- Disable compliance mode
-		                             "1" &       -- Disable compliance mode
-		                             "0" &       -- Reserved
-		                             "0" &       -- FPGA Mode
-		                             "0" &       -- Reserved
-		                             "0" &       -- Reserved
-		                             "0";        -- Simulation mode
+		                             x"000000" & -- [31:8]: Reserved: set to 0
+		                             "1"       & --    [7]: Disable low-power state negotiation
+		                             "0"       & --    [6]: Force entry to compliance mode when timeout is reached
+		                             "1"       & --    [5]: Compliance test mode
+		                             "01"      & --  [4:3]: Reserved: set to 01
+		                             "0"       & --    [2]: Descramble mode disable
+		                             "0"       & --    [1]: Reserved: set to 0
+		                             "0";        --    [0]: Simulation mode
 		sim_simu_mode_pipe_in  : in  std_logic := '0';
 		sim_ltssmstate_out     : out std_logic_vector(4 downto 0);
 		sim_pipe_pclk_in       : in  std_logic := '0';
