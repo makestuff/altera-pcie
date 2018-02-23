@@ -4,8 +4,10 @@ generic) interface to the outside world.
 
 The pcie.qsys design was based on an Altera PCIe design example. I just did this:
 
-cp $ALTERA/../ip/altera/altera_pcie/altera_pcie_hip_ast_ed/example_design/cv/pcie_de_gen1_x1_ast64.qsys pcie.qsys
-$ALTERA/sopc_builder/bin/qsys-edit pcie.qsys
+  export FAMILY="Cyclone V"
+  #export FAMILY="Stratix V"
+  cp $ALTERA/../ip/altera/altera_pcie/altera_pcie_hip_ast_ed/example_design/cv/pcie_de_gen1_x1_ast64.qsys pcie.qsys
+  $ALTERA/sopc_builder/bin/qsys-edit --family="$FAMILY" pcie.qsys
 
 Then, in QSys:
   * Delete pcie_reconfig_driver_0 (i.e select it and hit <Del>).
