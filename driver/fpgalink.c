@@ -231,7 +231,7 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	// Documentation/PCI/PCI-DMA-mapping.txt, near line 318)
 	//
 	ape.bufVA = (u32 *)kmalloc(
-		DMA_BUFSIZE, GFP_USER | GFP_DMA32 | __GFP_COLD);
+		DMA_BUFSIZE, GFP_USER | GFP_DMA32);
 	if ( !ape.bufVA ) {
 		printk(KERN_DEBUG "Could not allocate DMA buffer!\n");
 		rc = -ENOMEM; goto err_buf_alloc;
