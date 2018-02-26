@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -34,7 +35,8 @@
 
 int main(void) {
 	int retVal = 0, dev;
-	uint32_t buf[PAGE_SIZE/sizeof(uint32_t)], result = 0;
+	uint64_t buf[16*TLP_SIZE/sizeof(uint64_t)];
+	uint32_t result;
 
 	// Connect to the kernel driver...
 	dev = open("/dev/fpga0", O_RDWR|O_SYNC);
@@ -50,45 +52,42 @@ int main(void) {
 		retVal = 2; goto dev_close;
 	}
 
-	// Map DMA buffer read-only into userspace. Technically this should also be volatile, but I think
-	// it's safe to assume that a real-world application will not inline the processing step (i.e it
-	// will actually make a function-call).
-	const uint32_t *const dmaBaseVA = mmap(NULL, PAGE_SIZE, PROT_READ, MAP_SHARED, dev, PAGE_SIZE);
+	// Map DMA buffer read-only into userspace
+	volatile uint64_t *const dmaBaseVA = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, PAGE_SIZE);
 	if (dmaBaseVA == MAP_FAILED) {
 		fprintf(stderr, "Call to mmap() for dmaBaseVA failed!\n");
 		retVal = 3; goto dev_close;
 	}
-	const uint32_t dmaBaseBA = dmaBaseVA[0];  // driver helpfully wrote the bus-address here for us
+	const uint32_t dmaBaseBA = (uint32_t)dmaBaseVA[0];  // driver helpfully wrote the bus-address here for us
 
 	// Reset the RNG
 	result = *DMABASE(fpgaBase);
 
 	// Fetch 16 packets
 	for (int j = 0; j < 16; j++) {
+		// Zero the semaphore QW
+		dmaBaseVA[0] = 0ULL;
+
 		// Give the FPGA the bus address of the mmap()'d DMA buffer.
 		*DMABASE(fpgaBase) = dmaBaseBA;
 
 		// Tell the FPGA to DMA an entire page into the buffer.
-		*DMACTRL(fpgaBase) = PAGE_SIZE/TLP_SIZE;
+		*DMACTRL(fpgaBase) = 16;  // 16 TLPs = 16*128 = 2048 bytes
 
 		// Prevent CPU doing StoreLoad reordering (i.e we want the previous write to be done before
 		// the following read).
 		__asm volatile("mfence" ::: "memory");
 
-		// Do a read of DMACTRL. This will stall the CPU until the DMA completes. TODO: think about
-		// what happens if data is not ready; this will timeout (typically after a few milliseconds).
-		result = *DMACTRL(fpgaBase);
-
-		// Stop compiler putting the first read instruction from memcpy() *before* the preceding read.
-		__asm volatile("" ::: "memory");
+		// Wait until the FPGA flags DMA-complete
+		while (dmaBaseVA[0] == 0ULL);  // spin
 
 		// Copy the data out of the buffer, somewhere else (as a surrogate for "processing it").
-		memcpy(buf, dmaBaseVA, sizeof(buf));
+		memcpy(buf, (const uint64_t*)dmaBaseVA + 8, sizeof(buf));
 
 		// And finally, log what we got
-		printf("TLP[%d] (result = 0x%08X):\n", j, result);
-		for (size_t i = 0; i < sizeof(buf)/sizeof(*buf); i += 2) {
-			printf("  0x%08X%08X\n", buf[i+1], buf[i]);
+		printf("Block[%d]:\n", j);
+		for (size_t i = 0; i < sizeof(buf)/sizeof(*buf); ++i) {
+			printf("  0x%016" PRIX64 "\n", buf[i]);
 		}
 		printf("\n");
 	}
@@ -97,4 +96,5 @@ dev_close:
 	close(dev);
 exit:
 	return retVal;
+	(void)result;
 }

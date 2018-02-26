@@ -89,7 +89,9 @@ architecture rtl of tlp_core is
 		S_DMA0,
 		S_DMA1,
 		S_DMA2,
-		S_MSI
+		S_DMA3,
+		S_DMA4,
+		S_DMA5
 	);
 	signal state              : StateType := S_IDLE;
 	signal state_next         : StateType;
@@ -99,6 +101,8 @@ architecture rtl of tlp_core is
 	signal lowAddr_next       : std_logic_vector(6 downto 0);
 	signal rdData             : std_logic_vector(31 downto 0) := (others => '0');
 	signal rdData_next        : std_logic_vector(31 downto 0);
+	signal dmaBase            : unsigned(28 downto 0) := (others => '0');
+	signal dmaBase_next       : unsigned(28 downto 0);
 	signal dmaAddr            : unsigned(28 downto 0) := (others => '0');
 	signal dmaAddr_next       : unsigned(28 downto 0);
 	signal qwCount            : unsigned(3 downto 0) := (others => '0');
@@ -121,6 +125,7 @@ begin
 			msgID <= msgID_next;
 			lowAddr <= lowAddr_next;
 			rdData <= rdData_next;
+			dmaBase <= dmaBase_next;
 			dmaAddr <= dmaAddr_next;
 			qwCount <= qwCount_next;
 			tlpCount <= tlpCount_next;
@@ -153,8 +158,8 @@ begin
 	
 	-- Next state logic
 	process(
-		state, msgID, lowAddr, rdData, dmaAddr, qwCount, tlpCount, cpuChan,
-		cfgBusDev_in, msiAck_in, foData, foValid, foSOP, txReady_in,
+		state, msgID, lowAddr, rdData, dmaBase, dmaAddr, qwCount, tlpCount, cpuChan,
+		cfgBusDev_in, foData, foValid, foSOP, txReady_in,
 		cpuWrReady_in, cpuRdData_in, cpuRdValid_in,
 		dmaData_in, dmaValid_in)
 	begin
@@ -163,6 +168,7 @@ begin
 		msgID_next <= msgID;
 		lowAddr_next <= lowAddr;
 		rdData_next <= rdData;
+		dmaBase_next <= dmaBase;
 		dmaAddr_next <= dmaAddr;
 		qwCount_next <= qwCount;
 		tlpCount_next <= tlpCount;
@@ -219,7 +225,8 @@ begin
 					if ( cpuChan = DMA_ADDR_REG ) then
 						state_next <= S_IDLE;
 						foReady <= '1';
-						dmaAddr_next <= unsigned(foData(63 downto 35));
+						dmaBase_next <= unsigned(foData(63 downto 35));  -- QW addr
+						dmaAddr_next <= 8 + unsigned(foData(63 downto 35)); -- offset 8 (num of QWs in one 64-byte cache-line)
 					elsif ( cpuChan = DMA_CTRL_REG ) then
 						state_next <= S_DMA0;
 						foReady <= '1';
@@ -266,16 +273,34 @@ begin
 						tlpCount_next <= tlpCount - 1;
 						dmaAddr_next <= dmaAddr + 16;
 						if ( tlpCount = 1 ) then
-							state_next <= S_MSI;
+							state_next <= S_DMA3;  -- finished; write completion-marker QW
 						else
 							state_next <= S_DMA0;
 						end if;
 					end if;
 				end if;
 
-			when S_MSI =>
-				msiReq_out <= '1';
-				if ( msiAck_in = '1' ) then
+			when S_DMA3 =>
+				if ( dmaValid_in = '1' and txReady_in = '1' ) then
+					state_next <= S_DMA4;
+					txData_out <= cfgBusDev_in & "000" & x"AAFF40000002";
+					txValid_out <= '1';
+					txSOP_out <= '1';
+				end if;
+
+			when S_DMA4 =>
+				if ( txReady_in = '1' ) then
+					state_next <= S_DMA5;
+					txData_out <= x"00000000" & std_logic_vector(dmaBase) & "000";
+					txValid_out <= '1';
+					qwCount_next <= x"F";
+				end if;
+
+			when S_DMA5 =>
+				if ( txReady_in = '1' ) then
+					txData_out <= x"CAFEF00DC0DEFACE";
+					txValid_out <= '1';
+					txEOP_out <= '1';
 					state_next <= S_IDLE;
 				end if;
 

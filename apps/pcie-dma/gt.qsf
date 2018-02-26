@@ -4,11 +4,12 @@ set_global_assignment -name DEVICE 5CGTFD9E5F35C7
 set_global_assignment -name TOP_LEVEL_ENTITY top_level
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:25:49  MARCH 30, 2014"
-set_global_assignment -name LAST_QUARTUS_VERSION "16.1.0 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "gt-out"
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
+set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:gt-out/defs.tcl"
 
 # Design files
 set_global_assignment -name SDC_FILE "top_level.sdc"
@@ -27,13 +28,13 @@ set_location_assignment PIN_AA22 -to pciePERST_in
 set_instance_assignment -name IO_STANDARD "2.5 V" -to pciePERST_in
 
 # PCI Express RX channel
-set_location_assignment PIN_AJ2 -to pcieRX_in
-set_location_assignment PIN_AJ1 -to "pcieRX_in(n)"
+#set_location_assignment PIN_AJ2 -to pcieRX_in
+#set_location_assignment PIN_AJ1 -to "pcieRX_in(n)"
 set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRX_in
 
 # PCI Express TX channel
-set_location_assignment PIN_AH4 -to pcieTX_out
-set_location_assignment PIN_AH3 -to "pcieTX_out(n)"
+#set_location_assignment PIN_AH4 -to pcieTX_out
+#set_location_assignment PIN_AH3 -to "pcieTX_out(n)"
 set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieTX_out
 
 # Partition stuff

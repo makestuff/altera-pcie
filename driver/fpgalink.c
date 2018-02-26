@@ -230,8 +230,7 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	// Allocate and map coherently-cached memory for a DMA-able buffer (see
 	// Documentation/PCI/PCI-DMA-mapping.txt, near line 318)
 	//
-	ape.bufVA = (u32 *)kmalloc(
-		DMA_BUFSIZE, GFP_USER | GFP_DMA32 | __GFP_COLD);
+	ape.bufVA = (u32 *)__get_free_page(GFP_USER | GFP_DMA32);
 	if ( !ape.bufVA ) {
 		printk(KERN_DEBUG "Could not allocate DMA buffer!\n");
 		rc = -ENOMEM; goto err_buf_alloc;
@@ -269,7 +268,7 @@ err_cdev_add:
 	unregister_chrdev_region(ape.devNum, 1);
 err_cdev_alloc:
 	dma_unmap_single(&dev->dev, ape.bufBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
-	kfree(ape.bufVA);
+	free_page((unsigned long)ape.bufVA);
 err_buf_alloc:
 	unmapBars(dev);
 err_map:
@@ -299,7 +298,7 @@ static void pcieRemove(struct pci_dev *dev) {
 
 	// Free DMA buffer
 	dma_unmap_single(&dev->dev, ape.bufBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
-	kfree(ape.bufVA);
+	free_page((unsigned long)ape.bufVA);
 
 	// Unmap the BARs
 	unmapBars(dev);
