@@ -281,9 +281,9 @@ begin
 				end if;
 
 			when S_DMA3 =>
-				if ( dmaValid_in = '1' and txReady_in = '1' ) then
+				if ( txReady_in = '1' ) then
 					state_next <= S_DMA4;
-					txData_out <= cfgBusDev_in & "000" & x"AAFF40000002";
+					txData_out <= cfgBusDev_in & "000" & x"AAFF40000002";  -- write one QW to the semaphore location
 					txValid_out <= '1';
 					txSOP_out <= '1';
 				end if;
@@ -293,15 +293,14 @@ begin
 					state_next <= S_DMA5;
 					txData_out <= x"00000000" & std_logic_vector(dmaBase) & "000";
 					txValid_out <= '1';
-					qwCount_next <= x"F";
 				end if;
 
 			when S_DMA5 =>
 				if ( txReady_in = '1' ) then
+					state_next <= S_IDLE;
 					txData_out <= x"CAFEF00DC0DEFACE";
 					txValid_out <= '1';
 					txEOP_out <= '1';
-					state_next <= S_IDLE;
 				end if;
 
 			-- S_IDLE and others
