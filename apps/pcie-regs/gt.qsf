@@ -5,7 +5,6 @@ set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 1152
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "2.5 V"
 set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
-set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
 set_global_assignment -name ENABLE_INIT_DONE_OUTPUT ON
 set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
@@ -18,6 +17,7 @@ set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -
 set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
 
 set_global_assignment -name TOP_LEVEL_ENTITY top_level
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
@@ -32,7 +32,7 @@ set_global_assignment -name QIP_FILE  "../../ip/pcie/pcie.qip"
 set_global_assignment -name VHDL_FILE "pcie_app.vhdl"
 set_global_assignment -name VHDL_FILE "top_level.vhdl"
 
-# PCI Express 100MHz reference clock
+# PCI Express 125MHz reference clock
 set_location_assignment PIN_W29 -to pcieRefClk_in
 set_instance_assignment -name IO_STANDARD "HCSL" -to pcieRefClk_in
 
@@ -86,5 +86,3 @@ set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_
 #set_global_assignment -name CVP_MODE "CORE INITIALIZATION AND UPDATE"
 #set_global_assignment -name ENABLE_CVP_CONFDONE ON
 #set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ
-
-set_parameter -name EN_SWAP false

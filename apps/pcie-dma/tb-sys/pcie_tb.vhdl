@@ -30,9 +30,6 @@ use IEEE.numeric_std.all;
 library makestuff;
 
 entity pcie_tb is
-	generic (
-		EN_SWAP               : boolean
-	);
 end entity pcie_tb;
 
 architecture rtl of pcie_tb is
@@ -324,9 +321,6 @@ architecture rtl of pcie_tb is
 begin
 	-- The thing which actually drives the bus from the FPGA side
 	pcie_app: entity work.pcie_app
-		generic map (
-			EN_SWAP          => EN_SWAP
-		)
 		port map (
 			-- Application interface
 			pcieClk_in       => pcieClk,

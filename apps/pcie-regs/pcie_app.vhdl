@@ -27,7 +27,7 @@ entity pcie_app is
 		EN_SWAP               : boolean
 	);
 	port (
-		pcieClk_in            : in  std_logic;  -- 100MHz clock from PCIe PLL
+		pcieClk_in            : in  std_logic;  -- 125MHz clock from PCIe PLL
 		cfgBusDev_in          : in  std_logic_vector(12 downto 0);  -- the device ID assigned to the FPGA on enumeration
 		msiReq_out            : out std_logic;
 		msiAck_in             : in  std_logic;

@@ -1,6 +1,10 @@
 # Device config
 set_global_assignment -name FAMILY "Stratix V"
 set_global_assignment -name DEVICE 5SGXMA7H2F35C2
+set_global_assignment -name TOP_LEVEL_ENTITY top_level
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:25:49  MARCH 30, 2014"
+set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 1152
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "2.5 V"
@@ -18,12 +22,9 @@ set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -
 set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
-
-set_global_assignment -name TOP_LEVEL_ENTITY top_level
-set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
-set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:25:49  MARCH 30, 2014"
-set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
-set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "gt-out"
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
 
 # Design files
 set_global_assignment -name SDC_FILE  "top_level.sdc"
@@ -31,8 +32,10 @@ set_global_assignment -name QIP_FILE  "../../ip/pcie/pcie.qip"
 set_global_assignment -name QIP_FILE  "../../ip/dvr-rng/dvr_rng64.qip"
 set_global_assignment -name VHDL_FILE "pcie_app.vhdl"
 set_global_assignment -name VHDL_FILE "top_level.vhdl"
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "gt-out"
+set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:gt-out/defs.tcl"
 
-# PCI Express 100MHz reference clock
+# PCI Express 125MHz reference clock
 set_location_assignment PIN_W29 -to pcieRefClk_in
 set_instance_assignment -name IO_STANDARD "HCSL" -to pcieRefClk_in
 

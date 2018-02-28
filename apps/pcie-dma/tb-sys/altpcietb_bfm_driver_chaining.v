@@ -99,208 +99,22 @@ module altpcietb_bfm_driver_chaining (
 		end
 	endtask
 
-	// Enable MSI
+	// Poll-wait for the expected "DMA-complete" token to be written
 	//
-	task dma_set_msi(
-			input integer bar_table,
-			input integer setup_bar,
-			input integer bus_num,
-			input integer dev_num,
-			input integer fnc_num,
-			input integer msi_address,
-			input integer msi_data,
-			output reg[4:0] msi_number,
-			output reg[2:0] msi_traffic_class,
-			output reg[2:0] multi_message_enable,
-			output integer msi_expected
+	task poll_dma(
+			input integer address,
+			input reg[63:0] expected
 		);
-		localparam MSI_CAPABILITIES  = 32'h50;
-		localparam MSI_UPPER_ADDR = 32'h0000_0000; // RC BFM has 2MB of address space
-		reg[15:0] msi_control_register;
-		reg msi_64b_capable;
-		reg[2:0] multi_message_capable;
-		reg msi_enable;
-		reg[2:0] compl_status;
-		reg unused_result;
+		reg[63:0] received;
 		begin
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				" Message Signaled Interrupt Configuration"
-			);
-
-			// Read the contents of the MSI Control register
-			msi_traffic_class = 0; //TODO make it an input argument
-			unused_result = ebfm_display(
-				EBFM_MSG_INFO,
-				{"  msi_address (RC memory) = 0x", himage4(msi_address)}
-			);
-
-			// RC Reading MSI capabilities of the EP
-			// to get msi_control_register
-			ebfm_cfgrd_wait(
-				bus_num, dev_num, fnc_num,
-				MSI_CAPABILITIES, 4,
-				msi_address,
-				compl_status
-			);
-			msi_control_register = shmem_read(msi_address+2, 2);
-
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				{"  msi_control_register = 0x", himage4(msi_control_register)}
-			);
-
-			// Program the MSI Message Control register for testing
-			msi_64b_capable = msi_control_register[7];
-
-			// Enable the MSI with Maximum Number of Supported Messages
-			multi_message_capable = msi_control_register[3:1];
-			multi_message_enable = multi_message_capable;
-			msi_enable = 1'b1;
-			ebfm_cfgwr_imm_wait(
-				bus_num, dev_num, fnc_num,
-				MSI_CAPABILITIES, 4,
-				{8'h00, msi_64b_capable, multi_message_enable, multi_message_capable, msi_enable, 16'h0000},
-				compl_status
-			);
-
-			msi_number = 5'h0;
-
-			// Retrieve msi_expected
-			if ( multi_message_enable == 3'b000 ) begin
-				unused_result = ebfm_display(
-					EBFM_MSG_WARNING,
-					"DMA test requires at least 2 MSI!"
-				);
-				unused_result = ebfm_log_stop_sim(0);
-			end else begin
-				case ( multi_message_enable )
-					3'b000:
-						msi_expected =  msi_data[15:0];
-					3'b001:
-						msi_expected = {msi_data[15:1], msi_number[0]};
-					3'b010:
-						msi_expected = {msi_data[15:2], msi_number[1:0]};
-					3'b011:
-						msi_expected = {msi_data[15:3], msi_number[2:0]};
-					3'b100:
-						msi_expected = {msi_data[15:4], msi_number[3:0]};
-					3'b101:
-						msi_expected = {msi_data[15:5], msi_number[4:0]};
-					default:
-						unused_result = ebfm_display(
-							EBFM_MSG_ERROR_FATAL,
-							"Illegal multi_message_enable value detected. MSI test fails."
-						);
-				endcase
+			repeat(4) @(posedge clk_in);
+			received = shmem_read(address, 8);
+			while (received != expected) begin
+				repeat(4) @(posedge clk_in);
+				received = shmem_read(address, 8);
 			end
-
-			// Write the rest of the MSI capabilities structure:
-			if ( msi_64b_capable ) begin
-				// Specify the RC lower address where the MSI needs to be written when EP issues an MSI
-				ebfm_cfgwr_imm_wait(
-					bus_num, dev_num, fnc_num,
-					MSI_CAPABILITIES + 4'h4, 4,
-					msi_address,
-					compl_status
-				);
-
-				// Specify the RC upper address where the MSI needs to be written when EP issues an MSI
-				ebfm_cfgwr_imm_wait(
-					bus_num, dev_num, fnc_num,
-					MSI_CAPABILITIES + 4'h8, 4,
-					MSI_UPPER_ADDR,
-					compl_status
-				);
-
-				// Specify the data to be written to the RC-memeory MSI location when EP issues an MSI
-				ebfm_cfgwr_imm_wait(
-					bus_num, dev_num, fnc_num,
-					MSI_CAPABILITIES + 4'hC, 4,
-					msi_data,
-					compl_status
-				);
-			end else begin
-				// Specify the RC lower address where the MSI needs to be written when EP issues an MSI
-				ebfm_cfgwr_imm_wait(
-					bus_num, dev_num, fnc_num,
-					 MSI_CAPABILITIES + 4'h4, 4,
-					 msi_address, compl_status
-				);
-
-				// Specify the data to be written to the RC-memeory MSI location when EP issues an MSI
-				ebfm_cfgwr_imm_wait(
-					bus_num, dev_num, fnc_num,
-					MSI_CAPABILITIES + 4'h8, 4,
-					msi_data, compl_status
-				);
-			end
-
-			// Clear RC-memory MSI location
-			shmem_write(msi_address,  32'h1111_FADE,4);
-
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				{"  msi_expected = 0x", himage4(msi_expected)}
-			);
-
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				{"  MSI_CAPABILITIES address = 0x", himage4(MSI_CAPABILITIES)}
-			);
-
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				{"  multi_message_enable = 0x", himage4(multi_message_enable)}
-			);
-
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				{"  msi_number = ", dimage4(msi_number)}
-			);
-
-			unused_result = ebfm_display_verb(
-				EBFM_MSG_INFO,
-				{"  msi_traffic_class = ", dimage4(msi_traffic_class)}
-			);
-		end
-	endtask
-
-	// Poll-wait for the expected MSI value to be written to the MSI address
-	//
-	task msi_poll(
-			input integer msi_address,
-			input integer msi_expected,
-			input integer msi_timeout
-		);
-		reg unused_result;
-		integer msi_received;
-		begin
-			fork
-				// Set timeout failure if expected MSI is not received
-				begin : timeout_msi
-					repeat(msi_timeout) @(posedge clk_in);
-					unused_result = ebfm_display(EBFM_MSG_ERROR_FATAL, "MSI timeout occured!");
-					disable wait_for_msi;
-				end
-
-				// Poll RC-memory for expected MSI data value at the assigned MSI address
-				begin : wait_for_msi
-					forever begin
-						repeat(4) @(posedge clk_in);
-						msi_received = shmem_read(msi_address, 2);
-						if ( msi_received == msi_expected ) begin
-							unused_result = ebfm_display(
-								EBFM_MSG_DEBUG,
-								{"TASK:msi_poll    Received DMA Write MSI: ", himage4(msi_received)}
-							);
-							shmem_write(msi_address , 32'h1111_FADE, 4);
-							disable timeout_msi;
-							disable wait_for_msi;
-						end
-					end
-				end
-			join
+			shmem_write(address , 64'h0000000000000000, 8);
+			repeat(4) @(posedge clk_in);
 		end
 	endtask
 
@@ -308,10 +122,9 @@ module altpcietb_bfm_driver_chaining (
 	//
 	always begin : main
 		parameter BAR_TABLE = BAR_TABLE_POINTER;
-		localparam integer MSI_ADDRESS = 16'h001C;
-		localparam integer MSI_DATA = 16'hCAFE;
 		localparam reg[31:0] DMABASE = (0*16+0)*8+4;
 		localparam reg[31:0] DMACTRL = (0*16+1)*8+4;
+		localparam reg[63:0] DMA_COMPLETE_TOKEN = 64'hCAFEF00DC0DEFACE;
 		localparam reg[63:0] EXPECTED[0:15] = '{
 			64'hD94228FF25158B13,
 			64'hAD38F30AE4F8C54A,
@@ -352,36 +165,18 @@ module altpcietb_bfm_driver_chaining (
 		// Find the BAR to use to talk to the FPGA
 		find_mem_bar(BAR_TABLE, 6'b001100, 8, fpga_bar);
 
-		// Enable MSI so we can detect when DMA is finished
-		dma_set_msi(
-			BAR_TABLE,     // pointer to the BAR sizing and
-			fpga_bar,       // BAR to be used for setting up
-			1,             // bus_num
-			1,             // dev_num
-			0,             // fnc_num
-			MSI_ADDRESS,   // MSI RC memeory address
-			MSI_DATA,      // MSI Cfg data value
-			msi_number,    // out: MSI_number
-			msi_tc,        // out: MSI traffic class
-			msi_mm,        // out: number of MSI
-			msi_expected   // out: expected MSI data value
-		);
-
 		// Request DMA write to RC memory
 		unused_result = ebfm_display(EBFM_MSG_INFO, "Starting DMA...");
 		ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMABASE, 32'h00000020, 4, 0);  // DMA address (0x20)
 		ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMACTRL, 32'h00000001, 4, 0);  // DMA control (one 128-byte TLP)
 
 		// Wait for an MSI signalling DMA complete
-		msi_poll(MSI_ADDRESS, msi_expected, 125000000);
-
-		// Seem to need this 128ns (16-cycle) delay to allow the memory writes to be visible to the host side
-		#96000;
+		poll_dma(0*8+32, DMA_COMPLETE_TOKEN);
 
 		// Read stuff written to RC-memory
 		unused_result = ebfm_display(EBFM_MSG_INFO, "Readback:");
 		for ( i = 0; i < 16; i = i + 1 ) begin
-			this_qw = shmem_read(i*8+32, 8);
+			this_qw = shmem_read(i*8+32+64, 8);
 			if ( this_qw == EXPECTED[i] ) begin
 				unused_result = ebfm_display(EBFM_MSG_INFO, {"  ", himage16(this_qw)});
 			end else begin
@@ -392,20 +187,17 @@ module altpcietb_bfm_driver_chaining (
 		end
 		unused_result = ebfm_display(EBFM_MSG_INFO, "DMA test PASSED!");
 
-		unused_result = ebfm_display(EBFM_MSG_INFO, {"QW[0]: ", himage16(shmem_read(0*8+32, 8))});
+		unused_result = ebfm_display(EBFM_MSG_INFO, {"QW[0]: ", himage16(shmem_read(0*8+32+64, 8))});
 		for ( i = 0; i < 31; i = i + 1 ) begin
 			// Next TLP
 			ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMABASE, 32'h00000020, 4, 0);  // DMA address (0x20)
 			ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMACTRL, 32'h00000001, 4, 0);  // DMA control (one 128-byte TLP)
 
 			// Wait for an MSI signalling DMA complete
-			msi_poll(MSI_ADDRESS, msi_expected, 125000000);
-
-			// Seem to need this 128ns (16-cycle) delay to allow the memory writes to be visible to the host side
-			#128000;
+			poll_dma(0*8+32, DMA_COMPLETE_TOKEN);
 
 			// Read stuff written to RC-memory
-			unused_result = ebfm_display(EBFM_MSG_INFO, {"QW[0]: ", himage16(shmem_read(0*8+32, 8))});
+			unused_result = ebfm_display(EBFM_MSG_INFO, {"QW[0]: ", himage16(shmem_read(0*8+32+64, 8))});
 		end
 
 		// Stop simulation
