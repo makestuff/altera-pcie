@@ -19,7 +19,7 @@ $(FPGA)-out/$(FPGA).sof:
 	@echo "  FPGA         = $(FPGA)"         | tee -a $(FPGA)-out/build.log
 	@echo "  EN_SWAP      = $(EN_SWAP)"      | tee -a $(FPGA)-out/build.log
 	@echo "}"                                | tee -a $(FPGA)-out/build.log
-	LD_PRELOAD=../../isatty-hack/isatty_hack.so quartus_sh --flow compile $(FPGA).qpf -c $(FPGA) | tee -a $(FPGA)-out/build.log
+	LD_PRELOAD=../../ip/tools/isatty_hack.so quartus_sh --flow compile $(FPGA).qpf -c $(FPGA) | tee -a $(FPGA)-out/build.log
 
 # Program the FPGA over JTAG
 prog: $(FPGA)-out/$(FPGA).sof

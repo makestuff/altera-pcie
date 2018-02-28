@@ -30,6 +30,9 @@ fi
 # Clean beforehand
 rm -rf libraries sim-libs modelsim.ini
 
+# Build tools
+make -C tools
+
 # Construct random number generators
 echo "Starting RNG generation..."
 cd dvr-rng/gen-rng
