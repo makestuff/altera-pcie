@@ -1,23 +1,24 @@
 # Device config
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CGTFD9E5F35C7
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
+
 set_global_assignment -name TOP_LEVEL_ENTITY top_level
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:25:49  MARCH 30, 2014"
 set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "gt-out"
-set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
-set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
-set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
 set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:gt-out/defs.tcl"
 
 # Design files
-set_global_assignment -name SDC_FILE "top_level.sdc"
-set_global_assignment -name QIP_FILE "../../ip/pcie/pcie.qip"
+set_global_assignment -name SDC_FILE  "top_level.sdc"
+set_global_assignment -name QIP_FILE  "../../ip/pcie/pcie.qip"
 set_global_assignment -name VHDL_FILE "pcie_app.vhdl"
 set_global_assignment -name VHDL_FILE "top_level.vhdl"
 
-# PCI Express 100MHz reference clock
+# PCI Express 125MHz reference clock
 set_location_assignment PIN_W11 -to pcieRefClk_in
 set_location_assignment PIN_V10 -to "pcieRefClk_in(n)"
 set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRefClk_in
@@ -53,8 +54,4 @@ set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_
 #set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
 #set_global_assignment -name CVP_MODE "CORE INITIALIZATION AND UPDATE"
 #set_global_assignment -name ENABLE_CVP_CONFDONE ON
-#set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
-#set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
-#set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
-#set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
 #set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ

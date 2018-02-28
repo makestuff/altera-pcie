@@ -24,16 +24,16 @@ vmap work_lib work
 
 vlog +incdir+$env(MAKESTUFF)/ip/pcie/pcie/testbench/pcie_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
 #vcom -93   -novopt ../../../ip/pcie/pcie.vhdl     -check_synthesis -work makestuff
-vcom -93   -novopt ../../../ip/pcie/tlp_core.vhdl -check_synthesis -work makestuff
+#vcom -93   -novopt ../../../ip/pcie/tlp_core.vhdl -check_synthesis -work makestuff
 vcom -93   -novopt ../pcie_app.vhdl               -check_synthesis
 vcom -2008 -novopt pcie_tb.vhdl
 
-vsim -t ps -novopt \
-	-L work -L work_lib -L altera_common_sv_packages -L pcie -L pcie_tb \
-	-L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
-	-L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
-	-L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
-	pcie_tb
+vsim -novopt -t ps \
+  -L work -L work_lib -L altera_common_sv_packages -L pcie -L pcie_tb \
+  -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
+  -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
+  -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
+  pcie_tb
 
 add wave      pcie_app/pcieClk_in
 add wave -hex pcie_app/cfgBusDev_in
