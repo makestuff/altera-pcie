@@ -1,2 +1,2 @@
 #!/bin/sh
-echo 1 | sudo /usr/bin/tee -a /sys/bus/pci/rescan > /dev/null
+echo 1 > /sys/bus/pci/rescan
