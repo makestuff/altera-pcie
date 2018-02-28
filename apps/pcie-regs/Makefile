@@ -3,37 +3,45 @@
 #
 
 # FPGA device
-FPGA         := gt
+FPGA         := svgx
 
 # Enable/disable register word-swapping
 EN_SWAP      := false
 
-all: $(FPGA)-out/$(FPGA).sof
+# By default, just build a JTAG programming-file
+all: build/proj.sof
 
-$(FPGA)-out/$(FPGA).sof:
-	@mkdir -p $(FPGA)-out
-	@echo "project_open -revision $(FPGA) $(FPGA)" > $(FPGA)-out/defs.tcl
-	@echo "set_parameter -name EN_SWAP $(EN_SWAP)" >> $(FPGA)-out/defs.tcl
-	@echo "export_assignments"                     >> $(FPGA)-out/defs.tcl
-	@echo "Config {"                         | tee    $(FPGA)-out/build.log
-	@echo "  FPGA         = $(FPGA)"         | tee -a $(FPGA)-out/build.log
-	@echo "  EN_SWAP      = $(EN_SWAP)"      | tee -a $(FPGA)-out/build.log
-	@echo "}"                                | tee -a $(FPGA)-out/build.log
-	LD_PRELOAD=../../ip/tools/isatty_hack.so quartus_sh --flow compile $(FPGA).qpf -c $(FPGA) | tee -a $(FPGA)-out/build.log
+build/proj.sof: build
+	LD_PRELOAD=../../ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
+
+# Launch the Quartus GUI
+ide: build
+	quartus build/proj.qpf
+
+# Copy the appropriate device files over, ready for the build to proceed
+build:
+	@mkdir build
+	@cp -rp $(FPGA)/* build/
+	@echo "set_parameter -name EN_SWAP $(EN_SWAP)" >> build/proj.qsf
+	@echo "Config {"                         | tee    build/build.log
+	@echo "  FPGA         = $(FPGA)"         | tee -a build/build.log
+	@echo "  EN_SWAP      = $(EN_SWAP)"      | tee -a build/build.log
+	@echo "}"                                | tee -a build/build.log
 
 # Program the FPGA over JTAG
-prog: $(FPGA)-out/$(FPGA).sof
-	quartus_pgm --mode=JTAG -o 'p;gt-out/gt.sof'
+prog: build/proj.sof
+	quartus_pgm --mode=JTAG -o 'p;build/proj.sof'
 
 # Program the flash
-flash: $(FPGA)-out/$(FPGA).pof $(FPGA).cdf
-	quartus_pgm $(FPGA).cdf
+flash: build/proj.pof build/proj.cdf
+	quartus_pgm build/proj.cdf
 
 # Create flash-programming file
-$(FPGA)-out/$(FPGA).pof: $(FPGA)-out/$(FPGA).sof $(FPGA).cof
-	quartus_cpf -c $(FPGA).cof
+build/proj.pof: build/proj.sof build/proj.cof
+	quartus_cpf -c build/proj.cof
 
+# Clean up
 clean: FORCE
-	rm -rf *-out c5_pin_model_dump.txt db incremental_db
+	rm -rf build
 
 FORCE:

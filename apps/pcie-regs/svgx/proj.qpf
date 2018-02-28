@@ -27,4 +27,4 @@ QUARTUS_VERSION = "13.1"
 DATE = "17:25:49  March 30, 2014"
 
 # Revisions
-PROJECT_REVISION = "gt"
+PROJECT_REVISION = "proj"

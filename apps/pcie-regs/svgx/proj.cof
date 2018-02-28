@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="US-ASCII" standalone="yes"?>
 <cof>
 	<eprom_name>CFI_1GB</eprom_name>
-	<output_filename>gt-out/gt.pof</output_filename>
+	<output_filename>build/proj.pof</output_filename>
 	<n_pages>2</n_pages>
 	<width>1</width>
 	<mode>10</mode>
@@ -10,7 +10,7 @@
 		<user_name>Page_0</user_name>
 		<page_flags>1</page_flags>
 		<bit0>
-			<sof_filename>gt-out/gt.sof</sof_filename> 
+			<sof_filename>build/proj.sof</sof_filename> 
 		</bit0>
 	</sof_data>
 	<sof_data>
@@ -18,7 +18,7 @@
 		<user_name>Page_1</user_name>
 		<page_flags>2</page_flags>
 		<bit0>
-			<sof_filename>gt-out/gt.sof</sof_filename> 
+			<sof_filename>build/proj.sof</sof_filename> 
 		</bit0>
 	</sof_data>
 	<version>10</version>
