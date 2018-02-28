@@ -15,8 +15,7 @@
 #
 MODULE="fpgalink"
 DEVICE="fpga0"
-MODE="664"
-GROUP="users"
+MODE="666"
 
 # Go to script directory
 cd $(dirname $0)
@@ -30,5 +29,4 @@ MAJOR=$(awk "\$2==\"${DEVICE}\" {print \$1}" /proc/devices)
 # Remove stale nodes and replace them, then give gid and perms
 rm -f /dev/${DEVICE}
 mknod /dev/${DEVICE} c ${MAJOR} 0
-chgrp ${GROUP} /dev/${DEVICE}
-chmod ${MODE}  /dev/${DEVICE}
+chmod ${MODE} /dev/${DEVICE}
