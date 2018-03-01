@@ -962,7 +962,6 @@ architecture rtl of pcie is
 	signal pllLocked          : std_logic;
 	signal tl_cfg_add         : std_logic_vector(3 downto 0);
 	signal tl_cfg_ctl         : std_logic_vector(31 downto 0);
-	signal tl_cfg_ctl_wr      : std_logic;
 	signal fiData             : std_logic_vector(65 downto 0);
 	signal fiValid            : std_logic;
 	signal foData             : std_logic_vector(65 downto 0);
@@ -1777,7 +1776,7 @@ begin
 			rstn             => '1',
 			tl_cfg_add       => tl_cfg_add,
 			tl_cfg_ctl       => tl_cfg_ctl,
-			tl_cfg_ctl_wr    => tl_cfg_ctl_wr,
+			tl_cfg_ctl_wr    => '0',
 			tl_cfg_sts       => (others => '0'),
 			tl_cfg_sts_wr    => '0',
 			cfg_busdev       => cfgBusDev_out  -- 13-bit device ID assigned to the FPGA on enumeration

@@ -12,7 +12,7 @@ EN_SWAP      := false
 all: build/proj.sof
 
 build/proj.sof: build/proj.qpf
-	LD_PRELOAD=../../ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
+	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
 
 # Launch the Quartus GUI
 ide: build/proj.qpf

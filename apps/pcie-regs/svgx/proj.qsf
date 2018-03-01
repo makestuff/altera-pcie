@@ -36,7 +36,6 @@ set_instance_assignment -name IO_STANDARD "HCSL" -to pcieRefClk_in
 
 # PCI Express reset
 set_location_assignment PIN_W26 -to pciePERST_in
-set_instance_assignment -name IO_STANDARD "3.3 V" -to pciePERST_in
 
 # PCI Express RX channel
 set_location_assignment PIN_AL33 -to pcieRX_in[0]
