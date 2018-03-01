@@ -21,9 +21,9 @@ file delete -force work
 vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 
-vcom -93   -novopt ../tlp_core.vhdl -check_synthesis -work makestuff
-vcom -2008 -novopt tlp_core_tb.vhdl
-vsim -t ps -novopt tlp_core_tb
+vcom -93   -novopt ../tlp_xcvr.vhdl -check_synthesis -work makestuff
+vcom -2008 -novopt tlp_xcvr_tb.vhdl
+vsim -t ps -novopt tlp_xcvr_tb
 
 add wave -div "Clock, config & interrupt signals"
 add wave      uut/pcieClk_in

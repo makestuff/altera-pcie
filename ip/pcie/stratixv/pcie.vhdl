@@ -18,10 +18,12 @@
 --
 -- Try diffing with the pcie/testbench/pcie_tb/simulation/submodules/pcie.vhd you get from qsys-generate of a VHDL testbench:
 --
--- cd ${MAKESTUFF}/ip/pcie
--- $ALTERA/sopc_builder/bin/qsys-generate --testbench=STANDARD --testbench-simulation=VHDL --allow-mixed-language-testbench-simulation pcie.qsys
--- $ALTERA/sopc_builder/bin/qsys-generate --synthesis=VHDL pcie.qsys
--- meld pcie/testbench/pcie_tb/simulation/submodules/pcie.vhd pcie.vhdl
+-- mkdir try
+-- cd try
+-- cp ../pcie.qsys .
+-- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=VHDL --allow-mixed-language-testbench-simulation pcie.qsys
+-- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --synthesis=VHDL pcie.qsys
+-- meld pcie/testbench/pcie_tb/simulation/submodules/pcie.vhd ../pcie.vhdl
 --
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -979,7 +981,7 @@ begin
 			set_pld_clk_x1_625MHz_hwtcl               => 0,
 			use_ast_parity                           => 0,
 			multiple_packets_per_cycle_hwtcl         => 0,
-			in_cvp_mode_hwtcl                         => 1,
+			in_cvp_mode_hwtcl                        => 0,
 			use_pci_ext_hwtcl                        => 0,
 			use_pcie_ext_hwtcl                       => 0,
 			use_config_bypass_hwtcl                  => 0,
@@ -988,14 +990,14 @@ begin
 			hip_tag_checking_hwtcl                   => 1,
 			enable_power_on_rst_pulse_hwtcl          => 0,
 			enable_pcisigtest_hwtcl                  => 0,
-			bar0_size_mask_hwtcl                     => 11,
+			bar0_size_mask_hwtcl                     => 12,
 			bar0_io_space_hwtcl                      => "Disabled",
-			bar0_64bit_mem_space_hwtcl               => "Enabled",
-			bar0_prefetchable_hwtcl                  => "Enabled",
+			bar0_64bit_mem_space_hwtcl               => "Disabled",
+			bar0_prefetchable_hwtcl                  => "Disabled",
 			bar1_size_mask_hwtcl                     => 0,
 			bar1_io_space_hwtcl                      => "Disabled",
 			bar1_prefetchable_hwtcl                  => "Disabled",
-			bar2_size_mask_hwtcl                     => 10,
+			bar2_size_mask_hwtcl                     => 0,
 			bar2_io_space_hwtcl                      => "Disabled",
 			bar2_64bit_mem_space_hwtcl               => "Disabled",
 			bar2_prefetchable_hwtcl                  => "Disabled",

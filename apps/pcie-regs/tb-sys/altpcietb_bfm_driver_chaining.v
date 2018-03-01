@@ -117,7 +117,7 @@ module altpcietb_bfm_driver_chaining (
 		);
 
 		// Find the BAR to use to talk to the FPGA
-		find_mem_bar(BAR_TABLE, 6'b001100, 8, fpga_bar);
+		find_mem_bar(BAR_TABLE, 6'b000001, 8, fpga_bar);
 
 		// Write six dwords to registers 2, 3, 4, 5, 6 & 7
 		unused_result = ebfm_display(EBFM_MSG_INFO, "Test writes...");

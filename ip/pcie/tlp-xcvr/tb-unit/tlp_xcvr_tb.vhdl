@@ -25,10 +25,10 @@ use std.textio.all;
 library makestuff;
 use makestuff.hex_util.all;
 
-entity tlp_core_tb is
+entity tlp_xcvr_tb is
 end entity;
 
-architecture behavioural of tlp_core_tb is
+architecture behavioural of tlp_xcvr_tb is
 	-- Constants
 	constant REG_ABITS        : natural := 3;
 	
@@ -67,7 +67,7 @@ architecture behavioural of tlp_core_tb is
 	signal regArray_next      : RegArrayType;
 begin
 	-- Instantiate the memory controller for testing
-	uut: entity makestuff.tlp_core
+	uut: entity makestuff.tlp_xcvr
 		generic map (
 			REG_ABITS        => REG_ABITS
 		)

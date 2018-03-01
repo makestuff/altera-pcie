@@ -22,7 +22,7 @@ use ieee.numeric_std.all;
 
 library makestuff;
 
-entity tlp_core is
+entity tlp_xcvr is
 	generic (
 		REG_ABITS             : natural
 	);
@@ -65,7 +65,7 @@ entity tlp_core is
 	);
 end entity;
 
-architecture rtl of tlp_core is
+architecture rtl of tlp_xcvr is
 	-- Return (ha-1)/2. The ha will always be odd.
 	function fpga_addr(ha : std_logic_vector(REG_ABITS downto 0)) return std_logic_vector is
 		variable x : unsigned(REG_ABITS downto 0);

@@ -19,9 +19,6 @@
 #
 # Generate IP, and (if "-c" given), compile ModelSim libraries: (./build.sh 2>&1) > build.log
 
-#FAMILY="Cyclone V"
-FAMILY="Stratix V"
-
 if [ "$#" -eq "1" -a "$1" != "-c" ]; then
   echo "Synopsis: $0 [-c]"
   exit 1
@@ -46,13 +43,13 @@ echo
 
 # Generate IP:
 echo "Starting PCIe IP generation..."
-cd pcie
-$ALTERA/sopc_builder/bin/qsys-generate --family="$FAMILY" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie.qsys
-$ALTERA/sopc_builder/bin/qsys-generate --family="$FAMILY" --synthesis=Verilog pcie.qsys
+cd pcie/stratixv
+$ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie.qsys
+$ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --synthesis=Verilog pcie.qsys
 sed -i s/DUT_pcie_tb/pcie_tb/g          pcie/testbench/mentor/msim_setup.tcl
 sed -i s/DUT/pcie/g                     pcie/testbench/mentor/msim_setup.tcl
 sed -i /altpcietb_bfm_driver_chaining/d pcie/testbench/mentor/msim_setup.tcl
-cd ..
+cd ../..
 echo
 
 if [ "$#" -eq "1" -a "$1" = "-c" ]; then

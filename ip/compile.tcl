@@ -17,9 +17,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 # vsim -c -do compile.tcl > compile.log
-set QSYS_SIMDIR "pcie/pcie/testbench"
+set QSYS_SIMDIR "pcie/stratixv/pcie/testbench"
 set QUARTUS_INSTALL_DIR $env(ALTERA)
-do pcie/pcie/testbench/mentor/msim_setup.tcl
+do pcie/stratixv/pcie/testbench/mentor/msim_setup.tcl
 dev_com
 com
 
@@ -50,8 +50,8 @@ vcom -93   -novopt dvr-rng/rng_n2048_r64_t3_k32_s5f81cb.vhdl -check_synthesis -w
 vcom -93   -novopt dvr-rng/dvr_rng64.vhdl                    -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/rng_n3060_r96_t3_k32_s79e56.vhdl  -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng96.vhdl                    -check_synthesis -work makestuff
-vcom -93   -novopt pcie/pcie.vhdl                            -check_synthesis -work makestuff
-vcom -93   -novopt pcie/tlp_core.vhdl                        -check_synthesis -work makestuff
+vcom -93   -novopt pcie/stratixv/pcie.vhdl                   -check_synthesis -work makestuff
+vcom -93   -novopt pcie/tlp-xcvr/tlp_xcvr.vhdl               -check_synthesis -work makestuff
 vcom -93   -novopt reg-mux/reg_mux.vhdl                      -check_synthesis -work makestuff
 
 # And exit

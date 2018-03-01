@@ -22,10 +22,10 @@ vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 vmap work_lib work
 
-vlog +incdir+$env(MAKESTUFF)/ip/pcie/pcie/testbench/pcie_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
-vcom -93   -novopt ../../../ip/pcie/pcie.vhdl     -check_synthesis -work makestuff
-#vcom -93   -novopt ../../../ip/pcie/tlp_core.vhdl -check_synthesis -work makestuff
-vcom -93   -novopt ../pcie_app.vhdl               -check_synthesis
+vlog +incdir+$env(MAKESTUFF)/ip/pcie/stratixv/pcie/testbench/pcie_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+vcom -93   -novopt ../../../ip/pcie/stratixv/pcie.vhdl     -check_synthesis -work makestuff
+#vcom -93   -novopt ../../../ip/pcie/tlp-xcvr/tlp_xcvr.vhdl -check_synthesis -work makestuff
+vcom -93   -novopt ../pcie_app.vhdl                        -check_synthesis
 vcom -2008 -novopt pcie_tb.vhdl
 
 vsim -novopt -t ps -gEN_SWAP=false \

@@ -64,7 +64,7 @@ architecture rtl of pcie_app is
 	signal regArray_next      : RegArrayType;
 begin
 	-- TLP-level interface
-	tlp_inst: entity makestuff.tlp_core
+	tlp_inst: entity makestuff.tlp_xcvr
 		generic map (
 			REG_ABITS        => REG_ABITS
 		)
