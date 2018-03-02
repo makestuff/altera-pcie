@@ -20,10 +20,10 @@
 --
 -- mkdir try
 -- cd try
--- cp ../pcie.qsys .
--- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=VHDL --allow-mixed-language-testbench-simulation pcie.qsys
--- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --synthesis=VHDL pcie.qsys
--- meld pcie/testbench/pcie_tb/simulation/submodules/pcie.vhd ../pcie.vhdl
+-- cp ../pcie_sv.qsys .
+-- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=VHDL --allow-mixed-language-testbench-simulation pcie_sv.qsys
+-- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --synthesis=VHDL pcie_sv.qsys
+-- meld pcie_sv/testbench/pcie_sv_tb/simulation/submodules/pcie_sv.vhd ../pcie_sv.vhdl
 --
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -31,7 +31,7 @@ use IEEE.numeric_std.all;
 
 library makestuff;
 
-entity pcie is
+entity pcie_sv is
 	port (
 		-- Clock, resets, PCIe physical RX & TX
 		pcieRefClk_in          : in  std_logic := '0';
@@ -141,9 +141,9 @@ entity pcie is
 		sim_txswing2_out       : out std_logic;
 		sim_txswing3_out       : out std_logic
 	);
-end entity pcie;
+end entity pcie_sv;
 
-architecture rtl of pcie is
+architecture rtl of pcie_sv is
 	-- Declare the actual PCIe IP block
 	component altpcie_sv_hip_ast_hwtcl is
 		generic (

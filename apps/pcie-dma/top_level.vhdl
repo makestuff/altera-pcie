@@ -52,7 +52,7 @@ architecture structural of top_level is
 	signal txEOP              : std_logic;
 begin
 	-- PCI Express Hard-IP
-	pcie_inst: entity makestuff.pcie
+	pcie_inst: entity makestuff.pcie_sv
 		port map (
 			-- External connections
 			pcieRefClk_in    => pcieRefClk_in,

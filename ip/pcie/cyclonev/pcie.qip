@@ -1,0 +1,4 @@
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "pcie_cv/synthesis/pcie_cv.qip"]
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "../../buffer-fifo/buffer_fifo.qip"]
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "../tlp-xcvr/tlp_xcvr.qip"]
+set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) "pcie_cv.vhdl"] -library makestuff

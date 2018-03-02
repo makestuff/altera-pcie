@@ -17,11 +17,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 # vsim -c -do compile.tcl > compile.log
-set QSYS_SIMDIR "pcie/stratixv/pcie/testbench"
 set QUARTUS_INSTALL_DIR $env(ALTERA)
-do pcie/stratixv/pcie/testbench/mentor/msim_setup.tcl
+set QSYS_SIMDIR "pcie/stratixv/pcie_sv/testbench"
+do $QSYS_SIMDIR/mentor/msim_setup.tcl
 dev_com
 com
+vlog $QSYS_SIMDIR/pcie_sv_tb/simulation/submodules/altpcierd_tl_cfg_sample.v -work pcie_sv
+
+set QSYS_SIMDIR "pcie/cyclonev/pcie_cv/testbench"
+do $QSYS_SIMDIR/mentor/msim_setup.tcl
+dev_com
+com
+vlog $QSYS_SIMDIR/pcie_cv_tb/simulation/submodules/altpcierd_tl_cfg_sample.v -work pcie_cv
 
 # Configure mappings
 proc ensure_lib { lib } { if ![file isdirectory $lib] { vlib $lib } }
@@ -31,9 +38,8 @@ ensure_lib           ./libraries/makestuff/
 vmap       makestuff ./libraries/makestuff/
 
 # Compile Altera VHDL components
-vcom               $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf_components.vhd            -work altera_mf
-vcom               $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf.vhd                       -work altera_mf
-vlog               $QSYS_SIMDIR/pcie_tb/simulation/submodules/altpcierd_tl_cfg_sample.v -work pcie
+vcom $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf_components.vhd -work altera_mf
+vcom $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf.vhd            -work altera_mf
 
 # Compile MakeStuff components
 vcom -93   -novopt util/util_pkg.vhdl                        -check_synthesis -work makestuff
@@ -50,7 +56,8 @@ vcom -93   -novopt dvr-rng/rng_n2048_r64_t3_k32_s5f81cb.vhdl -check_synthesis -w
 vcom -93   -novopt dvr-rng/dvr_rng64.vhdl                    -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/rng_n3060_r96_t3_k32_s79e56.vhdl  -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng96.vhdl                    -check_synthesis -work makestuff
-vcom -93   -novopt pcie/stratixv/pcie.vhdl                   -check_synthesis -work makestuff
+vcom -93   -novopt pcie/stratixv/pcie_sv.vhdl                -check_synthesis -work makestuff
+vcom -93   -novopt pcie/cyclonev/pcie_cv.vhdl                -check_synthesis -work makestuff
 vcom -93   -novopt pcie/tlp-xcvr/tlp_xcvr.vhdl               -check_synthesis -work makestuff
 vcom -93   -novopt reg-mux/reg_mux.vhdl                      -check_synthesis -work makestuff
 

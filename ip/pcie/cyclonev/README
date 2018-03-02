@@ -1,7 +1,7 @@
-The pcie_sv.qsys design was based on an Altera PCIe design example. I just did this:
+The pcie_cv.qsys design was based on an Altera PCIe design example. I just did this:
 
-  cp $ALTERA/../ip/altera/altera_pcie/altera_pcie_hip_ast_ed/example_design/sv/pcie_de_gen1_x4_ast64.qsys pcie_sv.qsys
-  $ALTERA/sopc_builder/bin/qsys-edit --family="Stratix V" pcie_sv.qsys
+  cp $ALTERA/../ip/altera/altera_pcie/altera_pcie_hip_ast_ed/example_design/cv/pcie_de_gen1_x4_ast64.qsys pcie_cv.qsys
+  $ALTERA/sopc_builder/bin/qsys-edit --family="Cyclone V" pcie_cv.qsys
 
 Then, in QSys:
   * Delete pcie_reconfig_driver_0 (i.e select it and hit <Del>).

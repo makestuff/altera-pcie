@@ -343,7 +343,7 @@ begin
 		);
 
 	-- The actual PCIe Hard-IP
-	ep_inst: entity makestuff.pcie
+	ep_inst: entity makestuff.pcie_sv
 		port map (
 			-- Clock & resets
 			pcieRefClk_in    => pcieRefClk,
