@@ -18,10 +18,12 @@
 --
 -- Try diffing with pcie/testbench/pcie_tb/simulation/pcie_tb.vhd you get from qsys-generate of a VHDL testbench:
 --
--- cd ${MAKESTUFF}/ip/pcie
--- $ALTERA/sopc_builder/bin/qsys-generate --testbench=STANDARD --testbench-simulation=VHDL --allow-mixed-language-testbench-simulation pcie.qsys
--- $ALTERA/sopc_builder/bin/qsys-generate --synthesis=VHDL pcie.qsys
--- meld pcie/testbench/pcie_tb/simulation/pcie_tb.vhd ../../apps/${APP}/tb-sys/pcie_tb.vhdl
+-- mkdir try
+-- cd try/
+-- cp -rp ../../../../ip/pcie/stratixv/pcie_sv.qsys .
+-- $ALTERA/sopc_builder/bin/qsys-edit --family="Stratix V" pcie_sv.qsys
+-- $ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=VHDL --allow-mixed-language-testbench-simulation pcie_sv.qsys
+-- meld pcie_sv/testbench/pcie_sv_tb/simulation/pcie_sv_tb.vhd ../pcie_sv_tb.vhdl
 --
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -29,10 +31,10 @@ use IEEE.numeric_std.all;
 
 library makestuff;
 
-entity pcie_tb is
-end entity pcie_tb;
+entity pcie_sv_tb is
+end entity pcie_sv_tb;
 
-architecture rtl of pcie_tb is
+architecture rtl of pcie_sv_tb is
 	component altpcie_tbed_sv_hwtcl is
 		generic (
 			lane_mask_hwtcl                      : string  := "x4";
@@ -637,4 +639,4 @@ begin
 			tlbfm_in         => "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", -- (terminated)
 			tlbfm_out        => open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         -- (terminated)
 		);
-end architecture rtl; -- of pcie_tb
+end architecture rtl; -- of pcie_sv_tb

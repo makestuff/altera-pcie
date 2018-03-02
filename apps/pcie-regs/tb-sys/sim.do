@@ -18,12 +18,12 @@
 #
 
 set IP_DIR "$env(MAKESTUFF)/ip"
-if {![info exists ::env(EN_SWAP)]} {
-  puts "\nYou need to set the EN_SWAP environment variable!\n"
-  quit
-}
 if {![info exists ::env(FPGA)]} {
   puts "\nYou need to set the FPGA environment variable!\n"
+  quit
+}
+if {![info exists ::env(EN_SWAP)]} {
+  puts "\nYou need to set the EN_SWAP environment variable!\n"
   quit
 }
 

@@ -16,24 +16,48 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+
+set IP_DIR "$env(MAKESTUFF)/ip"
+if {![info exists ::env(FPGA)]} {
+  puts "\nYou need to set the FPGA environment variable!\n"
+  quit
+}
+
 file delete -force modelsim.ini
 file delete -force work
-vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
+vmap -modelsimini $IP_DIR/sim-libs/modelsim.ini -c
 vlib work
 vmap work_lib work
 
-vlog +incdir+$env(MAKESTUFF)/ip/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
-vcom -93   -novopt ../../../ip/pcie/stratixv/pcie_sv.vhdl     -check_synthesis -work makestuff
-#vcom -93   -novopt ../../../ip/pcie/tlp-xcvr/tlp_xcvr.vhdl -check_synthesis -work makestuff
-vcom -93   -novopt ../pcie_app.vhdl               -check_synthesis
-vcom -2008 -novopt pcie_tb.vhdl
+vcom -93 -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.vhdl -check_synthesis -work makestuff
+vcom -93 -novopt ../pcie_app.vhdl                    -check_synthesis
 
-vsim -novopt -t ps \
-  -L work -L work_lib -L altera_common_sv_packages -L pcie_sv -L pcie_sv_tb \
-  -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
-  -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
-  -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver \
-  pcie_tb
+if {$env(FPGA) in [list "svgx"]} {
+  # Do a Stratix V simulation
+  vlog +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+  vcom -93 -novopt $IP_DIR/pcie/stratixv/pcie_sv.vhdl -check_synthesis -work makestuff
+  vcom -2008 -novopt pcie_sv_tb.vhdl
+  vsim -novopt -t ps \
+    -L work -L work_lib -L pcie_sv -L pcie_sv_tb \
+    -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
+    -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
+    -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver \
+    pcie_sv_tb
+} elseif {$env(FPGA) in [list "cvgt"]} {
+  # Do a Cyclone V simulation
+  vcom -93 -novopt $IP_DIR/pcie/cyclonev/pcie_cv.vhdl -check_synthesis -work makestuff
+  vlog +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+  vcom -2008 -novopt pcie_cv_tb.vhdl
+  vsim -novopt -t ps \
+    -L work -L work_lib -L pcie_cv -L pcie_cv_tb \
+    -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
+    -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
+    -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
+    pcie_cv_tb
+} else {
+  puts "\nUnrecognised FPGA: \"$env(FPGA)\"!\n"
+  quit
+}
 
 add wave      pcie_app/pcieClk_in
 add wave -hex pcie_app/cfgBusDev_in
@@ -60,12 +84,16 @@ add wave -hex pcie_app/tlp_inst/dmaAddr
 add wave -hex pcie_app/tlp_inst/tlpCount
 add wave -hex pcie_app/tlp_inst/qwCount
 
-configure wave -namecolwidth 235
-configure wave -valuecolwidth 105
-onbreak resume
-run -all
-view wave
-bookmark add wave default {{56120ns} {56280ns}}
-bookmark goto wave default
-wave refresh
-echo Done
+if {[info exists ::env(GUI)] && $env(GUI)} {
+  configure wave -namecolwidth 235
+  configure wave -valuecolwidth 105
+  onbreak resume
+  run -all
+  view wave
+  bookmark add wave default {{56120ns} {56280ns}}
+  bookmark goto wave default
+  wave refresh
+} else {
+  run -all
+  quit
+}
