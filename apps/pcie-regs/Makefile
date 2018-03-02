@@ -1,5 +1,5 @@
 # Build like:
-#   make FPGA=svgx EN_SWAP=true
+#   make FPGA=cvgt EN_SWAP=true
 #
 
 # FPGA device
