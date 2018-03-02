@@ -28,7 +28,7 @@ set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
 set_global_assignment -name SDC_FILE  "../top_level.sdc"
 set_global_assignment -name QIP_FILE  "../../../ip/pcie/stratixv/pcie.qip"
 set_global_assignment -name VHDL_FILE "../pcie_app.vhdl"
-set_global_assignment -name VHDL_FILE "../top_level.vhdl"
+set_global_assignment -name VHDL_FILE "top_level.vhdl"
 
 # PCI Express 125MHz reference clock
 set_location_assignment PIN_W29 -to pcieRefClk_in
