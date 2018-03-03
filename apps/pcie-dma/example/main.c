@@ -43,7 +43,7 @@ int main(void) {
 	int retVal = 0, dev;
 	uint32_t result;
 	#ifdef BENCHMARK
-		uint32_t times[256];
+		uint32_t times[NUM_XFERS];
 	#else
 		uint64_t buf[NUM_TLPS*TLP_SIZE/sizeof(uint64_t)];
 	#endif
