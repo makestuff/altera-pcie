@@ -78,7 +78,13 @@ add wave      pcie_app/txReady_in
 add wave      pcie_app/txSOP_out
 add wave      pcie_app/txEOP_out
 
-add wave -div "Internals"
+add wave -div "App Internals"
+add wave      pcie_app/cpuReading
+add wave      pcie_app/cpuWriting
+add wave      pcie_app/cpuChannel
+add wave -hex pcie_app/counter
+
+add wave -div "TLP Internals"
 add wave      pcie_app/tlp_inst/state
 add wave -hex pcie_app/tlp_inst/dmaAddr
 add wave -hex pcie_app/tlp_inst/tlpCount

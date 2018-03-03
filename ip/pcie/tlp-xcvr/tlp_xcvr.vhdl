@@ -222,6 +222,8 @@ begin
 			-- Host is writing
 			when S_WRITE =>
 				if ( foValid = '1' ) then
+					cpuChan_out <= cpuChan;
+					cpuWrValid_out <= '1';
 					if ( cpuChan = DMA_ADDR_REG ) then
 						state_next <= S_IDLE;
 						foReady <= '1';
@@ -232,9 +234,7 @@ begin
 						foReady <= '1';
 						tlpCount_next <= unsigned(foData(41 downto 32));
 					else
-						cpuChan_out <= cpuChan;
 						cpuWrData_out <= foData(63 downto 32);
-						cpuWrValid_out <= '1';
 						if ( cpuWrReady_in = '1') then
 							-- 2nd qword of request is available, and the application pipe is ready to
 							-- receive a dword.

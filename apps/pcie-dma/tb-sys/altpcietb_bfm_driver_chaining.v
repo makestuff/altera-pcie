@@ -170,8 +170,11 @@ module altpcietb_bfm_driver_chaining (
 		ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMABASE, 32'h00000020, 4, 0);  // DMA address (0x20)
 		ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMACTRL, 32'h00000001, 4, 0);  // DMA control (one 128-byte TLP)
 
-		// Wait for an MSI signalling DMA complete
+		// Wait for the FPGA to signal DMA complete
 		poll_dma(0*8+32, DMA_COMPLETE_TOKEN);
+
+		// Read counter value
+		ebfm_barrd_wait(BAR_TABLE, fpga_bar, 1*8+4, 0, 4, 0);
 
 		// Read stuff written to RC-memory
 		unused_result = ebfm_display(EBFM_MSG_INFO, "Readback:");
@@ -187,7 +190,7 @@ module altpcietb_bfm_driver_chaining (
 		end
 		unused_result = ebfm_display(EBFM_MSG_INFO, "DMA test PASSED!");
 
-		unused_result = ebfm_display(EBFM_MSG_INFO, {"QW[0]: ", himage16(shmem_read(0*8+32+64, 8))});
+		unused_result = ebfm_display(EBFM_MSG_INFO, {"Counter: 0x", himage8(shmem_read(0, 4)), "; QW[0]: 0x", himage16(shmem_read(0*8+32+64, 8))});
 		for ( i = 0; i < 31; i = i + 1 ) begin
 			// Next TLP
 			ebfm_barwr_imm(BAR_TABLE, fpga_bar, DMABASE, 32'h00000020, 4, 0);  // DMA address (0x20)
@@ -196,8 +199,11 @@ module altpcietb_bfm_driver_chaining (
 			// Wait for an MSI signalling DMA complete
 			poll_dma(0*8+32, DMA_COMPLETE_TOKEN);
 
+			// Read counter value
+			ebfm_barrd_wait(BAR_TABLE, fpga_bar, 1*8+4, 0, 4, 0);
+
 			// Read stuff written to RC-memory
-			unused_result = ebfm_display(EBFM_MSG_INFO, {"QW[0]: ", himage16(shmem_read(0*8+32+64, 8))});
+			unused_result = ebfm_display(EBFM_MSG_INFO, {"Counter: 0x", himage8(shmem_read(0, 4)), "; QW[0]: 0x", himage16(shmem_read(0*8+32+64, 8))});
 		end
 
 		// Stop simulation

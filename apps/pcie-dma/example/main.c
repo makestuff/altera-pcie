@@ -16,6 +16,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+#define _BSD_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -29,14 +30,23 @@
 #define PAGE_SIZE 4096
 #define TLP_SIZE 128
 
+#define NUM_TLPS 1    // 16 TLPs = 16*128 = 2048 bytes
+#define NUM_XFERS 16
+//#define BENCHMARK
+//#define CALIBRATE
+
 // FPGA hardware registers
 #define DMABASE(x) ((x)+0*2+1)
 #define DMACTRL(x) ((x)+1*2+1)
 
 int main(void) {
 	int retVal = 0, dev;
-	uint64_t buf[16*TLP_SIZE/sizeof(uint64_t)];
 	uint32_t result;
+	#ifdef BENCHMARK
+		uint32_t times[256];
+	#else
+		uint64_t buf[NUM_TLPS*TLP_SIZE/sizeof(uint64_t)];
+	#endif
 
 	// Connect to the kernel driver...
 	dev = open("/dev/fpga0", O_RDWR|O_SYNC);
@@ -63,8 +73,8 @@ int main(void) {
 	// Reset the RNG
 	result = *DMABASE(fpgaBase);
 
-	// Fetch 16 packets
-	for (int j = 0; j < 16; j++) {
+	// Fetch NUM_XFERS blocks of data
+	for (int j = 0; j < NUM_XFERS; j++) {
 		// Zero the semaphore QW
 		dmaBaseVA[0] = 0ULL;
 
@@ -72,7 +82,7 @@ int main(void) {
 		*DMABASE(fpgaBase) = dmaBaseBA;
 
 		// Tell the FPGA to DMA an entire page into the buffer.
-		*DMACTRL(fpgaBase) = 16;  // 16 TLPs = 16*128 = 2048 bytes
+		*DMACTRL(fpgaBase) = NUM_TLPS;
 
 		// Prevent CPU doing StoreLoad reordering (i.e we want the previous write to be done before
 		// the following read).
@@ -81,16 +91,30 @@ int main(void) {
 		// Wait until the FPGA flags DMA-complete
 		while (dmaBaseVA[0] == 0ULL);  // spin
 
-		// Copy the data out of the buffer, somewhere else (as a surrogate for "processing it").
-		memcpy(buf, (const uint64_t*)dmaBaseVA + 8, sizeof(buf));
+		#ifdef BENCHMARK
+			#ifdef CALIBRATE
+				usleep(1000000);
+			#endif
+			times[j] = *DMACTRL(fpgaBase);
+		#else
+			// Copy the data out of the buffer, somewhere else (as a surrogate for "processing it").
+			memcpy(buf, (const uint64_t*)dmaBaseVA + 8, sizeof(buf));
 
-		// And finally, log what we got
-		printf("Block[%d]:\n", j);
-		for (size_t i = 0; i < sizeof(buf)/sizeof(*buf); ++i) {
-			printf("  0x%016" PRIX64 "\n", buf[i]);
+			// And finally, log what we got
+			printf("Block[%d]:\n", j);
+			for (size_t i = 0; i < sizeof(buf)/sizeof(*buf); ++i) {
+				printf("  0x%016" PRIX64 "\n", buf[i]);
+			}
+			printf("\n");
+		#endif
+	}
+	#ifdef BENCHMARK
+		printf("%d", times[0]);
+		for (int j = 1; j < NUM_XFERS; j++) {
+			printf(", %d", times[j]);
 		}
 		printf("\n");
-	}
+	#endif
 
 dev_close:
 	close(dev);

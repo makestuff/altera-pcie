@@ -46,13 +46,16 @@ entity pcie_app is
 end entity;
 
 architecture structural of pcie_app is
-	constant REG_ABITS        : natural := 1;  -- DMABASE & DMACTRL
+	constant REG_ABITS        : natural := 1;  -- just DMABASE & DMACTRL
 	signal dmaData            : std_logic_vector(63 downto 0);
 	signal dmaValid           : std_logic;
 	signal dmaReady           : std_logic;
 	signal cpuReading         : std_logic;
-	signal cpuChannel         : std_logic;  --_vector(REG_ABITS-1 downto 0);
+	signal cpuWriting         : std_logic;
+	signal cpuChannel         : std_logic;  -- std_logic_vector(REG_ABITS-1 downto 0);
 	signal rngReset           : std_logic;
+	signal counter            : std_logic_vector(31 downto 0) := (others => '0');
+	signal counter_next       : std_logic_vector(31 downto 0);
 begin
 	-- Instantiate random-number generator
 	rng: entity makestuff.dvr_rng64
@@ -91,8 +94,9 @@ begin
 
 			-- Internal read/write interface
 			cpuChan_out(0)   => cpuChannel,
-			cpuWrReady_in    => '0',
-			cpuRdData_in     => x"CAFEF00D",  -- reading from DMABASE or DMACTRL returns CAFEF00D
+			cpuWrValid_out   => cpuWriting,
+			cpuWrReady_in    => '1',
+			cpuRdData_in     => counter,  -- all reads return the counter value
 			cpuRdValid_in    => '1',
 			cpuRdReady_out   => cpuReading,
 
@@ -102,7 +106,20 @@ begin
 			dmaReady_out     => dmaReady
 		);
 
+	-- Infer counter register
+	process(pcieClk_in)
+	begin
+		if ( rising_edge(pcieClk_in) ) then
+			counter <= counter_next;
+		end if;
+	end process;
+
 	-- Reset the RNG when reading register DMABASE
 	rngReset <= cpuReading and not cpuChannel;
+
+	-- Reset the counter when writing register DMACTRL
+	counter_next <=
+		(others => '0') when cpuWriting = '1' and cpuChannel = '1'
+		else std_logic_vector(unsigned(counter) + 1);
 
 end architecture;
