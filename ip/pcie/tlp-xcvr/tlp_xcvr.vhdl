@@ -30,8 +30,6 @@ entity tlp_xcvr is
 		-- Clock, config & interrupt signals
 		pcieClk_in            : in  std_logic;  -- 125MHz core clock from PCIe PLL
 		cfgBusDev_in          : in  std_logic_vector(12 downto 0);  -- the device ID assigned to the FPGA on enumeration
-		msiReq_out            : out std_logic;
-		msiAck_in             : in  std_logic;
 
 		-- Incoming messages from the CPU
 		rxData_in             : in  std_logic_vector(63 downto 0);
@@ -188,7 +186,6 @@ begin
 		cpuWrValid_out <= '0';
 		cpuRdReady_out <= '0';
 		dmaReady_out <= '0';
-		msiReq_out <= '0';
 
 		-- State machine
 		case state is

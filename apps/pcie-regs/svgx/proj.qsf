@@ -18,6 +18,8 @@ set_global_assignment -name ACTIVE_SERIAL_CLOCK FREQ_100MHZ
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 256
+set_global_assignment -name MESSAGE_DISABLE 18236
+set_global_assignment -name MESSAGE_DISABLE 332189
 
 set_global_assignment -name TOP_LEVEL_ENTITY top_level
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1.4
@@ -25,10 +27,10 @@ set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:25:49  MARCH 30, 2014
 set_global_assignment -name LAST_QUARTUS_VERSION "16.1.2 Standard Edition"
 
 # Design files
-set_global_assignment -name SDC_FILE  "../top_level.sdc"
-set_global_assignment -name QIP_FILE  "../../../ip/pcie/stratixv/pcie.qip"
-set_global_assignment -name VHDL_FILE "../pcie_app.vhdl"
-set_global_assignment -name VHDL_FILE "top_level.vhdl"
+set_global_assignment -name SDC_FILE           "../top_level.sdc"
+set_global_assignment -name QIP_FILE           "../../../ip/pcie/stratixv/pcie.qip"
+set_global_assignment -name VHDL_FILE          "../pcie_app.vhdl"
+set_global_assignment -name SYSTEMVERILOG_FILE "top_level.sv"
 
 # PCI Express 125MHz reference clock
 set_location_assignment PIN_W29 -to pcieRefClk_in

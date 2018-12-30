@@ -24,13 +24,11 @@ library makestuff;
 
 entity pcie_app is
 	generic (
-		EN_SWAP               : boolean
+		EN_SWAP               : natural
 	);
 	port (
 		pcieClk_in            : in  std_logic;  -- 125MHz clock from PCIe PLL
 		cfgBusDev_in          : in  std_logic_vector(12 downto 0);  -- the device ID assigned to the FPGA on enumeration
-		msiReq_out            : out std_logic;
-		msiAck_in             : in  std_logic;
 
 		-- Incoming requests from the CPU
 		rxData_in             : in  std_logic_vector(63 downto 0);
@@ -71,8 +69,6 @@ begin
 		port map (
 			pcieClk_in       => pcieClk_in,
 			cfgBusDev_in     => cfgBusDev_in,
-			msiReq_out       => msiReq_out,
-			msiAck_in        => msiAck_in,
 
 			-- Incoming requests from the CPU
 			rxData_in        => rxData_in,
@@ -113,7 +109,7 @@ begin
 
 	-- Register reads
 	tempData <= regArray(to_integer(to_01(unsigned(cpuChan))));
-	cpuRdData <= tempData(15 downto 0) & tempData(31 downto 16) when EN_SWAP else tempData;
+	cpuRdData <= tempData(15 downto 0) & tempData(31 downto 16) when EN_SWAP = 1 else tempData;
 	cpuRdValid <= '1';  -- always ready to supply data
 
 	-- Register update

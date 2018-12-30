@@ -26,8 +26,6 @@ entity pcie_app is
 	port (
 		pcieClk_in            : in  std_logic;  -- 125MHz clock from PCIe PLL
 		cfgBusDev_in          : in  std_logic_vector(12 downto 0);  -- the device ID assigned to the FPGA on enumeration
-		msiReq_out            : out std_logic;
-		msiAck_in             : in  std_logic;
 
 		-- Incoming requests from the CPU
 		rxData_in             : in  std_logic_vector(63 downto 0);
@@ -45,8 +43,8 @@ entity pcie_app is
 	);
 end entity;
 
-architecture structural of pcie_app is
-	constant REG_ABITS        : natural := 1;  -- just DMABASE & DMACTRL
+architecture rtl of pcie_app is
+	constant REG_ABITS        : natural := 1;  -- 2**1 = 2 (just DMABASE & DMACTRL)
 	signal dmaData            : std_logic_vector(63 downto 0);
 	signal dmaValid           : std_logic;
 	signal dmaReady           : std_logic;
@@ -75,8 +73,6 @@ begin
 		port map (
 			pcieClk_in       => pcieClk_in,
 			cfgBusDev_in     => cfgBusDev_in,
-			msiReq_out       => msiReq_out,
-			msiAck_in        => msiAck_in,
 
 			-- Incoming requests from the CPU
 			rxData_in        => rxData_in,

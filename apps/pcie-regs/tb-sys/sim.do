@@ -38,22 +38,22 @@ vcom -93 -novopt ../pcie_app.vhdl                    -check_synthesis
 
 if {$env(FPGA) in [list "svgx"]} {
   # Do a Stratix V simulation
-  vlog +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
-  vcom -93 -novopt $IP_DIR/pcie/stratixv/pcie_sv.vhdl -check_synthesis -work makestuff
-  vcom -2008 -novopt pcie_sv_tb.vhdl
+  vlog -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+  vlog -sv -novopt -hazards -lint -pedanticerrors $IP_DIR/pcie/stratixv/pcie_sv.sv -work makestuff
+  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_sv_tb.sv
   vsim -novopt -t ps -gEN_SWAP=$env(EN_SWAP) \
-    -L work -L work_lib -L pcie_sv -L pcie_sv_tb \
+    -L work -L work_lib -L makestuff -L pcie_sv -L pcie_sv_tb \
     -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
     -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
     -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver \
     pcie_sv_tb
 } elseif {$env(FPGA) in [list "cvgt"]} {
   # Do a Cyclone V simulation
-  vcom -93 -novopt $IP_DIR/pcie/cyclonev/pcie_cv.vhdl -check_synthesis -work makestuff
-  vlog +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
-  vcom -2008 -novopt pcie_cv_tb.vhdl
+  vlog     -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+  vlog -sv -novopt -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work makestuff
+  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_cv_tb.sv
   vsim -novopt -t ps -gEN_SWAP=$env(EN_SWAP) \
-    -L work -L work_lib -L pcie_cv -L pcie_cv_tb \
+    -L work -L work_lib -L makestuff -L pcie_cv -L pcie_cv_tb \
     -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
     -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
     -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
@@ -65,8 +65,6 @@ if {$env(FPGA) in [list "svgx"]} {
 
 add wave      pcie_app/pcieClk_in
 add wave -hex pcie_app/cfgBusDev_in
-add wave -hex pcie_app/msiReq_out
-add wave -hex pcie_app/msiAck_in
 
 add wave -div "RX"
 add wave -hex pcie_app/rxData_in

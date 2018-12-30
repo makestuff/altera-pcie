@@ -35,14 +35,6 @@
          type = "boolean";
       }
    }
-   element clk_0
-   {
-      datum _sortIndex
-      {
-         value = "2";
-         type = "int";
-      }
-   }
 }
 ]]></parameter>
  <parameter name="clockCrossingAdapter" value="HANDSHAKE" />
@@ -66,7 +58,6 @@
  <instanceScript></instanceScript>
  <interface name="apps_app_ctrl" internal="APPS.app_ctrl" />
  <interface name="apps_simu_mode_clkin" internal="APPS.simu_mode_clkin" />
- <interface name="clk" internal="clk_0.clk_in" type="clock" dir="end" />
  <interface name="dut_simu_mode_clkin" internal="DUT.simu_mode_clkin" />
  <interface name="dut_simu_mode_clkout" internal="DUT.simu_mode_clkout" />
  <interface name="hip_ctrl" internal="DUT.hip_ctrl" type="conduit" dir="end" />
@@ -76,7 +67,6 @@
  <interface name="reconfig_xcvr_clk" internal="APPS.reconfig_xcvr_clk" />
  <interface name="reconfig_xcvr_rst" internal="APPS.reconfig_xcvr_rst" />
  <interface name="refclk" internal="DUT.refclk" type="clock" dir="end" />
- <interface name="reset" internal="clk_0.clk_in_reset" type="reset" dir="end" />
  <interface name="rxtx_pipe" internal="DUT.pcie_pipe" />
  <interface name="rxtx_serial" internal="DUT.pcie_serial" />
  <interface name="test_in_pipe_mode" internal="DUT.hip_control" />
@@ -509,12 +499,6 @@
   <parameter name="vendor_id_hwtcl" value="4466" />
   <parameter name="vsec_id_hwtcl" value="40960" />
   <parameter name="vsec_rev_hwtcl" value="0" />
- </module>
- <module name="clk_0" kind="clock_source" version="16.1" enabled="1">
-  <parameter name="clockFrequency" value="50000000" />
-  <parameter name="clockFrequencyKnown" value="true" />
-  <parameter name="inputClockFrequency" value="0" />
-  <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
  <connection
    kind="avalon_streaming"

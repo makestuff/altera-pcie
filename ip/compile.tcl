@@ -56,8 +56,8 @@ vcom -93   -novopt dvr-rng/rng_n2048_r64_t3_k32_s5f81cb.vhdl -check_synthesis -w
 vcom -93   -novopt dvr-rng/dvr_rng64.vhdl                    -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/rng_n3060_r96_t3_k32_s79e56.vhdl  -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng96.vhdl                    -check_synthesis -work makestuff
-vcom -93   -novopt pcie/stratixv/pcie_sv.vhdl                -check_synthesis -work makestuff
-vcom -93   -novopt pcie/cyclonev/pcie_cv.vhdl                -check_synthesis -work makestuff
+vlog -sv   -novopt pcie/stratixv/pcie_sv.sv                  -hazards -lint -pedanticerrors -work makestuff
+vlog -sv   -novopt pcie/cyclonev/pcie_cv.sv                  -hazards -lint -pedanticerrors -work makestuff
 vcom -93   -novopt pcie/tlp-xcvr/tlp_xcvr.vhdl               -check_synthesis -work makestuff
 vcom -93   -novopt reg-mux/reg_mux.vhdl                      -check_synthesis -work makestuff
 

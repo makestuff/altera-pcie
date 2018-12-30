@@ -30,14 +30,6 @@
          type = "int";
       }
    }
-   element clk_0
-   {
-      datum _sortIndex
-      {
-         value = "2";
-         type = "int";
-      }
-   }
 }
 ]]></parameter>
  <parameter name="clockCrossingAdapter" value="HANDSHAKE" />
@@ -61,7 +53,6 @@
  <instanceScript></instanceScript>
  <interface name="apps_app_ctrl" internal="APPS.app_ctrl" />
  <interface name="apps_simu_mode_clkin" internal="APPS.simu_mode_clkin" />
- <interface name="clk" internal="clk_0.clk_in" type="clock" dir="end" />
  <interface name="dut_hip_ctrl" internal="DUT.hip_ctrl" type="conduit" dir="end" />
  <interface name="dut_hip_pipe" internal="DUT.hip_pipe" type="conduit" dir="end" />
  <interface
@@ -73,7 +64,6 @@
  <interface name="dut_refclk" internal="DUT.refclk" type="clock" dir="end" />
  <interface name="reconfig_xcvr_clk" internal="APPS.reconfig_xcvr_clk" />
  <interface name="reconfig_xcvr_rst" internal="APPS.reconfig_xcvr_rst" />
- <interface name="reset" internal="clk_0.clk_in_reset" type="reset" dir="end" />
  <module name="APPS" kind="altera_pcie_hip_ast_ed" version="16.1" enabled="1">
   <parameter name="INTENDED_DEVICE_FAMILY" value="Cyclone V" />
   <parameter name="ast_width_hwtcl" value="Avalon-ST 64-bit" />
@@ -508,12 +498,6 @@
   <parameter name="vendor_id_7_hwtcl" value="0" />
   <parameter name="vsec_id_hwtcl" value="4466" />
   <parameter name="vsec_rev_hwtcl" value="0" />
- </module>
- <module name="clk_0" kind="clock_source" version="16.1" enabled="1">
-  <parameter name="clockFrequency" value="50000000" />
-  <parameter name="clockFrequencyKnown" value="true" />
-  <parameter name="inputClockFrequency" value="0" />
-  <parameter name="resetSynchronousEdges" value="NONE" />
  </module>
  <connection
    kind="avalon_streaming"
