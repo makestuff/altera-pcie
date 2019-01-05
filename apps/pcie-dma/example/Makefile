@@ -32,7 +32,7 @@ build/$(TARGET): $(OBJS)
 	gcc $+ -o $@
 
 build/%.o: %.c
-	gcc $(CFLAGS) $(CDEFS) -I../../../include $< -o $@
+	gcc $(CFLAGS) $(CDEFS) $< -o $@
 
 build: FORCE
 	mkdir -p build

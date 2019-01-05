@@ -25,7 +25,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include "fpgalink.h"
 
 #define PAGE_SIZE 4096
 #define TLP_SIZE 128

@@ -1,6 +1,6 @@
-Minimal Altera PCI Express project, including Linux driver, header-only userspace API, the
-requisite Altera PCIe core and supporting logic, and a simple DMA controller. The Linux driver
-is licensed under the GPLv3, and everything else is under the MIT license.
+Minimal Altera PCI Express project, including Linux driver & userspace examples, the requisite
+Altera PCIe core and supporting logic, and a simple DMA controller. The Linux driver is licensed
+under the GPLv3, and everything else is under the MIT license.
 
 Note that to do any simulation, you'll need to set the MAKESTUFF environment variable to the
 absolute path of the directory in which this README resides.
@@ -14,6 +14,3 @@ apps:
 
 driver:
   A minimal Linux device-driver, based on altpciechdma.c.
-
-include:
-  Simple header-only library for wrapping the driver ioctl()s for register reads and writes, etc.
