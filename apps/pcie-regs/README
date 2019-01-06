@@ -1,24 +1,35 @@
 Instantiate six 32-bit registers, accessible over PCIe.
 
-quartus_sh --flow compile gt.qpf -c gt
-quartus_pgm --mode=JTAG -o 'p;gt-out/gt.sof'
+Building:
+  make FPGA=cvgt  # or
+  make FPGA=svgx
+
+Programming with USB Blaster:
+  make prog
+
+Programming with FPGALink/AVR:
+  quartus_cpf -c -q 8MHz -g 2.5 -n p build/fpga.cdf build/fpga.svf
+  flcli -v 1d50:602b:0001 -p J:B3B2B0B1:build/fpga.svf
 
 
 Reconfig without rebooting
 --------------------------
 
 On the dev machine:
-  quartus_pgm --mode=JTAG -o 'p;gt-out/gt.sof'
+  make FPGA=...
 
-And on the test machine, in the driver directory:
-  ./rmmod.sh
-  echo 1 > /sys/bus/pci/devices/0000\:04\:00.0/remove
-  echo 1 | sudo tee -a /sys/bus/pci/rescan > /dev/null
-  ./insmod.sh
-  ../apps/pcie-regs/example/build/example
+And on the test machine, in the example directory:
+  sudo ../../../driver/rmmod.sh
+  sudo ../../../driver/rmdev.sh
+  #
+  # FPGA is now safe to reprogram
+  #
+  sudo ../../../driver/rescan.sh
+  sudo ../../../driver/insmod.sh
+  build/example
 
 
-Config-via-PCIe
+Config-via-PCIe (TODO: Revisit)
 ---------------
 
 On the dev machine, create a gt-out/gt.core.rbf file:

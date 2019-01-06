@@ -28,11 +28,8 @@
 
 #define PAGE_SIZE 4096
 #define TLP_SIZE 128
-
 #define NUM_TLPS 1    // 16 TLPs = 16*128 = 2048 bytes
-#define NUM_XFERS 16
-//#define BENCHMARK
-//#define CALIBRATE
+#define LIMIT 300     // Don't record transactions taking longer than LIMIT cycles
 
 // FPGA hardware registers
 #define DMABASE(x) ((x)+0*2+1)
@@ -40,10 +37,12 @@
 
 int main(void) {
 	int retVal = 0, dev;
-	uint32_t result;
+	uint32_t n;
 	#ifdef BENCHMARK
-		uint32_t times[NUM_XFERS];
+		#define NUM_XFERS 100000000
+		uint32_t times[LIMIT] = {0,};
 	#else
+		#define NUM_XFERS 16
 		uint64_t buf[NUM_TLPS*TLP_SIZE/sizeof(uint64_t)];
 	#endif
 
@@ -70,7 +69,7 @@ int main(void) {
 	const uint32_t dmaBaseBA = (uint32_t)dmaBaseVA[0];  // driver helpfully wrote the bus-address here for us
 
 	// Reset the RNG
-	result = *DMABASE(fpgaBase);
+	n = *DMABASE(fpgaBase);
 
 	// Fetch NUM_XFERS blocks of data
 	for (int j = 0; j < NUM_XFERS; j++) {
@@ -94,7 +93,10 @@ int main(void) {
 			#ifdef CALIBRATE
 				usleep(1000000);
 			#endif
-			times[j] = *DMACTRL(fpgaBase);
+			n = *DMACTRL(fpgaBase);
+			if (n < LIMIT) {
+				++times[n];
+			}
 		#else
 			// Copy the data out of the buffer, somewhere else (as a surrogate for "processing it").
 			memcpy(buf, (const uint64_t*)dmaBaseVA + 8, sizeof(buf));
@@ -108,9 +110,14 @@ int main(void) {
 		#endif
 	}
 	#ifdef BENCHMARK
-		printf("%d", times[0]);
-		for (int j = 1; j < NUM_XFERS; j++) {
-			printf(", %d", times[j]);
+		for (int j = 0; j < LIMIT; j++) {
+			n = times[j];
+			if (n != 0) {
+				printf("%d %d\n", j*1000/125, times[j]);
+			}
+			if (n == 1) {
+				break;
+			}
 		}
 		printf("\n");
 	#endif
@@ -119,5 +126,5 @@ dev_close:
 	close(dev);
 exit:
 	return retVal;
-	(void)result;
+	(void)n;
 }
