@@ -141,22 +141,25 @@ module pcie_cv (
 
   // Small FIFO to avoid rxData being lost because of the two-clock latency from the PCIe IP.
   buffer_fifo#(
-    .WIDTH        (66),    // space for 64-bit data word and the SOP & EOP flags
-    .DEPTH        (2),     // space for four entries
-    .BLOCK_RAM    ("OFF")  // just use regular registers
+    .WIDTH           (66),    // space for 64-bit data word and the SOP & EOP flags
+    .DEPTH           (2),     // space for four entries
+    .BLOCK_RAM       (0)      // just use regular registers
   ) recv_fifo (
-    .clk_in       (pcieClk),
-    .depth_out    (),
+    .clk_in          (pcieClk),
+    .reset_in        (),
+    .depth_out       (),
 
     // Producer end
-    .iData_in     (fiData),
-    .iValid_in    (fiValid),
-    .iReady_out   (),
+    .iData_in        (fiData),
+    .iValid_in       (fiValid),
+    .iReady_out      (),
+    .iReadyChunk_out (),
 
     // Consumer end
-    .oData_out    (foData),
-    .oValid_out   (foValid),
-    .oReady_in    (foReady)
+    .oData_out       (foData),
+    .oValid_out      (foValid),
+    .oReady_in       (foReady),
+    .oValidChunk_out ()
   );
 
   // Drive pcieClk externally

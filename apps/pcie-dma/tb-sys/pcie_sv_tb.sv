@@ -17,9 +17,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 `timescale 1 ps / 1 ps
-module pcie_sv_tb#(
-    parameter int EN_SWAP = 0
-  );
+module pcie_sv_tb;
 
   wire  [31:0] dut_pcie_tb_hip_ctrl_test_in;          // DUT_pcie_tb:test_in -> pcie_sv_inst:hip_ctrl_test_in
   wire         dut_pcie_tb_hip_ctrl_simu_mode_pipe;   // DUT_pcie_tb:simu_mode_pipe -> pcie_sv_inst:hip_ctrl_simu_mode_pipe
@@ -117,9 +115,7 @@ module pcie_sv_tb#(
   logic        txReady;
 
   // The thing which actually drives the bus from the FPGA side
-  pcie_app#(
-    .EN_SWAP       (EN_SWAP)
-  ) pcie_app (
+  pcie_app pcie_app (
     .pcieClk_in    (pcieClk),
     .cfgBusDev_in  (cfgBusDev),
 

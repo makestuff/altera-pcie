@@ -16,7 +16,6 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
 set IP_DIR "$env(MAKESTUFF)/ip"
 if {![info exists ::env(FPGA)]} {
   puts "\nYou need to set the FPGA environment variable!\n"
@@ -33,8 +32,11 @@ vmap -modelsimini $IP_DIR/sim-libs/modelsim.ini -c
 vlib work
 vmap work_lib work
 
-vcom -93 -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.vhdl -check_synthesis -work makestuff
-vcom -93 -novopt ../pcie_app.vhdl                    -check_synthesis
+vlog -sv -novopt $IP_DIR/reg-mux/reg_mux.sv              -hazards -lint -pedanticerrors -work makestuff
+vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff
+vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff
+vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff
+vlog -sv -novopt ../pcie_app.sv -hazards -lint -pedanticerrors
 
 if {$env(FPGA) in [list "svgx"]} {
   # Do a Stratix V simulation

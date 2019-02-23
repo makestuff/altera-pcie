@@ -16,36 +16,51 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+if {![info exists ::env(BLOCK_RAM)]} {
+  puts "\nYou need to set the BLOCK_RAM environment variable!\n"
+  quit
+}
+
 file delete -force modelsim.ini
 file delete -force work
 vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 
-vcom -93   -novopt ../buffer_fifo_impl.vhdl -check_synthesis -work makestuff
-vcom -93   -novopt ../buffer_fifo.vhdl      -check_synthesis -work makestuff
-vcom -2008 -novopt buffer_fifo_tb.vhdl
-vsim -t ps -novopt buffer_fifo_tb
+vlog -sv -novopt -hazards -lint -pedanticerrors ../buffer_fifo_impl.sv -work makestuff
+vlog -sv -novopt -hazards -lint -pedanticerrors ../buffer_fifo.sv      -work makestuff
+vlog -sv -novopt -hazards -lint -pedanticerrors buffer_fifo_tb.sv
+vsim -t ps -novopt -gBLOCK_RAM=$env(BLOCK_RAM) -L work -L makestuff -L altera_mf_ver buffer_fifo_tb
 
-add wave      uut/clk_in
-add wave -hex uut/depth_out
+if {[info exists ::env(GUI)] && $env(GUI)} {
+  add wave      dispClk
+  add wave -uns uut/depth_out
 
-add wave -div "Input Pipe"
-add wave -hex uut/iData_in
-add wave      uut/iValid_in
-add wave      uut/iReady_out
-add wave      uut/iReadyChunk_out
+  add wave -div "Input Pipe"
+  add wave -hex uut/iData_in
+  add wave      uut/iValid_in
+  add wave      uut/iReady_out
+  add wave      uut/iReadyChunk_out
 
-add wave -div "Output Pipe"
-add wave -hex uut/oData_out
-add wave      uut/oValid_out
-add wave      uut/oValidChunk_out
-add wave      uut/oReady_in
+  add wave -div "Output Pipe"
+  add wave -hex uut/oData_out
+  add wave      uut/oValid_out
+  add wave      uut/oValidChunk_out
+  add wave      uut/oReady_in
+  add wave -div ""
 
-configure wave -namecolwidth 230
-configure wave -valuecolwidth 1
-onbreak resume
-run -all
-view wave
-bookmark add wave default {{0ns} {512ns}}
-bookmark goto wave default
-wave refresh
+  configure wave -namecolwidth 265
+  configure wave -valuecolwidth 25
+  configure wave -gridoffset 0ns
+  configure wave -gridperiod 10ns
+  onbreak resume
+  run -all
+  view wave
+  bookmark add wave default {{0ns} {300ns}}
+  bookmark goto wave default
+  wave activecursor 1
+  wave cursortime -time "70 ns"
+  wave refresh
+} else {
+  run -all
+  quit
+}

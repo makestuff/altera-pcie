@@ -1,2 +1,0 @@
-set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) "bridge_fifo.vhdl"]      -library makestuff
-set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) "bridge_fifo_impl.vhdl"] -library makestuff

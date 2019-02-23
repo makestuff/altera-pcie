@@ -38,28 +38,22 @@ ensure_lib           ./libraries/makestuff/
 vmap       makestuff ./libraries/makestuff/
 
 # Compile Altera VHDL components
-vcom $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf_components.vhd -work altera_mf
-vcom $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf.vhd            -work altera_mf
+#vcom $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf_components.vhd -work altera_mf
+#vcom $QUARTUS_INSTALL_DIR/eda/sim_lib/altera_mf.vhd            -work altera_mf
 
 # Compile MakeStuff components
-vcom -93   -novopt util/util_pkg.vhdl                        -check_synthesis -work makestuff
-vcom -93   -novopt util/hex_util.vhdl                        -check_synthesis -work makestuff
-vcom -93   -novopt buffer-fifo/buffer_fifo_impl.vhdl         -check_synthesis -work makestuff
-vcom -93   -novopt buffer-fifo/buffer_fifo.vhdl              -check_synthesis -work makestuff
-vcom -93   -novopt bridge-fifo/bridge_fifo_impl.vhdl         -check_synthesis -work makestuff
-vcom -93   -novopt bridge-fifo/bridge_fifo.vhdl              -check_synthesis -work makestuff
-vcom -93   -novopt dvr-4to1/dvr_4to1.vhdl                    -check_synthesis -work makestuff
-vcom -93   -novopt dvr-1to4/dvr_1to4.vhdl                    -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/rng_n1024_r32_t5_k32_s1c48.vhdl   -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng32.vhdl                    -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/rng_n2048_r64_t3_k32_s5f81cb.vhdl -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng64.vhdl                    -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/rng_n3060_r96_t3_k32_s79e56.vhdl  -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng96.vhdl                    -check_synthesis -work makestuff
+vlog -sv   -novopt buffer-fifo/buffer_fifo_impl.sv           -hazards -lint -pedanticerrors -work makestuff
+vlog -sv   -novopt buffer-fifo/buffer_fifo.sv                -hazards -lint -pedanticerrors -work makestuff
+vlog -sv   -novopt reg-mux/reg_mux.sv                        -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/stratixv/pcie_sv.sv                  -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/cyclonev/pcie_cv.sv                  -hazards -lint -pedanticerrors -work makestuff
-vcom -93   -novopt pcie/tlp-xcvr/tlp_xcvr.vhdl               -check_synthesis -work makestuff
-vcom -93   -novopt reg-mux/reg_mux.vhdl                      -check_synthesis -work makestuff
+vlog -sv   -novopt pcie/tlp-xcvr/tlp_xcvr.sv                 -hazards -lint -pedanticerrors -work makestuff
 
 # And exit
 exit
