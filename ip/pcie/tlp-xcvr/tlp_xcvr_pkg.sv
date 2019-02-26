@@ -22,6 +22,8 @@ package tlp_xcvr_pkg;
   typedef logic[7:0] Tag;
   typedef logic[31:0] Data;
   typedef logic[4:0] LowAddr;
+  typedef logic[29:0] DWAddr;
+  typedef logic[28:0] QWAddr;
 
   // TLP structs for arbitrary message (i.e we don't know what it is yet)
   typedef struct packed {
@@ -58,8 +60,8 @@ package tlp_xcvr_pkg;
   } WriteQW0;
 
   typedef struct packed {
-    logic[31:0] data;
-    logic[29:0] addr;
+    Data data;
+    DWAddr dwAddr;
     logic[1:0] reserved1;
   } WriteQW1;
 
@@ -84,7 +86,7 @@ package tlp_xcvr_pkg;
 
   typedef struct packed {
     logic[31:0] reserved1;
-    logic[29:0] addr;
+    DWAddr dwAddr;
     logic[1:0] reserved2;
   } RdReqQW1;
 
@@ -115,6 +117,33 @@ package tlp_xcvr_pkg;
     LowAddr lowAddr;
     logic[1:0] reserved1;
   } RdCmpQW1;
+
+  function WriteQW0 genWrite0(
+      BusID reqID = 0, logic[3:0] lastBE = 4'hF, logic[3:0] firstBE = 4'hF,
+      logic[1:0] fmt = 2, logic[4:0] typ = 0, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] length = 0);
+    WriteQW0 result;
+    result = '0;
+    result.reqID = reqID;
+    result.lastBE = lastBE;
+    result.firstBE = firstBE;
+    result.fmt = fmt;
+    result.typ = typ;
+    result.tc = tc;
+    result.td = td;
+    result.ep = ep;
+    result.attr = attr;
+    result.length = length;
+    return result;
+  endfunction
+
+  function WriteQW1 genWrite1(Data data = 0, DWAddr dwAddr = 0);
+    WriteQW1 result;
+    result = '0;
+    result.data = data;
+    result.dwAddr = dwAddr;
+    return result;
+  endfunction
 
   function RdCmpQW0 genRdCmp0(
       BusID cmpID = 0, logic[2:0] status = 0, logic[11:0] byteCount = 0,

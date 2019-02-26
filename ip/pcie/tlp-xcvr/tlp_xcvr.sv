@@ -44,7 +44,7 @@ module tlp_xcvr#(
     output logic cpuWrValid_out,
     input logic cpuWrReady_in,
 
-    input logic[31:0] cpuRdData_in,  // Host << FPGA pipe:
+    input logic[31:0] cpuRdData_in,    // Host << FPGA pipe:
     input logic cpuRdValid_in,
     output logic cpuRdReady_out,
 
@@ -56,9 +56,6 @@ module tlp_xcvr#(
 
   // Get types
   import tlp_xcvr_pkg::*;
-
-  // Address types
-  typedef logic[REG_ABITS-1:0] Channel;
 
   // FSM states
   typedef enum {
@@ -75,8 +72,9 @@ module tlp_xcvr#(
   } State;
   State state = S_IDLE;
   State state_next;
-  typedef logic[28:0] QWAddr;
-  typedef logic[9:0] TlpCount;
+  typedef logic[REG_ABITS-1:0] Channel;
+  typedef logic[9:0] TLPCount; // allow DMA of up to 64KiB (65536/128 = 512, which needs 10 bits)
+  typedef logic[3:0] QWCount;  // number of QWs in one TLP (128/8 = 16)
   QWAddr dmaBase = '0;
   QWAddr dmaBase_next;
   QWAddr dmaAddr = '0;
@@ -87,12 +85,12 @@ module tlp_xcvr#(
   Tag tag_next;
   LowAddr lowAddr = '0;
   LowAddr lowAddr_next;
-  logic[31:0] rdData = '0;
-  logic[31:0] rdData_next;
-  logic[3:0] qwCount = '0;
-  logic[3:0] qwCount_next;
-  TlpCount tlpCount = '0;
-  TlpCount tlpCount_next;
+  Data rdData = '0;
+  Data rdData_next;
+  QWCount qwCount = '0;
+  QWCount qwCount_next;
+  TLPCount tlpCount = '0;
+  TLPCount tlpCount_next;
   logic foSOP;
   logic[63:0] foData;
   logic foValid;
@@ -102,19 +100,19 @@ module tlp_xcvr#(
 
   // Typed versions of incoming QW:
   MsgQW0   msgQW0;
-  WriteQW0 writeQW0;
+  //WriteQW0 writeQW0;
   WriteQW1 writeQW1;
   RdReqQW0 rdReqQW0;
   RdReqQW1 rdReqQW1;
-  RdCmpQW0 rdCmpQW0;
-  RdCmpQW1 rdCmpQW1;
+  //RdCmpQW0 rdCmpQW0;
+  //RdCmpQW1 rdCmpQW1;
   assign msgQW0   = foData;
-  assign writeQW0 = foData;
+  //assign writeQW0 = foData;
   assign writeQW1 = foData;
   assign rdReqQW0 = foData;
   assign rdReqQW1 = foData;
-  assign rdCmpQW0 = foData;
-  assign rdCmpQW1 = foData;
+  //assign rdCmpQW0 = foData;
+  //assign rdCmpQW1 = foData;
 
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
@@ -186,7 +184,7 @@ module tlp_xcvr#(
       // Host is reading
       S_READ_SOP:
         if (txReady_in && foValid) begin
-          cpuChan_out = Channel'(rdReqQW1.addr >> 1);  // registers are laid out with odd DW addresses
+          cpuChan_out = Channel'(rdReqQW1.dwAddr >> 1);  // registers are laid out with odd DW addresses
           cpuRdReady_out = 1'b1;
           if (cpuRdValid_in) begin
             // PCIe IP is ready to accept response, 2nd qword of request is available, and
@@ -199,7 +197,7 @@ module tlp_xcvr#(
             txValid_out = 1'b1;
             txSOP_out = 1'b1;
             rdData_next = cpuRdData_in;
-            lowAddr_next = LowAddr'(rdReqQW1.addr);
+            lowAddr_next = LowAddr'(rdReqQW1.dwAddr);
           end
         end
 
@@ -217,7 +215,7 @@ module tlp_xcvr#(
       // Host is writing
       S_WRITE:
         if (foValid) begin
-          cpuChan_out = Channel'(writeQW1.addr >> 1);
+          cpuChan_out = Channel'(writeQW1.dwAddr >> 1);
           cpuWrValid_out = 1'b1;
           if (cpuChan_out == DMA_ADDR_REG) begin
             state_next = S_IDLE;
@@ -228,7 +226,7 @@ module tlp_xcvr#(
           end else if (cpuChan_out == DMA_CTRL_REG) begin
             state_next = S_DMA0;
             foReady = 1'b1;
-            tlpCount_next = TlpCount'(writeQW1.data);
+            tlpCount_next = TLPCount'(writeQW1.data);
           end else begin
             cpuWrData_out = writeQW1.data;
             if (cpuWrReady_in) begin
@@ -244,7 +242,7 @@ module tlp_xcvr#(
       S_DMA0:
         if (dmaValid_in && txReady_in) begin
           state_next = S_DMA1;
-          txData_out = {cfgBusDev_in, 51'h0AAFF40000020};
+          txData_out = genWrite0(.reqID(cfgBusDev_in), .length('h20));
           txValid_out = 1'b1;
           txSOP_out = 1'b1;
         end
@@ -252,7 +250,7 @@ module tlp_xcvr#(
       S_DMA1:
         if (txReady_in) begin
           state_next = S_DMA2;
-          txData_out = {32'h00000000, dmaAddr, 3'b000};
+          txData_out = genWrite1(.dwAddr(dmaAddr << 1));
           txValid_out = 1'b1;
           qwCount_next = 4'hF;
         end
@@ -262,10 +260,10 @@ module tlp_xcvr#(
           txData_out = dmaData_in;
           txValid_out = 1'b1;
           dmaReady_out = 1'b1;
-          qwCount_next = qwCount - 4'd1;
+          qwCount_next = QWCount'(qwCount - 1);
           if (qwCount == 0) begin
             txEOP_out = 1'b1;
-            tlpCount_next = tlpCount - 10'd1;
+            tlpCount_next = TLPCount'(tlpCount - 1);
             dmaAddr_next = QWAddr'(dmaAddr + 16);
             if (tlpCount == 1)
               state_next = S_DMA3;  // finished; write completion-marker QW
@@ -277,7 +275,7 @@ module tlp_xcvr#(
       S_DMA3:
         if (txReady_in) begin
           state_next = S_DMA4;
-          txData_out = {cfgBusDev_in, 51'h0AAFF40000002};  // write one QW to the semaphore location
+          txData_out = genWrite0(.reqID(cfgBusDev_in), .length(2));  // write one QW to the semaphore location
           txValid_out = 1'b1;
           txSOP_out = 1'b1;
         end
@@ -285,7 +283,7 @@ module tlp_xcvr#(
       S_DMA4:
         if (txReady_in) begin
           state_next = S_DMA5;
-          txData_out = {32'h00000000, dmaBase, 3'b000};
+          txData_out = genWrite1(.dwAddr(dmaBase << 1));
           txValid_out = 1'b1;
         end
 
