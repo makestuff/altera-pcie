@@ -58,18 +58,7 @@ module tlp_xcvr#(
   import tlp_xcvr_pkg::*;
 
   // Address types
-  typedef logic[REG_ABITS-1:0] FpgaAddr;
-  typedef logic[REG_ABITS:0] HostAddr;
-
-  // Return (ha-1)/2. By convention, the incoming ha will always be odd.
-  function FpgaAddr fpga_addr(HostAddr ha);
-    return FpgaAddr'((ha - 1) / 2);
-  endfunction
-
-  // Return 2*fa+1. The result will always be odd.
-  function HostAddr host_addr(FpgaAddr fa);
-    return {fa, 1'b1};
-  endfunction
+  typedef logic[REG_ABITS-1:0] Channel;
 
   // FSM states
   typedef enum {
@@ -86,30 +75,30 @@ module tlp_xcvr#(
   } State;
   State state = S_IDLE;
   State state_next;
-  typedef logic[28:0] WordAddr;
-  WordAddr dmaBase = '0;
-  WordAddr dmaBase_next;
-  WordAddr dmaAddr = '0;
-  WordAddr dmaAddr_next;
+  typedef logic[28:0] QWAddr;
+  typedef logic[9:0] TlpCount;
+  QWAddr dmaBase = '0;
+  QWAddr dmaBase_next;
+  QWAddr dmaAddr = '0;
+  QWAddr dmaAddr_next;
   BusID reqID = '0;
   BusID reqID_next;
   Tag tag = '0;
   Tag tag_next;
-  logic[6:0] lowAddr = '0;
-  logic[6:0] lowAddr_next;
+  LowAddr lowAddr = '0;
+  LowAddr lowAddr_next;
   logic[31:0] rdData = '0;
   logic[31:0] rdData_next;
   logic[3:0] qwCount = '0;
   logic[3:0] qwCount_next;
-  logic[9:0] tlpCount = '0;
-  logic[9:0] tlpCount_next;
-  FpgaAddr cpuChan;
+  TlpCount tlpCount = '0;
+  TlpCount tlpCount_next;
   logic foSOP;
   logic[63:0] foData;
   logic foValid;
   logic foReady;
-  localparam FpgaAddr DMA_ADDR_REG = FpgaAddr'(0);
-  localparam FpgaAddr DMA_CTRL_REG = FpgaAddr'(1);
+  localparam Channel DMA_ADDR_REG = Channel'(0);
+  localparam Channel DMA_CTRL_REG = Channel'(1);
 
   // Typed versions of incoming QW:
   MsgQW0   msgQW0;
@@ -163,9 +152,6 @@ module tlp_xcvr#(
     .oValidChunk_out ()
   );
 
-  // Derive channel from CPU address
-  assign cpuChan = fpga_addr(foData[REG_ABITS+2 : 2]);
-
   // Next state logic
   always_comb begin: next_state
     // Registers
@@ -200,7 +186,7 @@ module tlp_xcvr#(
       // Host is reading
       S_READ_SOP:
         if (txReady_in && foValid) begin
-          cpuChan_out = fpga_addr(foData[REG_ABITS+2 : 2]);
+          cpuChan_out = rdReqQW1.addr >> 1;  // registers are laid out with odd DW addresses
           cpuRdReady_out = 1'b1;
           if (cpuRdValid_in) begin
             // PCIe IP is ready to accept response, 2nd qword of request is available, and
@@ -208,11 +194,12 @@ module tlp_xcvr#(
             // use in the following cycle).
             state_next = S_READ_EOP;
             foReady = 1'b1;
-            txData_out = {cfgBusDev_in, 51'h000044A000001};
+            txData_out = genRdCmp0(
+              .cmpID(cfgBusDev_in), .byteCount(4), .length(1));
             txValid_out = 1'b1;
             txSOP_out = 1'b1;
             rdData_next = cpuRdData_in;
-            lowAddr_next = foData[6:0];
+            lowAddr_next = rdReqQW1.addr;
           end
         end
 
@@ -220,35 +207,30 @@ module tlp_xcvr#(
       // state.
       S_READ_EOP:
         begin
-          //RdCmpQW1 txData;
-          //txData.data = rdData;
-          //txData.reqID = reqID;
-          //txData.tag = tag;
-          //txData.lowAddr = lowAddr;
-          //txData_out = {rdData, reqID, tag, 1'b0, lowAddr}; //txData;
-          txData_out = tlp_xcvr_pkg::genRdCmp1(
+          state_next = S_IDLE;
+          txData_out = genRdCmp1(
             .data(rdData), .reqID(reqID), .tag(tag), .lowAddr(lowAddr));
           txValid_out = 1'b1;
           txEOP_out <= 1'b1;
-          state_next = S_IDLE;
         end
 
       // Host is writing
       S_WRITE:
         if (foValid) begin
-          cpuChan_out = cpuChan;
+          cpuChan_out = writeQW1.addr >> 1;
           cpuWrValid_out = 1'b1;
-          if (cpuChan == DMA_ADDR_REG) begin
+          if (cpuChan_out == DMA_ADDR_REG) begin
             state_next = S_IDLE;
             foReady = 1'b1;
-            dmaBase_next = foData[63:35];  // QW addr
-            dmaAddr_next = WordAddr'(8 + foData[63:35]);  // offset 8 (num of QWs in one 64-byte cache-line)
-          end else if (cpuChan == DMA_CTRL_REG) begin
+            dmaBase_next = writeQW1.data >> 3;  // we want a QW addr
+            dmaAddr_next = QWAddr'(8 + (writeQW1.data >> 3));  // offset 8 (num of QWs in one 64-byte cache-line)
+                                                               // this prevents false sharing between FPGA & CPU
+          end else if (cpuChan_out == DMA_CTRL_REG) begin
             state_next = S_DMA0;
             foReady = 1'b1;
-            tlpCount_next = foData[41:32];
+            tlpCount_next = TlpCount'(writeQW1.data);
           end else begin
-            cpuWrData_out = foData[63:32];
+            cpuWrData_out = writeQW1.data;
             if (cpuWrReady_in) begin
               // 2nd qword of request is available, and the application pipe is ready to
               // receive a dword.
@@ -284,7 +266,7 @@ module tlp_xcvr#(
           if (qwCount == 0) begin
             txEOP_out = 1'b1;
             tlpCount_next = tlpCount - 10'd1;
-            dmaAddr_next = WordAddr'(dmaAddr + 16);
+            dmaAddr_next = QWAddr'(dmaAddr + 16);
             if (tlpCount == 1)
               state_next = S_DMA3;  // finished; write completion-marker QW
             else

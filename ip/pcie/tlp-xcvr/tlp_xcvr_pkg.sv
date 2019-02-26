@@ -21,7 +21,7 @@ package tlp_xcvr_pkg;
   typedef logic[15:0] BusID;
   typedef logic[7:0] Tag;
   typedef logic[31:0] Data;
-  typedef logic[6:0] LowAddr;
+  typedef logic[4:0] LowAddr;
 
   // TLP structs for arbitrary message (i.e we don't know what it is yet)
   typedef struct packed {
@@ -111,13 +111,14 @@ package tlp_xcvr_pkg;
     Data data;
     BusID reqID;
     Tag tag;
-    logic reserved;
+    logic reserved2;
     LowAddr lowAddr;
+    logic[1:0] reserved1;
   } RdCmpQW1;
 
   function RdCmpQW0 genRdCmp0(
       BusID cmpID = 0, logic[2:0] status = 0, logic[11:0] byteCount = 0,
-      logic[1:0] fmt = 0, logic[4:0] typ = 0, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] fmt = 2, logic[4:0] typ = 'h0A, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
       logic[1:0] attr = 0, logic[9:0] length = 0);
     RdCmpQW0 result;
     result = '0;
