@@ -21,47 +21,41 @@ file delete -force work
 vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 
-vcom -93   -novopt ../tlp_xcvr.vhdl -check_synthesis -work makestuff
-vcom -2008 -novopt tlp_xcvr_tb.vhdl
-vsim -t ps -novopt tlp_xcvr_tb
+vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv -work makestuff
+vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr.sv     -work makestuff
+vlog -sv -novopt -hazards -lint -pedanticerrors tlp_xcvr_tb.sv     -work makestuff
+vsim -t ps -novopt -L work -L makestuff -L altera_mf_ver makestuff.tlp_xcvr_tb
 
-add wave -div "Clock, config & interrupt signals"
-add wave      uut/pcieClk_in
-add wave -hex uut/cfgBusDev_in
-add wave      uut/msiReq_out
-add wave      uut/msiAck_in
+if {[info exists ::env(GUI)] && $env(GUI)} {
+  add wave      dispClk
+  #add wave -uns uut/depth_out
 
-add wave -div "Incoming messages from the CPU"
-add wave -hex uut/rxData_in
-add wave      uut/rxValid_in
-add wave      uut/rxReady_out
-add wave      uut/rxSOP_in
-add wave      uut/rxEOP_in
+  #add wave -div "Input Pipe"
+  #add wave -hex uut/iData_in
+  #add wave      uut/iValid_in
+  #add wave      uut/iReady_out
+  #add wave      uut/iReadyChunk_out
 
-add wave -div "Outgoing messages to the CPU"
-add wave -hex uut/txData_out
-add wave      uut/txValid_out
-add wave      uut/txReady_in
-add wave      uut/txSOP_out
-add wave      uut/txEOP_out
+  #add wave -div "Output Pipe"
+  #add wave -hex uut/oData_out
+  #add wave      uut/oValid_out
+  #add wave      uut/oValidChunk_out
+  #add wave      uut/oReady_in
+  #add wave -div ""
 
-add wave -div "Internal read/write interface"
-add wave -hex uut/cpuChan_out
-add wave -hex uut/cpuWrData_out
-add wave      uut/cpuWrValid_out
-add wave      uut/cpuWrReady_in
-add wave -hex uut/cpuRdData_in
-add wave      uut/cpuRdValid_in
-add wave      uut/cpuRdReady_out
-
-add wave -div "Incoming DMA stream"
-add wave -hex uut/dmaData_in
-add wave      uut/dmaValid_in
-add wave      uut/dmaReady_out
-
-configure wave -namecolwidth 210
-configure wave -valuecolwidth 105
-run 400 ns
-bookmark add wave default {{0ns} {400ns}}
-bookmark goto wave default
-wave refresh
+  configure wave -namecolwidth 265
+  configure wave -valuecolwidth 25
+  configure wave -gridoffset 0ns
+  configure wave -gridperiod 10ns
+  onbreak resume
+  run -all
+  view wave
+  bookmark add wave default {{0ns} {300ns}}
+  bookmark goto wave default
+  wave activecursor 1
+  wave cursortime -time "70 ns"
+  wave refresh
+} else {
+  run -all
+  quit
+}

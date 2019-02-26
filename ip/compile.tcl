@@ -53,6 +53,7 @@ vlog -sv   -novopt buffer-fifo/buffer_fifo.sv                -hazards -lint -ped
 vlog -sv   -novopt reg-mux/reg_mux.sv                        -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/stratixv/pcie_sv.sv                  -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/cyclonev/pcie_cv.sv                  -hazards -lint -pedanticerrors -work makestuff
+vlog -sv   -novopt pcie/tlp-xcvr/tlp_xcvr_pkg.sv             -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/tlp-xcvr/tlp_xcvr.sv                 -hazards -lint -pedanticerrors -work makestuff
 
 # And exit

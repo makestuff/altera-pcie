@@ -153,10 +153,10 @@ module altpcietb_bfm_driver_chaining (
 			shmem_read(4*4, 4) == 32'h1B6B3B92 &&
 			shmem_read(5*4, 4) == 32'h92033EB1 )
 		begin
-			unused_result = ebfm_display(EBFM_MSG_INFO, "Register readback test PASSED!");
+			unused_result = ebfm_display(EBFM_MSG_INFO, "Register readback test PASSED!\n");
 			unused_result = ebfm_log_stop_sim(1);
 		end else begin
-			unused_result = ebfm_display(EBFM_MSG_INFO, "Register readback test FAILED!");
+			unused_result = ebfm_display(EBFM_MSG_INFO, "Register readback test FAILED!\n");
 			unused_result = ebfm_log_stop_sim(0);
 		end
 		forever #100000;

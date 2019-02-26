@@ -208,6 +208,7 @@ module altpcietb_bfm_driver_chaining (
 
 		// Stop simulation
 		#128000;
+		$display();
 		unused_result = ebfm_log_stop_sim(1);
 		forever #100000;
 	end

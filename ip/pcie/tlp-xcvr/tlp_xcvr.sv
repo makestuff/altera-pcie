@@ -54,6 +54,9 @@ module tlp_xcvr#(
     output logic dmaReady_out
   );
 
+  // Get types
+  import tlp_xcvr_pkg::*;
+
   // Address types
   typedef logic[REG_ABITS-1:0] FpgaAddr;
   typedef logic[REG_ABITS:0] HostAddr;
@@ -88,8 +91,10 @@ module tlp_xcvr#(
   WordAddr dmaBase_next;
   WordAddr dmaAddr = '0;
   WordAddr dmaAddr_next;
-  logic[23:0] msgID = '0;
-  logic[23:0] msgID_next;
+  BusID reqID = '0;
+  BusID reqID_next;
+  Tag tag = '0;
+  Tag tag_next;
   logic[6:0] lowAddr = '0;
   logic[6:0] lowAddr_next;
   logic[31:0] rdData = '0;
@@ -106,10 +111,27 @@ module tlp_xcvr#(
   localparam FpgaAddr DMA_ADDR_REG = FpgaAddr'(0);
   localparam FpgaAddr DMA_CTRL_REG = FpgaAddr'(1);
 
+  // Typed versions of incoming QW:
+  MsgQW0   msgQW0;
+  WriteQW0 writeQW0;
+  WriteQW1 writeQW1;
+  RdReqQW0 rdReqQW0;
+  RdReqQW1 rdReqQW1;
+  RdCmpQW0 rdCmpQW0;
+  RdCmpQW1 rdCmpQW1;
+  assign msgQW0   = foData;
+  assign writeQW0 = foData;
+  assign writeQW1 = foData;
+  assign rdReqQW0 = foData;
+  assign rdReqQW1 = foData;
+  assign rdCmpQW0 = foData;
+  assign rdCmpQW1 = foData;
+
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
     state <= state_next;
-    msgID <= msgID_next;
+    reqID <= reqID_next;
+    tag <= tag_next;
     lowAddr <= lowAddr_next;
     rdData <= rdData_next;
     dmaBase <= dmaBase_next;
@@ -148,7 +170,8 @@ module tlp_xcvr#(
   always_comb begin: next_state
     // Registers
     state_next = state;
-    msgID_next = msgID;
+    reqID_next = reqID;
+    tag_next = tag;
     lowAddr_next = lowAddr;
     rdData_next = rdData;
     dmaBase_next = dmaBase;
@@ -197,10 +220,17 @@ module tlp_xcvr#(
       // state.
       S_READ_EOP:
         begin
-          state_next = S_IDLE;
-          txData_out = {rdData, msgID, 1'b0, lowAddr};
+          //RdCmpQW1 txData;
+          //txData.data = rdData;
+          //txData.reqID = reqID;
+          //txData.tag = tag;
+          //txData.lowAddr = lowAddr;
+          //txData_out = {rdData, reqID, tag, 1'b0, lowAddr}; //txData;
+          txData_out = tlp_xcvr_pkg::genRdCmp1(
+            .data(rdData), .reqID(reqID), .tag(tag), .lowAddr(lowAddr));
           txValid_out = 1'b1;
           txEOP_out <= 1'b1;
+          state_next = S_IDLE;
         end
 
       // Host is writing
@@ -291,16 +321,17 @@ module tlp_xcvr#(
           foReady = 1'b1;
           if (foSOP && foValid) begin
             // We have the first two longwords in a new message...
-            if (foData[31:24] == 8'h40) begin
+            if (msgQW0.fmt == 2 && msgQW0.typ == 0) begin
               // The CPU is writing to the FPGA. We'll find out the address and data word
               // on the next cycle.
               state_next = S_WRITE;
-            end else if ( foData[31:24] == 8'h00) begin
+            end else if (msgQW0.fmt == 0 && msgQW0.typ == 0) begin
               // The CPU is reading from the FPGA; save the message ID. See fig 2-13 in
               // the PCIe spec: the msgID is a 16-bit requester ID and an 8-bit tag.
               // We'll find out the address on the next cycle.
               state_next = S_READ_SOP;
-              msgID_next = foData[63:40];
+              reqID_next = rdReqQW0.reqID;
+              tag_next = rdReqQW0.tag;
             end
           end
         end
