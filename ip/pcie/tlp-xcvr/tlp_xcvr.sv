@@ -186,7 +186,7 @@ module tlp_xcvr#(
       // Host is reading
       S_READ_SOP:
         if (txReady_in && foValid) begin
-          cpuChan_out = rdReqQW1.addr >> 1;  // registers are laid out with odd DW addresses
+          cpuChan_out = Channel'(rdReqQW1.addr >> 1);  // registers are laid out with odd DW addresses
           cpuRdReady_out = 1'b1;
           if (cpuRdValid_in) begin
             // PCIe IP is ready to accept response, 2nd qword of request is available, and
@@ -199,7 +199,7 @@ module tlp_xcvr#(
             txValid_out = 1'b1;
             txSOP_out = 1'b1;
             rdData_next = cpuRdData_in;
-            lowAddr_next = rdReqQW1.addr;
+            lowAddr_next = LowAddr'(rdReqQW1.addr);
           end
         end
 
@@ -217,12 +217,12 @@ module tlp_xcvr#(
       // Host is writing
       S_WRITE:
         if (foValid) begin
-          cpuChan_out = writeQW1.addr >> 1;
+          cpuChan_out = Channel'(writeQW1.addr >> 1);
           cpuWrValid_out = 1'b1;
           if (cpuChan_out == DMA_ADDR_REG) begin
             state_next = S_IDLE;
             foReady = 1'b1;
-            dmaBase_next = writeQW1.data >> 3;  // we want a QW addr
+            dmaBase_next = QWAddr'(writeQW1.data >> 3);  // we want a QW addr
             dmaAddr_next = QWAddr'(8 + (writeQW1.data >> 3));  // offset 8 (num of QWs in one 64-byte cache-line)
                                                                // this prevents false sharing between FPGA & CPU
           end else if (cpuChan_out == DMA_CTRL_REG) begin
