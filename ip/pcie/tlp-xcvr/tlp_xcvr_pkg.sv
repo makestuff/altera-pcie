@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2014, 2017, 2019 Chris McClelland
+// Copyright (C) 2019 Chris McClelland
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 // and associated documentation files (the "Software"), to deal in the Software without
@@ -18,156 +18,276 @@
 //
 package tlp_xcvr_pkg;
 
+  localparam int CHAN_WIDTH = 8;  // we have 2**CHAN_WIDTH == 256 application registers...
+  localparam int CTL_BASE = 2**CHAN_WIDTH;  // ...and another 256 control registers
+  localparam int F2C_BASE = CTL_BASE + 0;   // FPGA->CPU base address
+  localparam int F2C_RDPTR = CTL_BASE + 1;  // FPGA->CPU read pointer
+  localparam int C2F_BASE = CTL_BASE + 2;   // CPU->FPGA base address
+  localparam int C2F_WRPTR = CTL_BASE + 3;  // CPU->FPGA write pointer
+  localparam int DMA_ENABLE = CTL_BASE + 4;
+  localparam int DMA_RDREQ = CTL_BASE + 5;
+
+  typedef enum logic[1:0] {
+    H3DW_NODATA   = 2'b00,  // header is three DWs, no data (32-bit addressing)
+    H4DW_NODATA   = 2'b01,  // header is four  DWs, no data (64-bit addressing)
+    H3DW_WITHDATA = 2'b10,  // header is three DWs, with data (32-bit addressing)
+    H4DW_WITHDATA = 2'b11   // header is four  DWs, with data (64-bit addressing)
+  } Format;
+  typedef enum logic[4:0] {
+    MEM_RW_REQ    = 5'b00000,  // this is a memory write or a memory read request
+    COMPLETION    = 5'b01010   // this is a completion packet
+  } Type;
+  typedef logic[CHAN_WIDTH-1:0] Channel;
+  typedef logic[CHAN_WIDTH:0] ExtChan;  // 512 registers, 256 user & 256 system
   typedef logic[15:0] BusID;
   typedef logic[7:0] Tag;
   typedef logic[31:0] Data;
-  typedef logic[4:0] LowAddr;
+  typedef logic[3:0] LowAddr;
+  typedef logic[11:0] ByteCount;
   typedef logic[29:0] DWAddr;
   typedef logic[28:0] QWAddr;
+  typedef logic[3:0] CBPtr;  // circular buffer pointers
+  typedef logic[63:0] uint64;
+  typedef logic[31:0] uint32;
 
-  // TLP structs for arbitrary message (i.e we don't know what it is yet)
+  // RX->TX pipe types
+  typedef enum logic[1:0] {
+    ACT_READ,
+    ACT_WRITE,
+    ACT_RESERVED1,
+    ACT_RESERVED2
+  } ActionType;
+  typedef struct packed {
+    ActionType typ;
+    ExtChan chan;
+    BusID reqID;
+    Tag tag;
+    logic[7:0] reserved;
+  } RegRead;
+  typedef struct packed {
+    ActionType typ;
+    ExtChan chan;
+    Data data;
+  } RegWrite;
+  //localparam int ACTION_BITS = $size(RegWrite);  // Quartus 16.1 doesn't $size() structs correctly
+  localparam int ACTION_BITS = $size(ActionType) + $size(ExtChan) + $size(Data);
+  typedef struct packed {
+    ActionType typ;
+    logic[ACTION_BITS-$size(ActionType)-1:0] reserved;
+  } Action;
+
+  function RegRead genRegRead(ExtChan c, BusID r, Tag t);
+    RegRead result; result = '0;
+    result.typ = ACT_READ;
+    result.chan = c;
+    result.reqID = r;
+    result.tag = t;
+    return result;
+  endfunction
+
+  function RegWrite genRegWrite(ExtChan c, Data d);
+    RegWrite result; result = '0;
+    result.typ = ACT_WRITE;
+    result.chan = c;
+    result.data = d;
+    return result;
+  endfunction
+
+  // DW0 is replicated in all messages
+  `define MSG_DW0_DEFN \
+    Format fmt; \
+    Type typ; \
+    logic reserved3; \
+    logic[2:0] tc; \
+    logic[3:0] reserved2; \
+    logic td; \
+    logic ep; \
+    logic[1:0] attr; \
+    logic[1:0] reserved1; \
+    logic[9:0] dwCount
+
+  `define MSG_DW0_ASSIGN \
+    result.fmt = fmt; \
+    result.typ = typ; \
+    result.tc = tc; \
+    result.td = td; \
+    result.ep = ep; \
+    result.attr = attr; \
+    result.dwCount = dwCount
+
+  // TLP struct for QW0 of arbitrary message (i.e we don't know what it is yet)
   typedef struct packed {
     logic[32:0] reserved4;
-    logic[1:0] fmt;
-    logic[4:0] typ;
-    logic reserved3;
-    logic[2:0] tc;
-    logic[3:0] reserved2;
-    logic td;
-    logic ep;
-    logic[1:0] attr;
-    logic[1:0] reserved1;
-    logic[9:0] length;
-  } MsgQW0;
+    `MSG_DW0_DEFN;
+  } Header;
 
-  // TLP structs for write message
+  // TLP structs for RegWrite message
   typedef struct packed {
     BusID reqID;
     Tag reserved5;
     logic[3:0] lastBE;
     logic[3:0] firstBE;
     logic reserved4;
-    logic[1:0] fmt;
-    logic[4:0] typ;
-    logic reserved3;
-    logic[2:0] tc;
-    logic[3:0] reserved2;
-    logic td;
-    logic ep;
-    logic[1:0] attr;
-    logic[1:0] reserved1;
-    logic[9:0] length;
-  } WriteQW0;
+    `MSG_DW0_DEFN;
+  } Write0;
 
   typedef struct packed {
     Data data;
-    DWAddr dwAddr;
-    logic[1:0] reserved1;
-  } WriteQW1;
+    QWAddr qwAddr;
+    logic isReg;  // 1 for register writes, 0 for DMA writes
+    logic[1:0] reserved1;  // all transfers are DW-aligned, so this is always zero
+  } Write1;
 
-  // TLP structs for read-request message
+  function Write0 genRegWrite0(
+      BusID reqID, logic[3:0] lastBE = 4'h0, logic[3:0] firstBE = 4'hF,
+      Format fmt = H3DW_WITHDATA, Type typ = MEM_RW_REQ, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] dwCount = 1);
+    Write0 result; result = '0;
+    result.reqID = reqID;
+    result.lastBE = lastBE;
+    result.firstBE = firstBE;
+    `MSG_DW0_ASSIGN;
+    return result;
+  endfunction
+
+  function Write1 genRegWrite1(QWAddr qwAddr, Data data);
+    Write1 result; result = '0;
+    result.data = data;
+    result.qwAddr = qwAddr;
+    result.isReg = 1;  // register writes are DW-aligned but QW-misaligned
+    return result;
+  endfunction
+
+  function Write0 genDmaWrite0(
+      BusID reqID, logic[3:0] lastBE = 4'hF, logic[3:0] firstBE = 4'hF,
+      Format fmt = H3DW_WITHDATA, Type typ = MEM_RW_REQ, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] dwCount);
+    Write0 result; result = '0;
+    result.reqID = reqID;
+    result.lastBE = lastBE;
+    result.firstBE = firstBE;
+    `MSG_DW0_ASSIGN;
+    return result;
+  endfunction
+
+  function Write1 genDmaWrite1(QWAddr qwAddr);
+    Write1 result; result = '0;
+    result.qwAddr = qwAddr;
+    return result;
+  endfunction
+
+  // TLP structs for RdReq message
   typedef struct packed {
     BusID reqID;
     Tag tag;
     logic[3:0] lastBE;
     logic[3:0] firstBE;
     logic reserved4;
-    logic[1:0] fmt;
-    logic[4:0] typ;
-    logic reserved3;
-    logic[2:0] tc;
-    logic[3:0] reserved2;
-    logic td;
-    logic ep;
-    logic[1:0] attr;
-    logic[1:0] reserved1;
-    logic[9:0] length;
-  } RdReqQW0;
+    `MSG_DW0_DEFN;
+  } RdReq0;
 
   typedef struct packed {
     logic[31:0] reserved1;
-    DWAddr dwAddr;
-    logic[1:0] reserved2;
-  } RdReqQW1;
+    QWAddr qwAddr;
+    logic isReg;  // 1 for register reads, 0 for DMA reads
+    logic[1:0] reserved2;  // all transfers are DW-aligned, so this is always zero
+  } RdReq1;
 
-  // TLP structs for read-completion message
+  function RdReq0 genRegRdReq0(
+      BusID reqID, logic[3:0] lastBE = 4'h0, logic[3:0] firstBE = 4'hF,
+      Format fmt = H3DW_NODATA, Type typ = MEM_RW_REQ, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] dwCount = 1);
+    RdReq0 result; result = '0;
+    result.reqID = reqID;
+    result.lastBE = lastBE;
+    result.firstBE = firstBE;
+    `MSG_DW0_ASSIGN;
+    return result;
+  endfunction
+
+  function RdReq1 genRegRdReq1(QWAddr qwAddr);
+    RdReq1 result; result = '0;
+    result.qwAddr = qwAddr;
+    result.isReg = 1;  // register reads are DW-aligned but QW-misaligned
+    return result;
+  endfunction
+
+  function RdReq0 genDmaRdReq0(
+      BusID reqID, Tag tag, logic[3:0] lastBE = 4'hF, logic[3:0] firstBE = 4'hF,
+      Format fmt = H3DW_NODATA, Type typ = MEM_RW_REQ, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] dwCount);
+    RdReq0 result; result = '0;
+    result.reqID = reqID;
+    result.tag = tag;
+    result.lastBE = lastBE;
+    result.firstBE = firstBE;
+    `MSG_DW0_ASSIGN;
+    return result;
+  endfunction
+
+  function RdReq1 genDmaRdReq1(QWAddr qwAddr);
+    RdReq1 result; result = '0;
+    result.qwAddr = qwAddr;
+    return result;
+  endfunction
+
+  // TLP structs for completion message. This goes from FPGA->CPU in response to a register read,
+  // and from CPU->FPGA in response to a DMA read.
   typedef struct packed {
     BusID cmpID;
     logic[2:0] status;
     logic reserved5;
-    logic[11:0] byteCount;
+    ByteCount byteCount;
     logic reserved4;
-    logic[1:0] fmt;
-    logic[4:0] typ;
-    logic reserved3;
-    logic[2:0] tc;
-    logic[3:0] reserved2;
-    logic td;
-    logic ep;
-    logic[1:0] attr;
-    logic[1:0] reserved1;
-    logic[9:0] length;
-  } RdCmpQW0;
+    `MSG_DW0_DEFN;
+  } Completion0;
 
   typedef struct packed {
     Data data;
     BusID reqID;
     Tag tag;
-    logic reserved2;
+    logic reserved3;
     LowAddr lowAddr;
-    logic[1:0] reserved1;
-  } RdCmpQW1;
+    logic isReg;  // 1 for register completions, 0 for DMA completions
+    logic[1:0] reserved1;  // all transfers are DW-aligned, so this is always zero
+  } Completion1;
 
-  function WriteQW0 genWrite0(
-      BusID reqID = 0, logic[3:0] lastBE = 4'hF, logic[3:0] firstBE = 4'hF,
-      logic[1:0] fmt = 2, logic[4:0] typ = 0, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
-      logic[1:0] attr = 0, logic[9:0] length = 0);
-    WriteQW0 result;
-    result = '0;
-    result.reqID = reqID;
-    result.lastBE = lastBE;
-    result.firstBE = firstBE;
-    result.fmt = fmt;
-    result.typ = typ;
-    result.tc = tc;
-    result.td = td;
-    result.ep = ep;
-    result.attr = attr;
-    result.length = length;
-    return result;
-  endfunction
-
-  function WriteQW1 genWrite1(Data data = 0, DWAddr dwAddr = 0);
-    WriteQW1 result;
-    result = '0;
-    result.data = data;
-    result.dwAddr = dwAddr;
-    return result;
-  endfunction
-
-  function RdCmpQW0 genRdCmp0(
-      BusID cmpID = 0, logic[2:0] status = 0, logic[11:0] byteCount = 0,
-      logic[1:0] fmt = 2, logic[4:0] typ = 'h0A, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
-      logic[1:0] attr = 0, logic[9:0] length = 0);
-    RdCmpQW0 result;
-    result = '0;
+  function Completion0 genRegCmp0(
+      BusID cmpID, logic[2:0] status = 0,
+      Format fmt = H3DW_WITHDATA, Type typ = COMPLETION, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] dwCount = 1);
+    Completion0 result; result = '0;
     result.cmpID = cmpID;
     result.status = status;
-    result.byteCount = byteCount;
-    result.fmt = fmt;
-    result.typ = typ;
-    result.tc = tc;
-    result.td = td;
-    result.ep = ep;
-    result.attr = attr;
-    result.length = length;
+    result.byteCount = ByteCount'(4*dwCount);
+    `MSG_DW0_ASSIGN;
     return result;
   endfunction
 
-  function RdCmpQW1 genRdCmp1(Data data = 0, BusID reqID = 0, Tag tag = 0, LowAddr lowAddr = 0);
-    RdCmpQW1 result;
-    result = '0;
+  function Completion1 genRegCmp1(Data data, BusID reqID, Tag tag, LowAddr lowAddr);
+    Completion1 result; result = '0;
     result.data = data;
+    result.reqID = reqID;
+    result.tag = tag;
+    result.lowAddr = lowAddr;
+    result.isReg = 1;  // register completions are DW-aligned but QW-misaligned
+    return result;
+  endfunction
+
+  function Completion0 genDmaCmp0(
+      BusID cmpID, logic[2:0] status = 0,
+      Format fmt = H3DW_WITHDATA, Type typ = COMPLETION, logic[2:0] tc = 0, logic td = 0, logic ep = 0,
+      logic[1:0] attr = 0, logic[9:0] dwCount);
+    Completion0 result; result = '0;
+    result.cmpID = cmpID;
+    result.status = status;
+    result.byteCount = ByteCount'(4*dwCount);;
+    `MSG_DW0_ASSIGN;
+    return result;
+  endfunction
+
+  function Completion1 genDmaCmp1(BusID reqID, Tag tag, LowAddr lowAddr);
+    Completion1 result; result = '0;
     result.reqID = reqID;
     result.tag = tag;
     result.lowAddr = lowAddr;

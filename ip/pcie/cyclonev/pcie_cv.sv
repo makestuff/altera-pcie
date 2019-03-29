@@ -16,29 +16,29 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-module pcie_cv (
+module pcie_cv(
     // Clock, resets, PCIe physical RX & TX
-    input  logic       pcieRefClk_in,
-    input  logic       pcieNPOR_in,
-    input  logic       pciePERST_in,
-    input  logic[3:0]  pcieRX_in,
-    output logic[3:0]  pcieTX_out,
+    input logic pcieRefClk_in,
+    input logic pcieNPOR_in,
+    input logic pciePERST_in,
+    input logic[3:0] pcieRX_in,
+    output logic[3:0] pcieTX_out,
 
     // Application interface
-    output logic       pcieClk_out,
-    output logic[12:0] cfgBusDev_out,
+    output logic pcieClk_out,
+    output tlp_xcvr_pkg::BusID cfgBusDev_out,
 
-    output logic[63:0] rxData_out,
-    output logic       rxSOP_out,
-    output logic       rxEOP_out,
-    output logic       rxValid_out,
-    input  logic       rxReady_in,
+    output tlp_xcvr_pkg::uint64 rxData_out,
+    output logic rxSOP_out,
+    output logic rxEOP_out,
+    output logic rxValid_out,
+    input logic rxReady_in,
 
-    input  logic[63:0] txData_in,
-    input  logic       txSOP_in,
-    input  logic       txEOP_in,
-    input  logic       txValid_in,
-    output logic       txReady_out,
+    input tlp_xcvr_pkg::uint64 txData_in,
+    input logic txSOP_in,
+    input logic txEOP_in,
+    input logic txValid_in,
+    output logic txReady_out,
 
     // Control & Pipe signals for simulation connection
     input  wire[31:0] dut_hip_ctrl_test_in,          //   dut_hip_ctrl.test_in
@@ -136,8 +136,9 @@ module pcie_cv (
     .tl_cfg_ctl_wr  (1'b0),
     .tl_cfg_sts     ('0),
     .tl_cfg_sts_wr  (1'b0),
-    .cfg_busdev     (cfgBusDev_out)  // 13-bit device ID assigned to the FPGA on enumeration
+    .cfg_busdev     (cfgBusDev_out[15:3])  // 13-bit device ID assigned to the FPGA on enumeration
   );
+  assign cfgBusDev_out[2:0] = 0;
 
   // Small FIFO to avoid rxData being lost because of the two-clock latency from the PCIe IP.
   buffer_fifo#(
@@ -179,7 +180,7 @@ module pcie_cv (
     .gen12_lane_rate_mode_hwtcl                ("Gen1 (2.5 Gbps)"),
     .pcie_spec_version_hwtcl                   ("2.1"),
     .ast_width_hwtcl                           ("Avalon-ST 64-bit"),
-    .pll_refclk_freq_hwtcl                     ("100 MHz"),
+    .pll_refclk_freq_hwtcl                     ("125 MHz"),
     .set_pld_clk_x1_625MHz_hwtcl               (0),
     .in_cvp_mode_hwtcl                         (0),
     .hip_reconfig_hwtcl                        (0),

@@ -1,3 +1,5 @@
 set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) "../../buffer-fifo/buffer_fifo.qip"]
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "tlp_xcvr_pkg.sv"] -library makestuff
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "tlp_xcvr.sv"]     -library makestuff
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "tlp_xcvr_pkg.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "tlp_recv.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "tlp_send.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "tlp_xcvr.sv"]

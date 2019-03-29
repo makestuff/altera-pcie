@@ -401,7 +401,7 @@
   <parameter name="pcie_spec_version_hwtcl" value="2.1" />
   <parameter name="pclk_out_sel_advanced_default_hwtcl" value="pclk" />
   <parameter name="pipex1_debug_sel_advanced_default_hwtcl" value="disable" />
-  <parameter name="pll_refclk_freq_hwtcl" value="100 MHz" />
+  <parameter name="pll_refclk_freq_hwtcl" value="125 MHz" />
   <parameter name="port_link_number_hwtcl" value="1" />
   <parameter name="porttype_func_hwtcl" value="Native endpoint" />
   <parameter name="prefetchable_mem_window_addr_width_hwtcl" value="0" />

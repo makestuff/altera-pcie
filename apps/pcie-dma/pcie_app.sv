@@ -16,101 +16,135 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-module pcie_app(
-    input logic pcieClk_in,  // 125MHz clock from PCIe PLL
-    input logic[12:0] cfgBusDev_in,  // the device ID assigned to the FPGA on enumeration
+module pcie_app#(
+    parameter bit EN_SWAP
+  )(
+    input logic pcieClk_in,                  // 125MHz clock from PCIe PLL
+    input tlp_xcvr_pkg::BusID cfgBusDev_in,  // the device ID assigned to the FPGA on enumeration
 
     // Incoming requests from the CPU
-    input logic[63:0] rxData_in,
+    input tlp_xcvr_pkg::uint64 rxData_in,
     input logic rxValid_in,
     output logic rxReady_out,
     input logic rxSOP_in,
     input logic rxEOP_in,
 
     // Outgoing responses from the FPGA
-    output logic[63:0] txData_out,
+    output tlp_xcvr_pkg::uint64 txData_out,
     output logic txValid_out,
     input logic txReady_in,
     output logic txSOP_out,
     output logic txEOP_out
   );
 
-  localparam int REG_ABITS = 1;  // 2**1 = 2 (just DMABASE & DMACTRL)
-  localparam int DMABASE = 0;
-  localparam int DMACTRL = 1;
-  typedef logic[63:0] uint64;
-  typedef logic[31:0] uint32;
-  logic[REG_ABITS-1:0] cpuChan;
-  uint64 dmaData;
-  logic dmaValid;
-  logic dmaReady;
-  logic cpuReading;
-  logic cpuWriting;
-  logic rngReset;
-  uint32 counter = '0;
-  uint32 counter_next;
+  // Import types and constants
+  import tlp_xcvr_pkg::*;
 
-  // Instantiate random-number generator
-  dvr_rng64 rng(
-    .clk_in           (pcieClk_in),
-    .reset_in         (rngReset),
-    .data_out         (dmaData),
-    .valid_out        (dmaValid),
-    .ready_in         (dmaReady)
-  );
+  // Register interface
+  Channel cpuChan;
+  Data cpuWrData;
+  logic cpuWrValid;
+  logic cpuWrReady;
+  Data tempData;
+  Data cpuRdData;
+  logic cpuRdValid;
+
+  // 64-bit RNG as DMA data-source
+  uint64 f2cData;
+  logic f2cValid;
+  logic f2cReady;
+  logic f2cReset;
+
+  // CPU->FPGA data
+  uint64 c2fData;
+  logic c2fValid;
+
+  // Register array
+  Data[0:2**CHAN_WIDTH-1] regArray = '0;
+  Data[0:2**CHAN_WIDTH-1] regArray_next;
+  uint64 ckSum = 0;
+  uint64 ckSum_next;
 
   // TLP-level interface
-  tlp_xcvr#(
-    .REG_ABITS        (REG_ABITS)
-  ) tlp_inst (
-    .pcieClk_in       (pcieClk_in),
-    .cfgBusDev_in     (cfgBusDev_in),
+  tlp_xcvr tlp_inst(
+    .pcieClk_in     (pcieClk_in),
+    .cfgBusDev_in   (cfgBusDev_in),
 
     // Incoming requests from the CPU
-    .rxData_in        (rxData_in),
-    .rxValid_in       (rxValid_in),
-    .rxReady_out      (rxReady_out),
-    .rxSOP_in         (rxSOP_in),
-    .rxEOP_in         (rxEOP_in),
+    .rxData_in      (rxData_in),
+    .rxValid_in     (rxValid_in),
+    .rxReady_out    (rxReady_out),
+    .rxSOP_in       (rxSOP_in),
+    .rxEOP_in       (rxEOP_in),
 
     // Outgoing responses to the CPU
-    .txData_out       (txData_out),
-    .txValid_out      (txValid_out),
-    .txReady_in       (txReady_in),
-    .txSOP_out        (txSOP_out),
-    .txEOP_out        (txEOP_out),
+    .txData_out     (txData_out),
+    .txValid_out    (txValid_out),
+    .txReady_in     (txReady_in),
+    .txSOP_out      (txSOP_out),
+    .txEOP_out      (txEOP_out),
 
     // Internal read/write interface
-    .cpuChan_out      (cpuChan),
-    .cpuWrData_out    (),
-    .cpuWrValid_out   (cpuWriting),
-    .cpuWrReady_in    (1'b1),
-    .cpuRdData_in     (counter),  // all reads return the counter value
-    .cpuRdValid_in    (1'b1),
-    .cpuRdReady_out   (cpuReading),
+    .cpuChan_out    (cpuChan),
+    .cpuWrData_out  (cpuWrData),
+    .cpuWrValid_out (cpuWrValid),
+    .cpuWrReady_in  (cpuWrReady),
+    .cpuRdData_in   (cpuRdData),
+    .cpuRdValid_in  (cpuRdValid),
+    .cpuRdReady_out (),
 
-    // DMA stream
-    .dmaData_in       (dmaData),
-    .dmaValid_in      (dmaValid),
-    .dmaReady_out     (dmaReady)
+    // CPU->FPGA DMA stream
+    .c2fData_out    (c2fData),
+    .c2fValid_out   (c2fValid),
+
+    // FPGA->CPU DMA stream
+    .f2cData_in     (f2cData),
+    .f2cValid_in    (f2cValid),
+    .f2cReady_out   (f2cReady),
+    .f2cReset_out   (f2cReset)
   );
 
-  // Infer counter register
+  // Instantiate 64-bit random-number generator, as DMA data source
+  dvr_rng64 rng(
+    .clk_in    (pcieClk_in),
+    .reset_in  (f2cReset),
+    .data_out  (f2cData),
+    .valid_out (f2cValid),
+    .ready_in  (f2cReady)
+  );
+
+  // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
-    counter <= counter_next;
+    regArray <= regArray_next;
+    ckSum <= ckSum_next;
   end
 
   // Next state logic
   always_comb begin: next_state
-    // Reset the RNG when reading register DMABASE
-    rngReset = 1'b0;
-    if (cpuReading && cpuChan == DMABASE)
-      rngReset = 1'b1;
+    if (f2cReset)
+      ckSum_next = 0;
+    else if (c2fValid)
+      ckSum_next = ckSum + c2fData;
+    else
+      ckSum_next = ckSum;
 
-    // Reset the counter when writing register DMACTRL
-    counter_next = counter + 1;
-    if (cpuWriting && cpuChan == DMACTRL)
-      counter_next = 0;
+    if (cpuChan == 254)
+      tempData = ckSum[31:0];
+    else if (cpuChan == 255)
+      tempData = ckSum[63:32];
+    else
+      tempData = regArray[cpuChan];
+
+    if (EN_SWAP)
+      cpuRdData = {tempData[15:0], tempData[31:16]};
+    else
+      cpuRdData = tempData;
+
+    cpuRdValid = 1;  // always ready to supply data
+    cpuWrReady = 1;  // always ready to receive data
+    regArray_next = regArray;
+    if (cpuWrValid)
+      regArray_next[cpuChan] = cpuWrData;
   end
 
 endmodule

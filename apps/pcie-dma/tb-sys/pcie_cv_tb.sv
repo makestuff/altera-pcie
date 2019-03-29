@@ -17,7 +17,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 `timescale 1 ps / 1 ps
-module pcie_cv_tb;
+module pcie_cv_tb#(
+    parameter int EN_SWAP = 0
+  );
 
   wire  [31:0] dut_pcie_tb_hip_ctrl_test_in;             // DUT_pcie_tb:test_in -> pcie_cv_inst:dut_hip_ctrl_test_in
   wire         dut_pcie_tb_hip_ctrl_simu_mode_pipe;      // DUT_pcie_tb:simu_mode_pipe -> pcie_cv_inst:dut_hip_ctrl_simu_mode_pipe
@@ -93,29 +95,34 @@ module pcie_cv_tb;
   wire         dut_pcie_tb_hip_pipe_rxdatak0;            // DUT_pcie_tb:rxdatak0 -> pcie_cv_inst:dut_hip_pipe_rxdatak0
   wire         dut_pcie_tb_hip_pipe_rxdatak3;            // DUT_pcie_tb:rxdatak3 -> pcie_cv_inst:dut_hip_pipe_rxdatak3
 
+  // Import types, etc
+  import tlp_xcvr_pkg::*;
+
   // External signals
-  logic pcieRefClk;
-  logic pcieNPOR;
-  logic pciePERST;
+  logic  pcieRefClk;
+  logic  pcieNPOR;
+  logic  pciePERST;
 
   // Application interface
-  logic        pcieClk;    // 125MHz core clock from PCIe PLL
-  logic[12:0]  cfgBusDev;  // the device ID assigned to the FPGA on enumeration
+  logic  pcieClk;    // 125MHz core clock from PCIe PLL
+  BusID  cfgBusDev;  // the device ID assigned to the FPGA on enumeration
 
-  logic[63:0]  rxData;     // incoming requests from the CPU
-  logic        rxSOP;
-  logic        rxEOP;
-  logic        rxValid;
-  logic        rxReady;
+  uint64 rxData;     // incoming requests from the CPU
+  logic  rxSOP;
+  logic  rxEOP;
+  logic  rxValid;
+  logic  rxReady;
 
-  logic[63:0]  txData;     // outgoing responses from the FPGA
-  logic        txSOP;
-  logic        txEOP;
-  logic        txValid;
-  logic        txReady;
+  uint64 txData;     // outgoing responses from the FPGA
+  logic  txSOP;
+  logic  txEOP;
+  logic  txValid;
+  logic  txReady;
 
   // The thing which actually drives the bus from the FPGA side
-  pcie_app pcie_app (
+  pcie_app#(
+    .EN_SWAP       (EN_SWAP)
+  ) pcie_app (
     .pcieClk_in    (pcieClk),
     .cfgBusDev_in  (cfgBusDev),
 

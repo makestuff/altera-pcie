@@ -21,27 +21,75 @@ file delete -force work
 vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 
-vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv -work makestuff
-vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr.sv     -work makestuff
-vlog -sv -novopt -hazards -lint -pedanticerrors tlp_xcvr_tb.sv     -work makestuff
-vsim -t ps -novopt -L work -L makestuff -L altera_mf_ver makestuff.tlp_xcvr_tb
+vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv -work makestuff +define+SIMULATION
+vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_send.sv     -work makestuff +define+SIMULATION
+vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_recv.sv     -work makestuff +define+SIMULATION
+vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr.sv     -work makestuff +define+SIMULATION
+vlog -sv -novopt -hazards -lint -pedanticerrors tlp_xcvr_tb.sv        -L makestuff
+vsim     -novopt -t ps +nowarn3116 -L work -L makestuff -L altera_mf_ver tlp_xcvr_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      dispClk
-  #add wave -uns uut/depth_out
 
-  #add wave -div "Input Pipe"
-  #add wave -hex uut/iData_in
-  #add wave      uut/iValid_in
-  #add wave      uut/iReady_out
-  #add wave      uut/iReadyChunk_out
+  add wave -div "RX Pipe"
+  add wave -hex uut/recv/rw0
+  add wave -hex uut/recv/rw1
+  add wave -hex uut/recv/rr0
+  add wave -hex uut/recv/rr1
+  add wave -hex uut/recv/rc0
+  add wave -hex uut/recv/rc1
+  add wave      uut/rxValid_in
+  add wave      uut/rxReady_out
+  add wave      uut/rxSOP_in
+  add wave      uut/rxEOP_in
 
-  #add wave -div "Output Pipe"
-  #add wave -hex uut/oData_out
-  #add wave      uut/oValid_out
-  #add wave      uut/oValidChunk_out
-  #add wave      uut/oReady_in
-  #add wave -div ""
+  add wave -div "Action Pipe"
+  add wave -hex uut/send/rr
+  add wave -hex uut/send/rw
+  add wave      uut/send/actValid_in
+  add wave      uut/send/actReady_out
+
+  add wave -div "TX Pipe"
+  add wave -hex uut/txData_out
+  add wave      uut/txValid_out
+  add wave      uut/txReady_in
+  add wave      uut/txSOP_out
+  add wave      uut/txEOP_out
+
+  add wave -div "Register Pipes"
+  add wave -hex uut/cpuChan_out
+  add wave -hex uut/cpuWrData_out
+  add wave      uut/cpuWrValid_out
+  add wave      uut/cpuWrReady_in
+  add wave -hex uut/cpuRdData_in
+  add wave      uut/cpuRdValid_in
+  add wave      uut/cpuRdReady_out
+
+  add wave -div "FPGA->CPU DMA Pipe"
+  add wave -hex f2cDataX
+  add wave      uut/f2cValid_in
+  add wave      uut/f2cReady_out
+
+  add wave -div "CPU->FPGA DMA Pipe"
+  add wave -hex uut/c2fData_out
+  add wave      uut/c2fValid_out
+
+  add wave -div "Internals"
+  add wave      uut/recv/state
+  add wave      uut/send/state
+  add wave -hex uut/send/f2cBase
+  add wave -uns uut/send/f2cWrPtr
+  add wave -uns uut/send/f2cRdPtr
+  add wave -hex uut/send/c2fBase
+  add wave -uns uut/send/c2fWrPtr
+  add wave -uns uut/send/c2fRdPtr
+  add wave -hex uut/send/rdData
+  add wave -hex uut/send/reqID
+  add wave -hex uut/send/tag
+  add wave -hex uut/send/lowAddr
+  add wave -hex uut/send/qwCount
+  add wave -hex regArray
+  add wave -div ""
 
   configure wave -namecolwidth 265
   configure wave -valuecolwidth 25

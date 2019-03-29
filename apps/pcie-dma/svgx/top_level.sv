@@ -16,25 +16,27 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-module top_level(
-    input  logic      pcieRefClk_in,
-    input  logic      pciePERST_in,
-    input  logic[3:0] pcieRX_in,
+module top_level#(
+    parameter bit EN_SWAP
+  )(
+    input logic pcieRefClk_in,
+    input logic pciePERST_in,
+    input logic[3:0] pcieRX_in,
     output logic[3:0] pcieTX_out
   );
 
-  logic       pcieClk;
-  logic[12:0] cfgBusDev;
-  logic[63:0] rxData;
-  logic       rxSOP;
-  logic       rxEOP;
-  logic       rxValid;
-  logic       rxReady;
-  logic[63:0] txData;
-  logic       txSOP;
-  logic       txEOP;
-  logic       txValid;
-  logic       txReady;
+  logic pcieClk;
+  tlp_xcvr_pkg::BusID cfgBusDev;
+  tlp_xcvr_pkg::uint64 rxData;
+  logic rxSOP;
+  logic rxEOP;
+  logic rxValid;
+  logic rxReady;
+  tlp_xcvr_pkg::uint64 txData;
+  logic txSOP;
+  logic txEOP;
+  logic txValid;
+  logic txReady;
 
   pcie_sv pcie_inst(
     // External connections
@@ -62,7 +64,9 @@ module top_level(
   );
 
   // The actual "application" logic
-  pcie_app pcie_app(
+  pcie_app#(
+    .EN_SWAP          (EN_SWAP)
+  ) pcie_app (
     .pcieClk_in       (pcieClk),
     .cfgBusDev_in     (cfgBusDev),
 

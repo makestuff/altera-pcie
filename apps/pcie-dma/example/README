@@ -1,11 +1,2 @@
-To verify the qwords DMA'd into host memory, compare with the software model for
-the PRNG:
-
-  make clean; make
-  build/example | grep -P '^  ' > x; ../../../ip/dvr-rng/gen-rng/get_seq64 | od -tx1 -w8 -An | awk '{print "  0x"$8$7$6$5$4$3$2$1}' | tr '[a-f]' '[A-F]' | head -$(wc -l x | awk '{print $1}') > y; diff x y
-
-To get a latency distribution graph (latency in ns on x vs frequency on y):
-
-  make clean; make COPT="-DBENCHMARK -O2"
-
-This will do 100m transactions, which will take five minutes or so.
+Write six 32-bit values to registers 2-7, and read them back. Remember that registers 0 and 1 are
+internal to the tlp_core and handle DMA transfers.

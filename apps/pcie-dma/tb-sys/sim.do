@@ -21,6 +21,14 @@ if {![info exists ::env(FPGA)]} {
   puts "\nYou need to set the FPGA environment variable!\n"
   quit
 }
+if {![info exists ::env(EN_SWAP)]} {
+  puts "\nYou need to set the EN_SWAP environment variable!\n"
+  quit
+}
+if {![info exists ::env(NUM_ITERATIONS)]} {
+  puts "\nYou need to set the NUM_ITERATIONS environment variable!\n"
+  quit
+}
 
 file delete -force modelsim.ini
 file delete -force work
@@ -28,17 +36,22 @@ vmap -modelsimini $IP_DIR/sim-libs/modelsim.ini -c
 vlib work
 vmap work_lib work
 
-vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff
-vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff
-vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff
-vlog -sv -novopt ../pcie_app.sv                          -hazards -lint -pedanticerrors
+vlog -sv -novopt $IP_DIR/reg-mux/reg_mux.sv              -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv -novopt ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff
 
 if {$env(FPGA) in [list "svgx"]} {
   # Do a Stratix V simulation
-  vlog -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+  vlog -sv -novopt $IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules/altpcie_monitor_sv_dlhip_sim.sv -work pcie_sv
+  vlog -sv -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
   vlog -sv -novopt -hazards -lint -pedanticerrors $IP_DIR/pcie/stratixv/pcie_sv.sv -work makestuff
-  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_sv_tb.sv
-  vsim -novopt -t ps \
+  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_sv_tb.sv -L makestuff
+  vsim -novopt -t ps -g EN_SWAP=$env(EN_SWAP) -g dut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
     -L work -L work_lib -L makestuff -L pcie_sv -L pcie_sv_tb \
     -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
     -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
@@ -46,10 +59,10 @@ if {$env(FPGA) in [list "svgx"]} {
     pcie_sv_tb
 } elseif {$env(FPGA) in [list "cvgt"]} {
   # Do a Cyclone V simulation
-  vlog     -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.v
+  vlog -sv -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
   vlog -sv -novopt -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work makestuff
-  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_cv_tb.sv
-  vsim -novopt -t ps \
+  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff
+  vsim -novopt -t ps -g EN_SWAP=$env(EN_SWAP) -g dut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
     -L work -L work_lib -L makestuff -L pcie_cv -L pcie_cv_tb \
     -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
     -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
@@ -63,35 +76,71 @@ if {$env(FPGA) in [list "svgx"]} {
 add wave      pcie_app/pcieClk_in
 add wave -hex pcie_app/cfgBusDev_in
 
-add wave -div "RX"
-add wave -hex pcie_app/rxData_in
+add wave -div "RX Pipe"
+add wave -hex pcie_app/tlp_inst/recv/rxData_in
+add wave -hex pcie_app/tlp_inst/recv/rw0
+add wave -hex pcie_app/tlp_inst/recv/rw1
+add wave -hex pcie_app/tlp_inst/recv/rr0;
+add wave -hex pcie_app/tlp_inst/recv/rr1;
+add wave -hex pcie_app/tlp_inst/recv/rc0;
 add wave      pcie_app/rxValid_in
 add wave      pcie_app/rxReady_out
 add wave      pcie_app/rxSOP_in
 add wave      pcie_app/rxEOP_in
 
-add wave -div "TX"
-add wave -hex pcie_app/txData_out
-add wave      pcie_app/txValid_out
-add wave      pcie_app/txReady_in
-add wave      pcie_app/txSOP_out
-add wave      pcie_app/txEOP_out
+add wave -div "Action Pipe"
+add wave -hex pcie_app/tlp_inst/send/rr
+add wave -hex pcie_app/tlp_inst/send/rw
+add wave      pcie_app/tlp_inst/send/actValid_in
+add wave      pcie_app/tlp_inst/send/actReady_out
+
+add wave -div "TX Pipe"
+add wave -hex pcie_app/tlp_inst/txData_out
+add wave      pcie_app/tlp_inst/txValid_out
+add wave      pcie_app/tlp_inst/txReady_in
+add wave      pcie_app/tlp_inst/txSOP_out
+add wave      pcie_app/tlp_inst/txEOP_out
+
+add wave -div "Register Pipes"
+add wave -hex pcie_app/tlp_inst/cpuChan_out
+add wave -hex pcie_app/tlp_inst/cpuWrData_out
+add wave      pcie_app/tlp_inst/cpuWrValid_out
+add wave      pcie_app/tlp_inst/cpuWrReady_in
+add wave -hex pcie_app/tlp_inst/cpuRdData_in
+add wave      pcie_app/tlp_inst/cpuRdValid_in
+add wave      pcie_app/tlp_inst/cpuRdReady_out
+
+add wave -div "FPGA->CPU DMA Pipe"
+add wave -hex pcie_app/tlp_inst/f2cData_in
+add wave      pcie_app/tlp_inst/f2cValid_in
+add wave      pcie_app/tlp_inst/f2cReady_out
+add wave      pcie_app/tlp_inst/f2cReset_out
+
+add wave -div "Receiver Internals"
+add wave      pcie_app/tlp_inst/recv/state
+add wave -hex pcie_app/tlp_inst/recv/qwCount
+
+add wave -div "Sender Internals"
+add wave      pcie_app/tlp_inst/send/state
+add wave -hex pcie_app/tlp_inst/send/f2cBase
+add wave -radix unsigned pcie_app/tlp_inst/send/f2cWrPtr
+add wave -radix unsigned pcie_app/tlp_inst/send/f2cRdPtr
+add wave -hex pcie_app/tlp_inst/send/c2fBase
+add wave -radix unsigned pcie_app/tlp_inst/send/c2fWrPtr
+add wave -radix unsigned pcie_app/tlp_inst/send/c2fRdPtr
+add wave -hex pcie_app/tlp_inst/send/rdData
+add wave -hex pcie_app/tlp_inst/send/reqID
+add wave -hex pcie_app/tlp_inst/send/tag
+add wave -hex pcie_app/tlp_inst/send/lowAddr
+add wave -hex pcie_app/tlp_inst/send/qwCount
 
 add wave -div "App Internals"
-add wave      pcie_app/cpuReading
-add wave      pcie_app/cpuWriting
-add wave      pcie_app/cpuChan
-add wave -hex pcie_app/counter
-
-add wave -div "TLP Internals"
-add wave      pcie_app/tlp_inst/state
-add wave -hex pcie_app/tlp_inst/dmaAddr
-add wave -hex pcie_app/tlp_inst/tlpCount
-add wave -hex pcie_app/tlp_inst/qwCount
+add wave -hex pcie_app/ckSum
+add wave -div ""
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
-  configure wave -namecolwidth 235
-  configure wave -valuecolwidth 105
+  configure wave -namecolwidth 340
+  configure wave -valuecolwidth 132
   onbreak resume
   run -all
   view wave

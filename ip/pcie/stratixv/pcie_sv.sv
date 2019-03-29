@@ -16,29 +16,29 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-module pcie_sv (
+module pcie_sv(
     // Clock, resets, PCIe physical RX & TX
-    input  logic       pcieRefClk_in,
-    input  logic       pcieNPOR_in,
-    input  logic       pciePERST_in,
-    input  logic[3:0]  pcieRX_in,
-    output logic[3:0]  pcieTX_out,
+    input logic pcieRefClk_in,
+    input logic pcieNPOR_in,
+    input logic pciePERST_in,
+    input logic[3:0] pcieRX_in,
+    output logic[3:0] pcieTX_out,
 
     // Application interface
-    output logic       pcieClk_out,
-    output logic[12:0] cfgBusDev_out,
+    output logic pcieClk_out,
+    output tlp_xcvr_pkg::BusID cfgBusDev_out,
 
-    output logic[63:0] rxData_out,
-    output logic       rxSOP_out,
-    output logic       rxEOP_out,
-    output logic       rxValid_out,
-    input  logic       rxReady_in,
+    output tlp_xcvr_pkg::uint64 rxData_out,
+    output logic rxSOP_out,
+    output logic rxEOP_out,
+    output logic rxValid_out,
+    input logic rxReady_in,
 
-    input  logic[63:0] txData_in,
-    input  logic       txSOP_in,
-    input  logic       txEOP_in,
-    input  logic       txValid_in,
-    output logic       txReady_out,
+    input tlp_xcvr_pkg::uint64 txData_in,
+    input logic txSOP_in,
+    input logic txEOP_in,
+    input logic txValid_in,
+    output logic txReady_out,
 
     // Control & Pipe signals for simulation connection
     input  wire [31:0] hip_ctrl_test_in,          //   hip_ctrl.test_in

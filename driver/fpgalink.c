@@ -20,7 +20,8 @@
 #include <linux/pci.h>
 
 // The size of the DMA buffer, in bytes
-#define DMA_BUFSIZE 4096
+#define DMA_PAGE_ORD 4
+#define DMA_BUFSIZE (4096*(1<<DMA_PAGE_ORD))
 
 // FPGA hardware registers
 #define DMABASE(x) ((x)+0*2+1)
@@ -230,7 +231,7 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 	// Allocate and map coherently-cached memory for a DMA-able buffer (see
 	// Documentation/PCI/PCI-DMA-mapping.txt, near line 318)
 	//
-	ape.bufVA = (u32 *)__get_free_page(GFP_USER | GFP_DMA32);
+	ape.bufVA = (u32 *)__get_free_pages(GFP_USER | GFP_DMA32, DMA_PAGE_ORD);
 	if ( !ape.bufVA ) {
 		printk(KERN_DEBUG "Could not allocate DMA buffer!\n");
 		rc = -ENOMEM; goto err_buf_alloc;

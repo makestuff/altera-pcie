@@ -1,9 +1,12 @@
 # Build like:
-#   make FPGA=cvgt
+#   make FPGA=cvgt EN_SWAP=1
 #
 
 # FPGA device
 FPGA         := svgx
+
+# Enable/disable register word-swapping
+EN_SWAP      := 0
 
 # By default, just build a JTAG programming-file
 all: build/proj.sof
@@ -19,8 +22,10 @@ ide: build/proj.qpf
 build/proj.qpf:
 	@mkdir build
 	@cp -rp $(FPGA)/* build/
+	@echo "set_parameter -name EN_SWAP $(EN_SWAP)" >> build/proj.qsf
 	@echo "Config {"                         | tee    build/build.log
 	@echo "  FPGA         = $(FPGA)"         | tee -a build/build.log
+	@echo "  EN_SWAP      = $(EN_SWAP)"      | tee -a build/build.log
 	@echo "}"                                | tee -a build/build.log
 
 # Program the FPGA over JTAG
