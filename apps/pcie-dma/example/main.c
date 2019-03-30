@@ -17,6 +17,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -38,8 +39,8 @@
 #define C2F_WRPTR (CTL_BASE + 3)
 #define DMA_ENABLE (CTL_BASE + 4)
 
-int main(void) {
-  int retVal = 0, dev, i;
+int main(int argc, const char* argv[]) {
+  int retVal = 0, dev;
   const uint32_t values[] = {
     0x290A560B, 0x0B7D2CD4, 0x05B928F0, 0xCCB6D44B, 0x1803D065, 0xF16124AA, 0x64CD0C05, 0xC3E75564,
     0x7A7102D3, 0x41289BEC, 0xF1278D11, 0xF080C884, 0x22D760F9, 0x5B1F0A3B, 0x98234C97, 0xF51F3515,
@@ -74,8 +75,11 @@ int main(void) {
     0xFFBFF145, 0xD0DDE129, 0x1E60CDB0, 0x6C8B215C, 0x4DA55761, 0x4012046B, 0x350A818C, 0x22AF35FD,
     0xE2C76585, 0xD2E1C6AF, 0x00D411FC, 0x2B285259, 0x6599C57B, 0x4598E5DD, 0xFA3483A8, 0xF0D34DB9
   };
-  const int numValues = 4; //sizeof(values)/sizeof(*values);
+  const size_t numValues = (argc == 2) ?
+    strtoul(argv[1], NULL, 0) :
+    sizeof(values)/sizeof(*values);
   uint32_t dummy;
+  size_t i;
 
   // Connect to the kernel driver...
   dev = open("/dev/fpga0", O_RDWR|O_SYNC);
@@ -107,12 +111,11 @@ int main(void) {
   for (i = 0; i < numValues; i++) {
     const uint32_t value = REG(i);
     printf(
-      "  %d: 0x%08X %s\n", i, value,
+      "  %zu: 0x%08X %s\n", i, value,
       (values[i] == value) ? "(✓)" : "(✗)"
     );
   }
 
-  /*
   // Try DMA
   printf("\nFPGA->CPU DMA Test:\n");
   memset((void*)dmaBaseVA, 0, 16*PAGE_SIZE);
@@ -135,12 +138,10 @@ int main(void) {
     }
     REG(DMA_ENABLE) = 0;  // reset everything
   }
-  */
 
   printf("\nCPU->FPGA DMA Test:\n");
   {
     volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
-    REG(DMA_ENABLE) = 0;  // reset everything
     printf("Before: 0x%08X%08X\n", REG(255), REG(254));
     *rdPtr = 0;
     dmaBaseVA[0] = 0xCAFEF00DC0DEFACEULL;
@@ -159,6 +160,7 @@ int main(void) {
     dmaBaseVA[13] = 0;
     dmaBaseVA[14] = 0;
     dmaBaseVA[15] = 0;
+    REG(DMA_ENABLE) = 0;  // reset everything
     REG(C2F_BASE) = dmaBaseBA;
     REG(C2F_WRPTR) = 1;  // tell FPGA there's stuff for it
 

@@ -157,8 +157,9 @@ module altpcietb_bfm_driver_chaining#(
     hostWrite(32'h00000100 + 16*128, 0);
     for (qw = 0; qw < 16; qw = qw + 1)
       hostWrite(32'h00000100 + 8*qw, dvr_rng_pkg::SEQ64[qw]);
-    fpgaWrite(fpgaBar, C2F_BASE, 32'h00000020);    // set base address
-    fpgaWrite(fpgaBar, C2F_WRPTR, 1);              // trigger DMA read
+    fpgaWrite(fpgaBar, DMA_ENABLE, 0);           // reset everything
+    fpgaWrite(fpgaBar, C2F_BASE, 32'h00000020);  // set base address
+    fpgaWrite(fpgaBar, C2F_WRPTR, 1);            // trigger DMA read
     #8000;
     while (hostRead(32'h00000100 + 16*128) == 0)
       #8000;  // 8ns

@@ -15,8 +15,11 @@ build/proj.sof: build/proj.qpf
 	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
 
 # Launch the Quartus GUI
-ide: build/proj.qpf
+gui: build/proj.qpf
 	quartus build/proj.qpf
+
+build: build/proj.qpf FORCE
+	@echo "You can make temporary changes to build/proj.qsf and then run quartus build/proj.qpf"
 
 # Copy the appropriate device files over, ready for the build to proceed
 build/proj.qpf:
