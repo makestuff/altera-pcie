@@ -74,7 +74,7 @@ int main(void) {
     0xFFBFF145, 0xD0DDE129, 0x1E60CDB0, 0x6C8B215C, 0x4DA55761, 0x4012046B, 0x350A818C, 0x22AF35FD,
     0xE2C76585, 0xD2E1C6AF, 0x00D411FC, 0x2B285259, 0x6599C57B, 0x4598E5DD, 0xFA3483A8, 0xF0D34DB9
   };
-  const int numValues = sizeof(values)/sizeof(*values);
+  const int numValues = 4; //sizeof(values)/sizeof(*values);
   uint32_t dummy;
 
   // Connect to the kernel driver...
@@ -100,7 +100,7 @@ int main(void) {
   const uint32_t dmaBaseBA = (uint32_t)(dmaBaseVA[0]>>3);  // driver helpfully wrote the bus-address here for us
 
   // Direct userspace readback
-  /*printf("Write FPGA registers & readback using I/O region mmap()'d into userspace:\n");
+  printf("Write FPGA registers & readback using I/O region mmap()'d into userspace:\n");
   for (i = 0; i < numValues; i++) {
     REG(i) = values[i];
   }
@@ -111,10 +111,10 @@ int main(void) {
       (values[i] == value) ? "(✓)" : "(✗)"
     );
   }
-  */
 
+  /*
   // Try DMA
-  /*printf("\nFPGA->CPU DMA Test:\n");
+  printf("\nFPGA->CPU DMA Test:\n");
   memset((void*)dmaBaseVA, 0, 16*PAGE_SIZE);
   {
     uint32_t rdPtr = 0;
@@ -143,7 +143,7 @@ int main(void) {
     REG(DMA_ENABLE) = 0;  // reset everything
     printf("Before: 0x%08X%08X\n", REG(255), REG(254));
     *rdPtr = 0;
-    dmaBaseVA[0] = 0;
+    dmaBaseVA[0] = 0xCAFEF00DC0DEFACEULL;
     dmaBaseVA[1] = 0;
     dmaBaseVA[2] = 0;
     dmaBaseVA[3] = 0;
