@@ -180,7 +180,7 @@ module pcie_cv(
     .gen12_lane_rate_mode_hwtcl                ("Gen1 (2.5 Gbps)"),
     .pcie_spec_version_hwtcl                   ("2.1"),
     .ast_width_hwtcl                           ("Avalon-ST 64-bit"),
-    .pll_refclk_freq_hwtcl                     ("125 MHz"),
+    .pll_refclk_freq_hwtcl                     ("100 MHz"),
     .set_pld_clk_x1_625MHz_hwtcl               (0),
     .in_cvp_mode_hwtcl                         (0),
     .hip_reconfig_hwtcl                        (0),
