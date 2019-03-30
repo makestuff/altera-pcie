@@ -25,7 +25,6 @@ package tlp_xcvr_pkg;
   localparam int C2F_BASE = CTL_BASE + 2;   // CPU->FPGA base address
   localparam int C2F_WRPTR = CTL_BASE + 3;  // CPU->FPGA write pointer
   localparam int DMA_ENABLE = CTL_BASE + 4;
-  localparam int DMA_RDREQ = CTL_BASE + 5;
 
   typedef enum logic[1:0] {
     H3DW_NODATA   = 2'b00,  // header is three DWs, no data (32-bit addressing)
