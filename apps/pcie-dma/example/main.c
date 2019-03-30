@@ -126,7 +126,7 @@ int main(int argc, const char* argv[]) {
     REG(DMA_ENABLE) = 0;  // reset everything
     REG(F2C_BASE) = dmaBaseBA;
     REG(DMA_ENABLE) = 1;
-    for (uint32_t i = 0; i < 4; ++i) {
+    for (uint32_t i = 0; i < numValues; ++i) {
       while (isEmpty());
       printf("  TLP %"PRIu32" (@%"PRIu32"):\n", i, rdPtr);
       for (uint32_t j = 0; j < 16; ++j) {
@@ -139,35 +139,32 @@ int main(int argc, const char* argv[]) {
     REG(DMA_ENABLE) = 0;  // reset everything
   }
 
-  printf("\nCPU->FPGA DMA Test:\n");
+  printf("CPU->FPGA DMA Test:\n");
   {
     volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
-    printf("Before: 0x%08X%08X\n", REG(255), REG(254));
-    *rdPtr = 0;
-    dmaBaseVA[0] = 0xCAFEF00DC0DEFACEULL;
-    dmaBaseVA[1] = 0;
-    dmaBaseVA[2] = 0;
-    dmaBaseVA[3] = 0;
-    dmaBaseVA[4] = 0;
-    dmaBaseVA[5] = 0;
-    dmaBaseVA[6] = 0;
-    dmaBaseVA[7] = 0;
-    dmaBaseVA[8] = 1;
-    dmaBaseVA[9] = 0;
-    dmaBaseVA[10] = 0;
-    dmaBaseVA[11] = 0;
-    dmaBaseVA[12] = 0;
-    dmaBaseVA[13] = 0;
-    dmaBaseVA[14] = 0;
-    dmaBaseVA[15] = 0;
+    dmaBaseVA[0]  = 0xD94228FF25158B13;
+    dmaBaseVA[1]  = 0xAD38F30AE4F8C54A;
+    dmaBaseVA[2]  = 0x77BA3F61586911F4;
+    dmaBaseVA[3]  = 0x4CF92278482729BE;
+    dmaBaseVA[4]  = 0x61A664C8491D97C3;
+    dmaBaseVA[5]  = 0x90DA4CD4CE831CBF;
+    dmaBaseVA[6]  = 0x1001542C72C3C930;
+    dmaBaseVA[7]  = 0xB77A2F931C78F8A1;
+    dmaBaseVA[8]  = 0x2B72932E0A3B310D;
+    dmaBaseVA[9]  = 0x0EFAFB1F3161F041;
+    dmaBaseVA[10] = 0xA49A5186111BC5EB;
+    dmaBaseVA[11] = 0x7B01289EB7559846;
+    dmaBaseVA[12] = 0x412010D731A850E6;
+    dmaBaseVA[13] = 0xCE505D4476A4BBC2;
+    dmaBaseVA[14] = 0x255C6F8F64181A72;
+    dmaBaseVA[15] = 0x4106B168D88FE2A6;
+    *rdPtr = 0;  // zero our copy of the FPGA rdPtr
     REG(DMA_ENABLE) = 0;  // reset everything
     REG(C2F_BASE) = dmaBaseBA;
     REG(C2F_WRPTR) = 1;  // tell FPGA there's stuff for it
-
     __asm volatile("mfence" ::: "memory");  // prevent StoreLoad reordering
-
     while (*rdPtr == 0);
-    printf("After (rdPtr=%d): 0x%08X%08X\n", *rdPtr, REG(255), REG(254));
+    printf("  FPGA updated rdPtr (0 to %d); ckSum = 0x%08X%08X\n\n", *rdPtr, REG(255), REG(254));
   }
 
 dev_close:

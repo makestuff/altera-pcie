@@ -54,19 +54,20 @@ module tlp_recv(
   BusID reqID_next;
   Tag tag = 'X;
   Tag tag_next;
-  logic[3:0] qwCount = 'X;
-  logic[3:0] qwCount_next;
+  typedef logic[4:0] QWCount;
+  QWCount qwCount = 'X;
+  QWCount qwCount_next;
 
   // Typed versions of incoming messages
   Header hdr;
   RdReq0 rr0;
   RdReq1 rr1;
+  Write1 rw1;
+  Completion0 rc0;
   `ifdef SIMULATION
     Write0 rw0;
-    Completion0 rc0;
     Completion1 rc1;
   `endif
-  Write1 rw1;
 
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
@@ -99,12 +100,12 @@ module tlp_recv(
     hdr = 'X;
     rr0 = 'X;
     rr1 = 'X;
+    rw1 = 'X;
+    rc0 = 'X;
     `ifdef SIMULATION
       rw0 = 'X;
-      rc0 = 'X;
       rc1 = 'X;
     `endif
-    rw1 = 'X;
 
     // Next state logic
     case (state)
@@ -129,13 +130,13 @@ module tlp_recv(
         `ifdef SIMULATION
           rc1 = rxData_in;
         `endif
-        qwCount_next = 15;
+        qwCount_next = qwCount;
         state_next = S_CMP2;
       end
       S_CMP2: begin
         c2fData_out = rxData_in;
         c2fValid_out = 1;
-        qwCount_next = qwCount - 4'd1;
+        qwCount_next = QWCount'(qwCount - 1);
         if (qwCount == 0) begin
           state_next = S_IDLE;
           qwCount_next = 'X;
@@ -163,9 +164,8 @@ module tlp_recv(
             tag_next = rr0.tag;
             state_next = S_READ;
           end else if (hdr.fmt == H3DW_WITHDATA && hdr.typ == COMPLETION) begin
-            `ifdef SIMULATION
-              rc0 = rxData_in;
-            `endif
+            rc0 = rxData_in;
+            qwCount_next = QWCount'(rc0.dwCount/2 - 1);  // FIXME: this assumes the dwCount is always even
             state_next = S_CMP1;
           end
         end
