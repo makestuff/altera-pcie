@@ -136,8 +136,9 @@ module pcie_sv(
     .tl_cfg_ctl_wr  (1'b0),
     .tl_cfg_sts     ('0),
     .tl_cfg_sts_wr  (1'b0),
-    .cfg_busdev     (cfgBusDev_out)  // 13-bit device ID assigned to the FPGA on enumeration
+    .cfg_busdev     (cfgBusDev_out[15:3])  // 13-bit device ID assigned to the FPGA on enumeration
   );
+  assign cfgBusDev_out[2:0] = 0;
 
   // Small FIFO to avoid rxData being lost because of the two-clock latency from the PCIe IP.
   buffer_fifo#(

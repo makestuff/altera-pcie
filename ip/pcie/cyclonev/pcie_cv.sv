@@ -175,7 +175,7 @@ module pcie_cv(
 
   // The actual PCIe IP block
   altpcie_cv_hip_ast_hwtcl #(
-    .ACDS_VERSION_HWTCL                        ("14.0"),
+    .ACDS_VERSION_HWTCL                        ("16.1"),
     .lane_mask_hwtcl                           ("x4"),
     .gen12_lane_rate_mode_hwtcl                ("Gen1 (2.5 Gbps)"),
     .pcie_spec_version_hwtcl                   ("2.1"),

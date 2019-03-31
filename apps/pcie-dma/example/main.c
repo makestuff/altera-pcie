@@ -75,9 +75,15 @@ int main(int argc, const char* argv[]) {
     0xFFBFF145, 0xD0DDE129, 0x1E60CDB0, 0x6C8B215C, 0x4DA55761, 0x4012046B, 0x350A818C, 0x22AF35FD,
     0xE2C76585, 0xD2E1C6AF, 0x00D411FC, 0x2B285259, 0x6599C57B, 0x4598E5DD, 0xFA3483A8, 0xF0D34DB9
   };
-  const size_t numValues = (argc == 2) ?
+  const size_t numValues = (argc > 1) ?
     strtoul(argv[1], NULL, 0) :
     sizeof(values)/sizeof(*values);
+  const bool doWrite = (argc > 2) ?
+    argv[2][0] == '1' :
+    false;
+  const bool keepReading = (argc > 3) ?
+    argv[3][0] == '1' :
+    false;
   uint32_t dummy;
   size_t i;
 
@@ -117,9 +123,9 @@ int main(int argc, const char* argv[]) {
   }
 
   // Try DMA
-  printf("\nFPGA->CPU DMA Test:\n");
-  memset((void*)dmaBaseVA, 0, 16*PAGE_SIZE);
-  {
+  if (doWrite) {
+    printf("\nFPGA->CPU DMA Test:");
+    memset((void*)dmaBaseVA, 0, 16*PAGE_SIZE);
     uint32_t rdPtr = 0;
     volatile uint32_t *wrPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
     #define isEmpty() (rdPtr == *wrPtr)
@@ -128,45 +134,52 @@ int main(int argc, const char* argv[]) {
     REG(DMA_ENABLE) = 1;
     for (uint32_t i = 0; i < numValues; ++i) {
       while (isEmpty());
-      printf("  TLP %"PRIu32" (@%"PRIu32"):\n", i, rdPtr);
+      printf("\n  TLP %"PRIu32" (@%"PRIu32"):\n", i, rdPtr);
       for (uint32_t j = 0; j < 16; ++j) {
         printf("    %016"PRIX64"\n", dmaBaseVA[rdPtr*16 + j]);
       }
-      printf("\n");
       ++rdPtr; rdPtr &= 0xF;
       REG(F2C_RDPTR) = rdPtr;  // tell FPGA we're finished with this TLP
     }
     REG(DMA_ENABLE) = 0;  // reset everything
   }
 
-  printf("CPU->FPGA DMA Test:\n");
-  {
+  printf("\nCPU->FPGA DMA Test:\n");
+  uint64_t ckSum;
+  uint32_t count = 0;
+  do {
     volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
-    dmaBaseVA[0]  = 0xD94228FF25158B13;
-    dmaBaseVA[1]  = 0xAD38F30AE4F8C54A;
-    dmaBaseVA[2]  = 0x77BA3F61586911F4;
-    dmaBaseVA[3]  = 0x4CF92278482729BE;
-    dmaBaseVA[4]  = 0x61A664C8491D97C3;
-    dmaBaseVA[5]  = 0x90DA4CD4CE831CBF;
-    dmaBaseVA[6]  = 0x1001542C72C3C930;
-    dmaBaseVA[7]  = 0xB77A2F931C78F8A1;
-    dmaBaseVA[8]  = 0x2B72932E0A3B310D;
-    dmaBaseVA[9]  = 0x0EFAFB1F3161F041;
-    dmaBaseVA[10] = 0xA49A5186111BC5EB;
-    dmaBaseVA[11] = 0x7B01289EB7559846;
-    dmaBaseVA[12] = 0x412010D731A850E6;
-    dmaBaseVA[13] = 0xCE505D4476A4BBC2;
-    dmaBaseVA[14] = 0x255C6F8F64181A72;
-    dmaBaseVA[15] = 0x4106B168D88FE2A6;
+    dmaBaseVA[0]  = 0xD94228FF25158B13ULL;
+    dmaBaseVA[1]  = 0xAD38F30AE4F8C54AULL;
+    dmaBaseVA[2]  = 0x77BA3F61586911F4ULL;
+    dmaBaseVA[3]  = 0x4CF92278482729BEULL;
+    dmaBaseVA[4]  = 0x61A664C8491D97C3ULL;
+    dmaBaseVA[5]  = 0x90DA4CD4CE831CBFULL;
+    dmaBaseVA[6]  = 0x1001542C72C3C930ULL;
+    dmaBaseVA[7]  = 0xB77A2F931C78F8A1ULL;
+    dmaBaseVA[8]  = 0x2B72932E0A3B310DULL;
+    dmaBaseVA[9]  = 0x0EFAFB1F3161F041ULL;
+    dmaBaseVA[10] = 0xA49A5186111BC5EBULL;
+    dmaBaseVA[11] = 0x7B01289EB7559846ULL;
+    dmaBaseVA[12] = 0x412010D731A850E6ULL;
+    dmaBaseVA[13] = 0xCE505D4476A4BBC2ULL;
+    dmaBaseVA[14] = 0x255C6F8F64181A72ULL;
+    dmaBaseVA[15] = 0x4106B168D88FE2A6ULL;
     *rdPtr = 0;  // zero our copy of the FPGA rdPtr
     REG(DMA_ENABLE) = 0;  // reset everything
     REG(C2F_BASE) = dmaBaseBA;
     REG(C2F_WRPTR) = 1;  // tell FPGA there's stuff for it
     __asm volatile("mfence" ::: "memory");  // prevent StoreLoad reordering
     while (*rdPtr == 0);
-    printf("  FPGA updated rdPtr (0 to %d); ckSum = 0x%08X%08X\n\n", *rdPtr, REG(255), REG(254));
-  }
-
+    dmaBaseVA[0] = 0ULL;  // see whether we can corrupt the message before the RP sends it
+    ckSum = REG(255); ckSum <<= 32U; ckSum |= REG(254);
+    ++count;
+    if ((count & 0xFFFF) == 0) {
+      printf(".");
+      fflush(stdout);
+    }
+  } while (keepReading && ckSum == 0xD5074AC63A7F8BA1ULL);
+  printf("Got ckSum 0x%"PRIX64" after %u tries\n\n", ckSum, count);
 dev_close:
   close(dev);
 exit:

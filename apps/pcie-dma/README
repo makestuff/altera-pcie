@@ -44,3 +44,9 @@ Now, on the test machine, in the driver directory:
   cd -                                        # back to our driver directory
   ./insmod.sh                                 # insert our driver
   ../apps/pcie-regs/example/build/example     # test it
+
+
+SignalTap
+---------
+
+cat signaltap.txt | perl -ane 'if(m/^..........([0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F])h ([01]) ([01]) ([01] [01]) ([0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F])h ([01]) ([01]) ([01] [01]) $/){if($4=="1 1"){$r="$1";}else{$r="                ";}if($8=="1 1"){$t="$5";}else{$t="";}print"$r | $t\n";if($3=="1" || $7=="1"){printf"                 |\n";}}' | less -S
