@@ -17,7 +17,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 # vsim -c -do compile.tcl > compile.log
-set QUARTUS_INSTALL_DIR $env(ALTERA)
+set QUARTUS_INSTALL_DIR "$env(ALTERA)/quartus"
 set QSYS_SIMDIR "pcie/stratixv/pcie_sv/testbench"
 do $QSYS_SIMDIR/mentor/msim_setup.tcl
 dev_com

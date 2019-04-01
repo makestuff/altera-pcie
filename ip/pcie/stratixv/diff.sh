@@ -21,5 +21,5 @@ patch -p0 pcie_sv.qsys <<EOF
     kind="clock"
 EOF
 
-$ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie_sv.qsys
+$ALTERA/quartus/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie_sv.qsys
 meld pcie_sv/testbench/pcie_sv_tb/simulation/submodules/pcie_sv.v ../pcie_sv.sv &

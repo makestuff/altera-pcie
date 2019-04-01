@@ -44,8 +44,8 @@ echo
 # Generate IP:
 echo "Starting StratixV PCIe IP generation..."
 cd pcie/stratixv
-$ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie_sv.qsys
-$ALTERA/sopc_builder/bin/qsys-generate --family="Stratix V" --synthesis=Verilog pcie_sv.qsys
+$ALTERA/quartus/sopc_builder/bin/qsys-generate --family="Stratix V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie_sv.qsys
+$ALTERA/quartus/sopc_builder/bin/qsys-generate --family="Stratix V" --synthesis=Verilog pcie_sv.qsys
 sed -i 's/DUT_pcie_tb/pcie_sv_tb/g'        pcie_sv/testbench/mentor/msim_setup.tcl
 sed -i 's/DUT/pcie_sv/g'                   pcie_sv/testbench/mentor/msim_setup.tcl
 sed -i '/altpcietb_bfm_driver_chaining/d'  pcie_sv/testbench/mentor/msim_setup.tcl
@@ -57,8 +57,8 @@ echo
 
 echo "Starting CycloneV PCIe IP generation..."
 cd pcie/cyclonev
-$ALTERA/sopc_builder/bin/qsys-generate --family="Cyclone V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie_cv.qsys
-$ALTERA/sopc_builder/bin/qsys-generate --family="Cyclone V" --synthesis=Verilog pcie_cv.qsys
+$ALTERA/quartus/sopc_builder/bin/qsys-generate --family="Cyclone V" --testbench=STANDARD --testbench-simulation=Verilog --allow-mixed-language-testbench-simulation pcie_cv.qsys
+$ALTERA/quartus/sopc_builder/bin/qsys-generate --family="Cyclone V" --synthesis=Verilog pcie_cv.qsys
 sed -i 's/DUT_pcie_tb/pcie_cv_tb/g'        pcie_cv/testbench/mentor/msim_setup.tcl
 sed -i 's/DUT/pcie_cv/g'                   pcie_cv/testbench/mentor/msim_setup.tcl
 sed -i '/altpcietb_bfm_driver_chaining/d'  pcie_cv/testbench/mentor/msim_setup.tcl
