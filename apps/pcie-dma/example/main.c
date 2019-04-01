@@ -84,7 +84,6 @@ int main(int argc, const char* argv[]) {
   const bool keepReading = (argc > 3) ?
     argv[3][0] == '1' :
     false;
-  uint32_t dummy;
   size_t i;
 
   // Connect to the kernel driver...
@@ -184,5 +183,4 @@ dev_close:
   close(dev);
 exit:
   return retVal;
-  (void)dummy;
 }
