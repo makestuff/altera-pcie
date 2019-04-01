@@ -19,9 +19,8 @@ set_global_assignment -name SYSTEMVERILOG_FILE "../pcie_app.sv"
 set_global_assignment -name SYSTEMVERILOG_FILE "top_level.sv"
 
 # PCI Express 125MHz reference clock
-set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRefClk_in
 set_location_assignment PIN_W11 -to "pcieRefClk_in"
-#set_location_assignment PIN_V10 -to "pcieRefClk_in(n)"
+set_instance_assignment -name IO_STANDARD "1.5-V PCML" -to pcieRefClk_in
 
 # PCI Express reset
 set_instance_assignment -name IO_STANDARD "2.5 V" -to pciePERST_in

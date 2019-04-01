@@ -51,6 +51,7 @@ sed -i 's/DUT/pcie_sv/g'                   pcie_sv/testbench/mentor/msim_setup.t
 sed -i '/altpcietb_bfm_driver_chaining/d'  pcie_sv/testbench/mentor/msim_setup.tcl
 sed -i '/"pcie_sv.v"/d'                    pcie_sv/synthesis/pcie_sv.qip
 sed -i '/altpcierd_example_app_chaining/d' pcie_sv/synthesis/pcie_sv.qip
+echo -n > pcie_sv/synthesis/submodules/altpcied_sv.sdc
 cd ../..
 echo
 
@@ -63,6 +64,7 @@ sed -i 's/DUT/pcie_cv/g'                   pcie_cv/testbench/mentor/msim_setup.t
 sed -i '/altpcietb_bfm_driver_chaining/d'  pcie_cv/testbench/mentor/msim_setup.tcl
 sed -i '/"pcie_cv.v"/d'                    pcie_cv/synthesis/pcie_cv.qip
 sed -i '/altpcierd_example_app_chaining/d' pcie_cv/synthesis/pcie_cv.qip
+echo -n > pcie_cv/synthesis/submodules/altpcied_sv.sdc
 cd ../..
 echo
 
