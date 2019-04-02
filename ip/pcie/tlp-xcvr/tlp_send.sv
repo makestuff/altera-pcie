@@ -92,6 +92,8 @@ module tlp_send(
   logic[3:0] qwCount_next;
   logic f2cEnabled = 0;
   logic f2cEnabled_next;
+  logic[4:0] tagAllocator = '0;
+  logic[4:0] tagAllocator_next;
 
   // FPGA copies of FPGA->CPU circular-buffer reader and writer pointers
   CBPtr f2cWrPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP write
@@ -124,6 +126,7 @@ module tlp_send(
     f2cRdPtr <= f2cRdPtr_next;
     c2fWrPtr <= c2fWrPtr_next;
     c2fRdPtr <= c2fRdPtr_next;
+    tagAllocator <= tagAllocator_next;
   end
 
   // Receiver FSM processes messages from the root port (e.g CPU writes & read requests)
@@ -142,6 +145,7 @@ module tlp_send(
     f2cRdPtr_next = f2cRdPtr;
     c2fWrPtr_next = c2fWrPtr;
     c2fRdPtr_next = c2fRdPtr;
+    tagAllocator_next = tagAllocator;
 
     // PCIe channel to CPU
     txData_out = 'X;
@@ -364,9 +368,10 @@ module tlp_send(
 
   function State doDmaRead();
     // There's some data to read, and the PCIe bus is ready to accept a DMA read request
-    txData_out = genDmaRdReq0(.reqID(cfgBusDev_in), .tag('h0C), .dwCount(32));
+    txData_out = genDmaRdReq0(.reqID(cfgBusDev_in), .tag(tagAllocator), .dwCount(32));
     txValid_out = 1;
     txSOP_out = 1;
+    tagAllocator_next = tagAllocator + 5'b00001;
     return S_DMA_RD1;
   endfunction
 
