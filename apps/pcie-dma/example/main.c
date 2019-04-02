@@ -16,6 +16,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+#define _BSD_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -81,9 +82,9 @@ int main(int argc, const char* argv[]) {
   const bool doWrite = (argc > 2) ?
     argv[2][0] == '1' :
     false;
-  const bool keepReading = (argc > 3) ?
-    argv[3][0] == '1' :
-    false;
+  //const bool keepReading = (argc > 3) ?
+  //  argv[3][0] == '1' :
+  //  false;
   size_t i;
 
   // Connect to the kernel driver...
@@ -144,41 +145,52 @@ int main(int argc, const char* argv[]) {
   }
 
   printf("\nCPU->FPGA DMA Test:\n");
-  uint64_t ckSum;
-  uint32_t count = 0;
-  do {
-    volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
-    dmaBaseVA[0]  = 0xD94228FF25158B13ULL;
-    dmaBaseVA[1]  = 0xAD38F30AE4F8C54AULL;
-    dmaBaseVA[2]  = 0x77BA3F61586911F4ULL;
-    dmaBaseVA[3]  = 0x4CF92278482729BEULL;
-    dmaBaseVA[4]  = 0x61A664C8491D97C3ULL;
-    dmaBaseVA[5]  = 0x90DA4CD4CE831CBFULL;
-    dmaBaseVA[6]  = 0x1001542C72C3C930ULL;
-    dmaBaseVA[7]  = 0xB77A2F931C78F8A1ULL;
-    dmaBaseVA[8]  = 0x2B72932E0A3B310DULL;
-    dmaBaseVA[9]  = 0x0EFAFB1F3161F041ULL;
-    dmaBaseVA[10] = 0xA49A5186111BC5EBULL;
-    dmaBaseVA[11] = 0x7B01289EB7559846ULL;
-    dmaBaseVA[12] = 0x412010D731A850E6ULL;
-    dmaBaseVA[13] = 0xCE505D4476A4BBC2ULL;
-    dmaBaseVA[14] = 0x255C6F8F64181A72ULL;
-    dmaBaseVA[15] = 0x4106B168D88FE2A6ULL;
-    *rdPtr = 0;  // zero our copy of the FPGA rdPtr
-    REG(DMA_ENABLE) = 0;  // reset everything
-    REG(C2F_BASE) = dmaBaseBA;
-    REG(C2F_WRPTR) = 1;  // tell FPGA there's stuff for it
-    __asm volatile("mfence" ::: "memory");  // prevent StoreLoad reordering
-    while (*rdPtr == 0);
-    dmaBaseVA[0] = 0ULL;  // see whether we can corrupt the message before the RP sends it
-    ckSum = REG(255); ckSum <<= 32U; ckSum |= REG(254);
-    ++count;
-    if ((count & 0xFFFF) == 0) {
-      printf(".");
-      fflush(stdout);
+  FILE *f = fopen("random.dat", "r");
+  uint64_t cpuCkSum = 0, fpgaCkSum;
+  volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
+  volatile uint64_t *slot;
+  uint32_t wrPtr = 0;
+  *rdPtr = 0;  // zero our copy of the FPGA rdPtr
+  REG(DMA_ENABLE) = 0;  // reset everything
+  REG(C2F_BASE) = dmaBaseBA;
+  while (!feof(f)) {
+    const uint32_t nextWrPtr = (wrPtr + 1) & 0xF;
+    while (nextWrPtr == *rdPtr);  // if full, wait until there's room
+    slot = dmaBaseVA + wrPtr*16;
+    const size_t bytesRead = fread((void*)slot, 1, 128, f);
+    if (bytesRead == 128) {
+      wrPtr = nextWrPtr;
+      REG(C2F_WRPTR) = wrPtr;  // tell FPGA there's stuff for it
+      __asm volatile("mfence" ::: "memory");  // prevent StoreLoad reordering
+      //printf("Got TLP:\n");
+      for (int i = 0; i < 16; ++i) {
+	     //printf("  %016"PRIX64"\n", slot[i]);
+        cpuCkSum += slot[i];
+      }
+      //printf("\n");
     }
-  } while (keepReading && ckSum == 0xD5074AC63A7F8BA1ULL);
-  printf("Got ckSum 0x%"PRIX64" after %u tries\n\n", ckSum, count);
+  }
+  while (*rdPtr != wrPtr);  // wait for FPGA to catch up
+  dmaBaseVA[(wrPtr-1)*16+0] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+1] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+2] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+3] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+4] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+5] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+6] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+7] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+8] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+9] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+10] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+11] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+12] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+13] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+14] = 0ULL;
+  dmaBaseVA[(wrPtr-1)*16+15] = 0ULL;
+  usleep(5000000);
+  fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
+  printf("cpuCkSum = 0x%"PRIX64"; fpgaCkSum = 0x%"PRIX64"\n", cpuCkSum, fpgaCkSum);
+  fclose(f);
 dev_close:
   close(dev);
 exit:
