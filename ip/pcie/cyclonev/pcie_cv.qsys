@@ -122,7 +122,7 @@
   <parameter name="bar1_type_5_hwtcl" value="0" />
   <parameter name="bar1_type_6_hwtcl" value="0" />
   <parameter name="bar1_type_7_hwtcl" value="0" />
-  <parameter name="bar2_size_mask_0_hwtcl" value="0" />
+  <parameter name="bar2_size_mask_0_hwtcl" value="12" />
   <parameter name="bar2_size_mask_1_hwtcl" value="10" />
   <parameter name="bar2_size_mask_2_hwtcl" value="10" />
   <parameter name="bar2_size_mask_3_hwtcl" value="10" />
@@ -130,7 +130,7 @@
   <parameter name="bar2_size_mask_5_hwtcl" value="10" />
   <parameter name="bar2_size_mask_6_hwtcl" value="10" />
   <parameter name="bar2_size_mask_7_hwtcl" value="10" />
-  <parameter name="bar2_type_0_hwtcl" value="0" />
+  <parameter name="bar2_type_0_hwtcl" value="1" />
   <parameter name="bar2_type_1_hwtcl" value="2" />
   <parameter name="bar2_type_2_hwtcl" value="2" />
   <parameter name="bar2_type_3_hwtcl" value="2" />

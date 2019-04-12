@@ -347,7 +347,8 @@ module tlp_send(
         f2cEnabled_next = 1;
       end else begin
         f2cEnabled_next = 0;
-        f2cReset_out = 1;  // TODO: decide what to do about these five
+        f2cReset_out = 1;  // TODO: decide what to do about the following
+        tagAllocator_next = 0;
         f2cWrPtr_next = 0;
         f2cRdPtr_next = 0;
         c2fWrPtr_next = 0;

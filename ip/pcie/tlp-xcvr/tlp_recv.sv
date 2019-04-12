@@ -62,10 +62,10 @@ module tlp_recv(
   Header hdr;
   RdReq0 rr0;
   RdReq1 rr1;
+  Write0 rw0;
   Write1 rw1;
   Completion0 rc0;
   `ifdef SIMULATION
-    Write0 rw0;
     Completion1 rc1;
   `endif
 
@@ -100,10 +100,10 @@ module tlp_recv(
     hdr = 'X;
     rr0 = 'X;
     rr1 = 'X;
+    rw0 = 'X;
     rw1 = 'X;
     rc0 = 'X;
     `ifdef SIMULATION
-      rw0 = 'X;
       rc1 = 'X;
     `endif
 
@@ -149,12 +149,17 @@ module tlp_recv(
         if (rxValid_in && rxSOP_in) begin
           // We have the first two longwords in a new message...
           if (hdr.fmt == H3DW_WITHDATA && hdr.typ == MEM_RW_REQ) begin
-            // The CPU is writing to the FPGA. We'll find out the address and data word
-            // on the next cycle.
-            `ifdef SIMULATION
-              rw0 = rxData_in;
-            `endif
-            state_next = S_WRITE;
+            rw0 = rxData_in;
+            if (rw0.lastBE == 'hF && rw0.firstBE == 'hF) begin  // TODO: also check address range to distinguish register writes
+              // The CPU is writing to the FPGA, hopefully in the CPU->FPGA data region. We'll find
+              // out the address and data on subsequent cycles
+              qwCount_next = QWCount'(rw0.dwCount/2 - 1);  // FIXME: this assumes the dwCount is always even
+              state_next = S_CMP1;
+            end else if (rw0.lastBE == 'h0 && rw0.firstBE == 'hF && rw0.dwCount == 1) begin  // TODO: also check address range to distinguish CPU->FPGA data writes
+              // The CPU is writing to the FPGA, hopefully in the register region. We'll find out the
+              // address and data word on the next cycle.
+              state_next = S_WRITE;
+            end
           end else if (hdr.fmt == H3DW_NODATA && hdr.typ == MEM_RW_REQ) begin
             // The CPU is reading from the FPGA; save the msgID. See fig 2-13 in
             // the PCIe spec: the msgID is a 16-bit requester ID and an 8-bit tag.

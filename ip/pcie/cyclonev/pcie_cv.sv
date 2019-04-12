@@ -175,7 +175,7 @@ module pcie_cv(
 
   // The actual PCIe IP block
   altpcie_cv_hip_ast_hwtcl #(
-    .ACDS_VERSION_HWTCL                        ("16.1"),
+    .ACDS_VERSION_HWTCL                        ("14.0"),
     .lane_mask_hwtcl                           ("x4"),
     .gen12_lane_rate_mode_hwtcl                ("Gen1 (2.5 Gbps)"),
     .pcie_spec_version_hwtcl                   ("2.1"),
@@ -200,10 +200,10 @@ module pcie_cv(
     .bar1_size_mask_0_hwtcl                    (0),
     .bar1_io_space_0_hwtcl                     ("Disabled"),
     .bar1_prefetchable_0_hwtcl                 ("Disabled"),
-    .bar2_size_mask_0_hwtcl                    (0),
+    .bar2_size_mask_0_hwtcl                    (12),
     .bar2_io_space_0_hwtcl                     ("Disabled"),
-    .bar2_64bit_mem_space_0_hwtcl              ("Disabled"),
-    .bar2_prefetchable_0_hwtcl                 ("Disabled"),
+    .bar2_64bit_mem_space_0_hwtcl              ("Enabled"),
+    .bar2_prefetchable_0_hwtcl                 ("Enabled"),
     .bar3_size_mask_0_hwtcl                    (0),
     .bar3_io_space_0_hwtcl                     ("Disabled"),
     .bar3_prefetchable_0_hwtcl                 ("Disabled"),

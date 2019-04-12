@@ -27,6 +27,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/time.h>
+#include <emmintrin.h>
 
 #define PAGE_SIZE 4096
 
@@ -39,6 +41,65 @@
 #define C2F_BASE (CTL_BASE + 2)
 #define C2F_WRPTR (CTL_BASE + 3)
 #define DMA_ENABLE (CTL_BASE + 4)
+
+void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
+  // Try writing to CPU->FPGA buffer
+  struct timeval tvStart, tvEnd;
+  long long startTime, endTime;
+  double totalTime;
+  const size_t dataLen = 16*1024*1024;
+  uint64_t *const buf = malloc(dataLen);
+  uint64_t fpgaCkSum;
+  FILE *f = fopen("/tmp/random.dat", "rb");  // e.g dd if=/dev/urandom bs=4096 count=4096 > /tmp/random.dat
+  const size_t bytesRead = fread(buf, 1, dataLen, f);
+  if (bytesRead != dataLen) {
+    fprintf(stderr, "Expected to read %zu bytes; actually read %zu!\n", dataLen, bytesRead);
+    exit(1);
+  }
+  fclose(f);
+  
+  printf("Write to the FPGA...\n");
+  for (int run = 0; run < 1; ++run) {
+    uint64_t *src = buf;
+    uint64_t *dst;
+    uint64_t cpuCkSum = 0;
+    gettimeofday(&tvStart, NULL);
+    REG(DMA_ENABLE) = 0;  // reset everything
+    //for (size_t page = 0; page < 4096; ++page) {
+      dst = c2fBase;
+      //for (size_t i = 0; i < 4096/64; ++i) {
+      for (size_t i = 0; i < 4; ++i) {
+        cpuCkSum += *src; *dst++ = *src++;
+        cpuCkSum += *src; *dst++ = *src++;
+        cpuCkSum += *src; *dst++ = *src++;
+        cpuCkSum += *src; *dst++ = *src++;
+
+		  printf(".");
+
+        cpuCkSum += *src; *dst++ = *src++;
+        cpuCkSum += *src; *dst++ = *src++;
+        cpuCkSum += *src; *dst++ = *src++;
+        cpuCkSum += *src; *dst++ = *src++;
+
+        __asm volatile("sfence" ::: "memory");
+      }
+    //}
+    fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
+    gettimeofday(&tvEnd, NULL);
+    startTime = tvStart.tv_sec;
+    startTime *= 1000000;
+    startTime += tvStart.tv_usec;
+    endTime = tvEnd.tv_sec;
+    endTime *= 1000000;
+    endTime += tvEnd.tv_usec;
+    totalTime = (double)(endTime - startTime);
+    totalTime /= 1000000; // convert from uS to S.
+    printf(
+      "  Run %d speed: %0.2f MiB/s; cpuCkSum = 0x%"PRIX64"; fpgaCkSum = 0x%"PRIX64"\n",
+      run, 16.0/totalTime, cpuCkSum, fpgaCkSum);
+  }
+  printf("\n");
+}
 
 int main(int argc, const char* argv[]) {
   int retVal = 0, dev;
@@ -86,7 +147,7 @@ int main(int argc, const char* argv[]) {
   //  argv[3][0] == '1' :
   //  false;
   size_t i;
-
+  
   // Connect to the kernel driver...
   dev = open("/dev/fpga0", O_RDWR|O_SYNC);
   if (dev < 0) {
@@ -100,14 +161,22 @@ int main(int argc, const char* argv[]) {
     fprintf(stderr, "Call to mmap() for fpgaBase failed!\n");
     retVal = 2; goto dev_close;
   }
-
-  // Map DMA buffer read-only into userspace
-  volatile uint64_t *const dmaBaseVA = mmap(NULL, 16*PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, PAGE_SIZE);
-  if (dmaBaseVA == MAP_FAILED) {
-    fprintf(stderr, "Call to mmap() for dmaBaseVA failed!\n");
+  uint64_t *const c2fBase = mmap(NULL, PAGE_SIZE, PROT_WRITE, MAP_SHARED, dev, PAGE_SIZE);
+  if (c2fBase == MAP_FAILED) {
+    fprintf(stderr, "Call to mmap() for c2fBase failed!\n");
     retVal = 3; goto dev_close;
   }
+
+  // Map DMA buffer read-only into userspace
+  volatile uint64_t *const dmaBaseVA = mmap(NULL, 16*PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 2*PAGE_SIZE);
+  if (dmaBaseVA == MAP_FAILED) {
+    fprintf(stderr, "Call to mmap() for dmaBaseVA failed!\n");
+    retVal = 4; goto dev_close;
+  }
   const uint32_t dmaBaseBA = (uint32_t)(dmaBaseVA[0]>>3);  // driver helpfully wrote the bus-address here for us
+
+  // Write data to FPGA
+  c2fWrite(fpgaBase, c2fBase);
 
   // Direct userspace readback
   printf("Write FPGA registers & readback using I/O region mmap()'d into userspace:\n");
@@ -144,7 +213,7 @@ int main(int argc, const char* argv[]) {
     REG(DMA_ENABLE) = 0;  // reset everything
   }
 
-  printf("\nCPU->FPGA DMA Test:\n");
+  /*printf("\nCPU->FPGA DMA Test:\n");
   FILE *f = fopen("random.dat", "r");
   uint64_t cpuCkSum = 0, fpgaCkSum;
   volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
@@ -187,10 +256,12 @@ int main(int argc, const char* argv[]) {
   dmaBaseVA[(wrPtr-1)*16+13] = 0ULL;
   dmaBaseVA[(wrPtr-1)*16+14] = 0ULL;
   dmaBaseVA[(wrPtr-1)*16+15] = 0ULL;
-  usleep(5000000);
+  usleep(10000);
   fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
   printf("cpuCkSum = 0x%"PRIX64"; fpgaCkSum = 0x%"PRIX64"\n", cpuCkSum, fpgaCkSum);
   fclose(f);
+  */
+
 dev_close:
   close(dev);
 exit:

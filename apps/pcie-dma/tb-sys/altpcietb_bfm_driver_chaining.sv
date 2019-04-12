@@ -47,7 +47,7 @@ module altpcietb_bfm_driver_chaining#(
   import tlp_xcvr_pkg::*;
 
   // Examine the BAR setup and pick a reasonable BAR to use
-  task findMemBar(int barTable, bit[5:0] allowedBars, int log2MinSize, output int selBar);
+  task findMemBar(int barTable, bit[5:0] allowedBars, int log2MinSize, output int into);
     automatic int curBar = 0;
     int log2Size;
     bit isMem;
@@ -56,12 +56,21 @@ module altpcietb_bfm_driver_chaining#(
     while (curBar < 6) begin
       ebfm_cfg_decode_bar(barTable, curBar, log2Size, isMem, isPref, is64b);
       if (isMem && log2Size >= log2MinSize && allowedBars[curBar]) begin
-        selBar = curBar;
+        into = curBar;
         return;
       end
       curBar = curBar + (is64b ? 2 : 1);
     end
-    selBar = 7 ; // invalid BAR if we get this far...
+    into = 7 ; // invalid BAR if we get this far...
+  endtask
+
+  task validateBar(int barTable, int bar); //, int expectedLog2Size, bit expectedIsMem, bit expectedIsPref, bit expectedIs64b);
+    int log2Size;
+    bit isMem;
+    bit isPref;
+    bit is64b;
+    ebfm_cfg_decode_bar(barTable, bar, log2Size, isMem, isPref, is64b);
+    $display("INFO: %15d ns BAR %0d: {log2Size=%0d, isMem=%0d, isPref=%0d, is64b=%0d}", $time()/1000, bar, log2Size, isMem, isPref, is64b);
   endtask
 
   task fpgaRead(int fpgaBar, ExtChan chan, output Data into);
@@ -101,8 +110,18 @@ module altpcietb_bfm_driver_chaining#(
       0                   // don't limit the BAR assignments to 4GB address map
     );
 
-    // Find the BAR to use to talk to the FPGA
-    findMemBar(BAR_TABLE_POINTER, 6'b000001, 8, fpgaBar);
+    // Find the BAR to used to talk to the FPGA
+    //findMemBar(BAR_TABLE_POINTER, 6'b000001, 12, .into(fpgaBar));
+
+    fpgaBar = 0;
+    for (int i = 0; i < 6; i = i + 1)
+      validateBar(BAR_TABLE_POINTER, i);
+
+    for (int i = 0; i < 128; i = i + 1)
+      hostWrite(32'h00000000 + 4*i, dvr_rng_pkg::SEQ32[i]);
+    $display("INFO: %15d ns   Doing block-write of 128 bytes", $time()/1000);
+    ebfm_barwr(BAR_TABLE_POINTER, 2, 0,   0,   128, 0);  // ebfm_barwr(bar_table, bar_num, pcie_offset, lcladdr, byte_len, tclass)
+    ebfm_barwr(BAR_TABLE_POINTER, 2, 128, 128, 128, 0);  // ebfm_barwr(bar_table, bar_num, pcie_offset, lcladdr, byte_len, tclass)
 
     // Write to registers...
     $display("\nINFO: %15d ns Writing %0d registers:", $time()/1000, NUM_ITERATIONS);

@@ -72,12 +72,12 @@ public:
   }
 
   // Prepare a buffer for the FPGA to read from
-  volatile T* beginSend() {
+  T* beginSend() {
     const uint32_t nextWrPtr = (c2fWrPtr + 1) & 0xF;
     if (nextWrPtr == *c2fRdPtr) {
       return nullptr;
     }
-    return (volatile T*)(c2fBase + c2fWrPtr*16);
+    return (T*)(c2fBase + c2fWrPtr*16);
   }
   void commitSend() {
     c2fWrPtr = (c2fWrPtr + 1) & 0xF;
