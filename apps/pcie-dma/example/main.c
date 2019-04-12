@@ -59,22 +59,19 @@ void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
   fclose(f);
   
   printf("Write to the FPGA...\n");
-  for (int run = 0; run < 1; ++run) {
+  for (int run = 0; run < 16; ++run) {
     uint64_t *src = buf;
     uint64_t *dst;
     uint64_t cpuCkSum = 0;
     gettimeofday(&tvStart, NULL);
     REG(DMA_ENABLE) = 0;  // reset everything
-    //for (size_t page = 0; page < 4096; ++page) {
+    for (size_t page = 0; page < 4096; ++page) {
       dst = c2fBase;
-      //for (size_t i = 0; i < 4096/64; ++i) {
-      for (size_t i = 0; i < 4; ++i) {
+      for (size_t i = 0; i < 4096/64; ++i) {
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
-
-		  printf(".");
 
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
@@ -83,7 +80,7 @@ void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
 
         __asm volatile("sfence" ::: "memory");
       }
-    //}
+    }
     fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
     gettimeofday(&tvEnd, NULL);
     startTime = tvStart.tv_sec;
