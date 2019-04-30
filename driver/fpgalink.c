@@ -158,7 +158,7 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
   }
 
   if (arg == 23) {
-    printk(KERN_DEBUG "Resetting everything...\n", cmd, arg);
+    printk(KERN_DEBUG "Resetting everything...\n");
     REG_WR(DMA_ENABLE, 0);  // reset everything
     REG_RD(DMA_ENABLE);  // wait for FPGA to finish any previous DMA writes
     memset((void*)ape.mtrVA, 0, PAGE_SIZE);
