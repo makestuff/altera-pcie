@@ -42,7 +42,7 @@ struct Metrics {
   uint32_t shortBurstCount;
 };
 
-void c2fKernelWrite(volatile uint32_t *const fpgaBase, const volatile struct Metrics *metrics, int dev) {
+void c2fKernelWrite(volatile uint32_t *const fpgaBase, const volatile struct Metrics *const metrics, int dev) {
   uint64_t fpgaCkSum;
   printf("Kernel CPU->FPGA burst-write test...\n");
   ioctl(dev, FPGALINK_INIT, 23);  // init
@@ -53,7 +53,7 @@ void c2fKernelWrite(volatile uint32_t *const fpgaBase, const volatile struct Met
     fpgaCkSum, metrics->shortBurstCount);
 }
 
-void c2fUserWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, const volatile struct Metrics *metrics, int dev) {
+void c2fUserWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, const volatile struct Metrics *const metrics, int dev) {
   // Try writing to CPU->FPGA buffer
   struct timeval tvStart, tvEnd;
   long long startTime, endTime;
