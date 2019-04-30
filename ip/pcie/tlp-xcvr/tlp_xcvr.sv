@@ -52,7 +52,7 @@ module tlp_xcvr(
     output logic f2cReady_out,
     output logic f2cReset_out,
 
-    // Sink for CPU->FPGA DMA stream
+    // Sink for CPU->FPGA burst stream
     output tlp_xcvr_pkg::uint64 c2fData_out,
     output logic c2fValid_out
   );

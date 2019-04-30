@@ -22,7 +22,7 @@ TARGET := $(notdir $(realpath .))
 CFLAGS := \
 	$(COPT) -c -Wall -Wextra -Wundef -Wconversion -Wenum-compare -pedantic-errors \
 	-std=c99 -Wstrict-prototypes -Wno-missing-field-initializers \
-	-Wstrict-aliasing=3 -fstrict-aliasing -Warray-bounds
+	-Wstrict-aliasing=3 -fstrict-aliasing -Warray-bounds -I../../../driver
 SRCS := $(wildcard *.c)
 OBJS := $(SRCS:%.c=build/%.o)
 

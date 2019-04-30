@@ -36,8 +36,6 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -hex uut/recv/rw1
   add wave -hex uut/recv/rr0
   add wave -hex uut/recv/rr1
-  add wave -hex uut/recv/rc0
-  add wave -hex uut/recv/rc1
   add wave      uut/rxValid_in
   add wave      uut/rxReady_out
   add wave      uut/rxSOP_in
@@ -46,6 +44,7 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -div "Action Pipe"
   add wave -hex uut/send/rr
   add wave -hex uut/send/rw
+  add wave -hex uut/send/ec
   add wave      uut/send/actValid_in
   add wave      uut/send/actReady_out
 
@@ -70,24 +69,28 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      uut/f2cValid_in
   add wave      uut/f2cReady_out
 
-  add wave -div "CPU->FPGA DMA Pipe"
+  add wave -div "CPU->FPGA Burst Pipe"
   add wave -hex uut/c2fData_out
   add wave      uut/c2fValid_out
 
   add wave -div "Internals"
   add wave      uut/recv/state
+  add wave -uns uut/recv/qwCount
+
   add wave      uut/send/state
-  add wave -hex uut/send/f2cBase
-  add wave -uns uut/send/f2cWrPtr
-  add wave -uns uut/send/f2cRdPtr
-  add wave -hex uut/send/c2fBase
-  add wave -uns uut/send/c2fWrPtr
-  add wave -uns uut/send/c2fRdPtr
-  add wave -hex uut/send/rdData
   add wave -hex uut/send/reqID
   add wave -hex uut/send/tag
   add wave -hex uut/send/lowAddr
-  add wave -hex uut/send/qwCount
+  add wave -hex uut/send/rdData
+  add wave -hex uut/send/mtrBase
+  add wave -hex uut/send/f2cBase
+  add wave -uns uut/send/qwCount
+  add wave -uns uut/send/f2cEnabled
+  add wave -uns uut/send/shortBurstCount
+  add wave -uns uut/send/f2cWrPtr
+  add wave -uns uut/send/f2cRdPtr
+  add wave -uns uut/send/c2fWrPtr
+  add wave -uns uut/send/c2fRdPtr
   add wave -hex regArray
   add wave -div ""
 

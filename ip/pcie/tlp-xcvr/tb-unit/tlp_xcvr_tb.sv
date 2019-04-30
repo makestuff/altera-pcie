@@ -57,6 +57,10 @@ module tlp_xcvr_tb;
   logic f2cReset;
   assign f2cDataX = (f2cValid && f2cReady) ? f2cData : 'X;
 
+  // 64-bit CPU->FPGA burst-pipe
+  uint64 c2fData;
+  logic c2fValid;
+
   // Register array
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
   Data[0:2**CHAN_WIDTH-1] regArray_next;
@@ -64,6 +68,7 @@ module tlp_xcvr_tb;
   // PCIe bus IDs
   localparam BusID CPU_ID = 13'h1CCC;
   localparam BusID FPGA_ID = 13'h1FFF;
+  localparam QWAddr MTRBASE_VALUE = 29'h1B00BAB5;
   localparam QWAddr F2CBASE_VALUE = 29'h1BADCAFE;
   localparam QWAddr C2FBASE_VALUE = 29'h1F00C0DE;
 
@@ -75,7 +80,8 @@ module tlp_xcvr_tb;
     cpuChan,                                 // register address
     cpuWrData, cpuWrValid, cpuWrReady,       // register write pipe
     cpuRdData, cpuRdValid, cpuRdReady,       // register read pipe
-    f2cData, f2cValid, f2cReady, f2cReset    // FPGA->CPU DMA pipe
+    f2cData, f2cValid, f2cReady, f2cReset,   // FPGA->CPU DMA pipe
+    c2fData, c2fValid                        // CPU->FPGA burst pipe
   );
 
   // Instantiate 64-bit random-number generator, as FPGA->CPU DMA data-source
@@ -119,14 +125,14 @@ module tlp_xcvr_tb;
     tick(ticks);
   endtask
 
-  task doDmaRdCmp(int startIndex);
-    rxData = genDmaCmp0(.cmpID(CPU_ID), .dwCount(32));
+  task doBurstWrite(int startIndex);
+    rxData = genDmaWrite0(.reqID(CPU_ID), .dwCount(16));
     rxValid = 1;
     rxSOP = 1;
     @(posedge sysClk);
     rxSOP = 0;
-    rxData = genDmaCmp1(.reqID(FPGA_ID), .tag('h0C), .lowAddr(0));
-    for (int i = 0; i < 16; i = i + 1) begin
+    rxData = genDmaWrite1(0);
+    for (int i = 0; i < 8; i = i + 1) begin
       @(posedge sysClk);
       rxData = dvr_rng_pkg::SEQ64[startIndex+i];
     end
@@ -265,7 +271,11 @@ module tlp_xcvr_tb;
     end
     doWrite(F2C_BASE, F2CBASE_VALUE, 2);
     if (uut.send.f2cBase !== F2CBASE_VALUE) begin
-      $display("\nFAILURE [%0dns]: Expected DMA_BASE to be %H; actually got %H", $time()/1000, F2CBASE_VALUE, uut.send.f2cBase); tick(4); $stop(1);
+      $display("\nFAILURE [%0dns]: Expected F2C_BASE to be %H; actually got %H", $time()/1000, F2CBASE_VALUE, uut.send.f2cBase); tick(4); $stop(1);
+    end
+    doWrite(MTR_BASE, MTRBASE_VALUE, 2);
+    if (uut.send.mtrBase !== MTRBASE_VALUE) begin
+      $display("\nFAILURE [%0dns]: Expected MTR_BASE to be %H; actually got %H", $time()/1000, MTRBASE_VALUE, uut.send.mtrBase); tick(4); $stop(1);
     end
     doWrite(DMA_ENABLE, 1, 2);
     if (uut.send.f2cEnabled !== 1) begin
@@ -287,9 +297,10 @@ module tlp_xcvr_tb;
       expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 1);
 
       // Verify wrPtr send
-      expectTX({FPGA_ID, 48'h00FF40000002}, '1, 1, 1, 0);
-      expectTX(8*F2CBASE_VALUE + 16*128, '1, 1, 0, 0);
-      expectTX(tlp+1, '1, 1, 0, 1);
+      expectTX({FPGA_ID, 48'h00FF40000004}, '1, 1, 1, 0);
+      expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
+      expectTX(tlp+1, '1, 1, 0, 0);
+      expectTX(0, '1, 1, 0, 1);
       $display("  Verified TLP %0d", tlp);
     end
 
@@ -305,8 +316,9 @@ module tlp_xcvr_tb;
       expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 0);
     expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 1);
 
-    expectTX({FPGA_ID, 48'h00FF40000002}, '1, 1, 1, 0);
-    expectTX(8*F2CBASE_VALUE + 16*128, '1, 1, 0, 0);
+    expectTX({FPGA_ID, 48'h00FF40000004}, '1, 1, 1, 0);
+    expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
+    expectTX(0, '1, 1, 0, 0);
     expectTX(0, '1, 1, 0, 1);
     $display("  Verified TLP %0d", tlp);
 
@@ -315,7 +327,7 @@ module tlp_xcvr_tb;
 
 
     tick(20);
-    doDmaRdCmp(0);
+    doBurstWrite(0);
 
     tick(300);
     $display("\nSUCCESS: Simulation stopped due to successful completion!");

@@ -64,13 +64,10 @@ module tlp_send(
     S_READ,
     S_DMA1,
     S_DMA2,
-    S_DMA3,
-    S_DMA4,
-    S_DMA5,
-    S_DMA_RD1,
-    S_DMA_RD2,
-    S_DMA_RD3,
-    S_DMA_RD4
+    S_MTR0,
+    S_MTR1,
+    S_MTR2,
+    S_MTR3
   } State;
   State state = S_IDLE;
   State state_next;
@@ -84,16 +81,16 @@ module tlp_send(
   LowAddr lowAddr_next;
   Data rdData = 'X;
   Data rdData_next;
+  QWAddr mtrBase = '0;
+  QWAddr mtrBase_next;
   QWAddr f2cBase = '0;
   QWAddr f2cBase_next;
-  QWAddr c2fBase = '0;
-  QWAddr c2fBase_next;
   logic[3:0] qwCount = 'X;
   logic[3:0] qwCount_next;
   logic f2cEnabled = 0;
   logic f2cEnabled_next;
-  logic[4:0] tagAllocator = '0;
-  logic[4:0] tagAllocator_next;
+  uint32 shortBurstCount = '0;
+  uint32 shortBurstCount_next;
 
   // FPGA copies of FPGA->CPU circular-buffer reader and writer pointers
   CBPtr f2cWrPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP write
@@ -110,6 +107,7 @@ module tlp_send(
   // Typed versions of incoming actions
   RegRead rr;
   RegWrite rw;
+  ErrorCode ec;
 
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
@@ -118,15 +116,15 @@ module tlp_send(
     reqID <= reqID_next;
     tag <= tag_next;
     lowAddr <= lowAddr_next;
+    mtrBase <= mtrBase_next;
     f2cBase <= f2cBase_next;
-    c2fBase <= c2fBase_next;
     qwCount <= qwCount_next;
     f2cEnabled <= f2cEnabled_next;
     f2cWrPtr <= f2cWrPtr_next;
     f2cRdPtr <= f2cRdPtr_next;
     c2fWrPtr <= c2fWrPtr_next;
     c2fRdPtr <= c2fRdPtr_next;
-    tagAllocator <= tagAllocator_next;
+    shortBurstCount <= shortBurstCount_next;
   end
 
   // Receiver FSM processes messages from the root port (e.g CPU writes & read requests)
@@ -137,15 +135,15 @@ module tlp_send(
     reqID_next = reqID;
     tag_next = tag;
     lowAddr_next = lowAddr;
+    mtrBase_next = mtrBase;
     f2cBase_next = f2cBase;
-    c2fBase_next = c2fBase;
     qwCount_next = qwCount;
     f2cEnabled_next = f2cEnabled;
     f2cWrPtr_next = f2cWrPtr;
     f2cRdPtr_next = f2cRdPtr;
     c2fWrPtr_next = c2fWrPtr;
     c2fRdPtr_next = c2fRdPtr;
-    tagAllocator_next = tagAllocator;
+    shortBurstCount_next = shortBurstCount;
 
     // PCIe channel to CPU
     txData_out = 'X;
@@ -169,6 +167,7 @@ module tlp_send(
     // Typed actions
     rr = 'X;
     rw = 'X;
+    ec = 'X;
 
     // Next state logic
     case (state)
@@ -203,65 +202,38 @@ module tlp_send(
           if (qwCount == 0) begin
             qwCount_next = 'X;
             txEOP_out = 1;
-            state_next = S_DMA3;
+            f2cWrPtr_next = CBPtr'(f2cWrPtr+1);  // increment FPGA->CPU write-pointer
+            state_next = S_MTR0;
           end
         end
       end
 
-      // Send the updated f2cWrPtr to the CPU
-      S_DMA3: begin
+      // Send the updated f2cWrPtr, c2fRdPtr and shortBurstCount to the CPU
+      S_MTR0: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(2));
+          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(4));
           txValid_out = 1;
           txSOP_out = 1;
-          state_next = S_DMA4;
+          state_next = S_MTR1;
         end
       end
-      S_DMA4: begin
+      S_MTR1: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite1(QWAddr'(f2cBase+16*16));  // first bit of free memory after circular buffer
+          txData_out = genDmaWrite1(mtrBase);  // metrics buffer
           txValid_out = 1;
-          f2cWrPtr_next = CBPtr'(f2cWrPtr+1);  // increment FPGA->CPU write-pointer
-          state_next = S_DMA5;
+          state_next = S_MTR2;
         end
       end
-      S_DMA5: begin
+      S_MTR2: begin
         if (txReady_in) begin
-          txData_out = uint64'(f2cWrPtr);
+          txData_out = {c2fRdPtr, f2cWrPtr};
           txValid_out = 1;
-          txEOP_out = 1;
-          state_next = S_IDLE;
+          state_next = S_MTR3;
         end
       end
-
-      // Request DMA read
-      S_DMA_RD1: begin
+      S_MTR3: begin
         if (txReady_in) begin
-          txData_out = genDmaRdReq1(QWAddr'(c2fBase+c2fRdPtr*16));
-          txValid_out = 1;
-          txEOP_out = 1;
-          state_next = S_DMA_RD2;
-        end
-      end
-      S_DMA_RD2: begin
-        if (txReady_in) begin
-          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(2));
-          txValid_out = 1;
-          txSOP_out = 1;
-          state_next = S_DMA_RD3;
-        end
-      end
-      S_DMA_RD3: begin
-        if (txReady_in) begin
-          txData_out = genDmaWrite1(QWAddr'(c2fBase+16*16));  // first bit of free memory after circular buffer
-          txValid_out = 1;
-          c2fRdPtr_next = CBPtr'(c2fRdPtr+1);  // increment CPU->FPGA read-pointer
-          state_next = S_DMA_RD4;
-        end
-      end
-      S_DMA_RD4: begin
-        if (txReady_in) begin
-          txData_out = uint64'(c2fRdPtr);
+          txData_out = uint64'(shortBurstCount);
           txValid_out = 1;
           txEOP_out = 1;
           state_next = S_IDLE;
@@ -276,8 +248,8 @@ module tlp_send(
           state_next = doRegWrite();
         else if (txReady_in && f2cValid_in && CBPtr'(f2cWrPtr+1) != f2cRdPtr && f2cEnabled)
           state_next = doDmaWrite();
-        else if (txReady_in && c2fRdPtr != c2fWrPtr)
-          state_next = doDmaRead();
+        else if (txReady_in && actValid_in && actData_in.typ == ACT_ERROR)
+          state_next = doErrorCode();
       end
     endcase
   end
@@ -335,9 +307,6 @@ module tlp_send(
     end else if (rw.chan == F2C_RDPTR) begin
       // CPU is giving us a new FPGA->CPU read pointer
       f2cRdPtr_next = CBPtr'(rw.data);
-    end else if (rw.chan == C2F_BASE) begin
-      // CPU is giving us the base bus-address of the 16xTLP CPU->FPGA circular buffer
-      c2fBase_next = QWAddr'(rw.data);
     end else if (rw.chan == C2F_WRPTR) begin
       // CPU is giving us a new CPU->FPGA write pointer
       c2fWrPtr_next = CBPtr'(rw.data);
@@ -348,12 +317,15 @@ module tlp_send(
       end else begin
         f2cEnabled_next = 0;
         f2cReset_out = 1;  // TODO: decide what to do about the following
-        tagAllocator_next = 0;
+        shortBurstCount_next = 0;
         f2cWrPtr_next = 0;
         f2cRdPtr_next = 0;
         c2fWrPtr_next = 0;
         c2fRdPtr_next = 0;
       end
+    end else if (rw.chan == MTR_BASE) begin
+      // CPU is giving us the base bus-address of the metrics buffer
+      mtrBase_next = QWAddr'(rw.data);
     end
     return S_IDLE;
   endfunction
@@ -367,13 +339,15 @@ module tlp_send(
     return S_DMA1;
   endfunction
 
-  function State doDmaRead();
-    // There's some data to read, and the PCIe bus is ready to accept a DMA read request
-    txData_out = genDmaRdReq0(.reqID(cfgBusDev_in), .tag(tagAllocator), .dwCount(32));
+  function State doErrorCode();
+    // The receiver reported an error
+    ec = actData_in;
+    actReady_out = 1;  // commit read from action FIFO
+    txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(4));
     txValid_out = 1;
     txSOP_out = 1;
-    tagAllocator_next = tagAllocator + 5'b00001;
-    return S_DMA_RD1;
+    shortBurstCount_next = shortBurstCount + 1;
+    return S_MTR1;
   endfunction
 
 endmodule

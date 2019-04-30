@@ -19,13 +19,16 @@
 #include <linux/module.h>
 #include <linux/pci.h>
 
-// The size of the DMA buffer, in bytes
-#define DMA_PAGE_ORD 4
-#define DMA_BUFSIZE (4096*(1<<DMA_PAGE_ORD))
+#include <asm/uaccess.h>
+#include "fpgalink.h"
 
-// FPGA hardware registers
-#define DMABASE(x) ((x)+0*2+1)
-#define DMACTRL(x) ((x)+1*2+1)
+// Read/write register macros
+#define REG_RD(r) (ioread32(ape.regVA + 2*(r) + 1))
+#define REG_WR(r, v) (iowrite32((v), ape.regVA + 2*(r) + 1))
+
+// The size of the DMA buffer, in bytes
+#define DMA_PAGE_ORD 1
+#define DMA_BUFSIZE (PAGE_SIZE*(1<<DMA_PAGE_ORD))
 
 // Driver name
 #define DRV_NAME "fpgalink"
@@ -43,15 +46,21 @@ static struct AlteraDevice {
   struct cdev charDevice;
   dev_t devNum;
 
-  // FPGA's register BAR
-  resource_size_t bar0;
-  
-  // CPU->FPGA BAR
-  resource_size_t bar2;
+  // FPGA's register region (BAR0)
+  resource_size_t regBA;
+  u32 __iomem *regVA;
 
-  // DMA buffer
-  u32 *bufVA;
-  dma_addr_t bufBA;
+  // Metrics page (mapped read-only in userspace; only mapped into kernel space so the reset ioctl() can zero it)
+  dma_addr_t mtrBA;
+  volatile u32 *mtrVA;
+  
+  // CPU->FPGA buffer region (BAR2) - technically write-only; only mapped into kernel space so ioctl() can demonstrate kernel write-combining
+  resource_size_t c2fBA;
+  u64 *c2fVA;
+
+  // FPGA->CPU DMA buffer (mapped read-only in userspace, only mapped into kernel space so the reset ioctl() can zero it)
+  dma_addr_t f2cBA;
+  volatile u32 *f2cVA;
 
   // Board revision
   u8 revision;
@@ -74,37 +83,43 @@ static int cdevRelease(struct inode *inode, struct file *filp) {
 static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
   int rc;
   if (vma->vm_pgoff == 0) {
-    // FPGA registers
+    // The FPGA register region (R/W, noncacheable): one 4KiB page mapped to BAR0 on the FPGA
     vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-    //vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
     rc = io_remap_pfn_range(
       vma,
       vma->vm_start,
-      ape.bar0 >> PAGE_SHIFT,
+      ape.regBA >> PAGE_SHIFT,
       vma->vm_end - vma->vm_start,
       vma->vm_page_prot
     );
   } else if (vma->vm_pgoff == 1) {
-    // CPU->FPGA region
-    vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
-    //vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-    rc = io_remap_pfn_range(
+    // The metrics buffer (e.g f2cWrPtr, c2fRdPtr - read-only): one 4KiB page allocated by the kernel and DMA'd into by the FPGA
+    rc = remap_pfn_range(
       vma,
       vma->vm_start,
-      ape.bar2 >> PAGE_SHIFT,
+      ape.mtrBA >> PAGE_SHIFT,
       vma->vm_end - vma->vm_start,
       vma->vm_page_prot
     );
   } else if (vma->vm_pgoff == 2) {
-    // FPGA->CPU DMA buffer
-    rc = remap_pfn_range(
+    // The CPU->FPGA region (write-only, write-combined): multiple 4KiB pages mapped to BAR2 on the FPGA
+    vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+    rc = io_remap_pfn_range(
       vma,
       vma->vm_start,
-      ape.bufBA >> PAGE_SHIFT,
+      ape.c2fBA >> PAGE_SHIFT,
       vma->vm_end - vma->vm_start,
       vma->vm_page_prot
     );
-    ape.bufVA[0] = (u32)ape.bufBA;
+  } else if (vma->vm_pgoff == 3) {
+    // The FPGA->CPU buffer (read-only): multiple 4KiB pages allocated by the kernel and DMA'd into by the FPGA
+    rc = remap_pfn_range(
+      vma,
+      vma->vm_start,
+      ape.f2cBA >> PAGE_SHIFT,
+      vma->vm_end - vma->vm_start,
+      vma->vm_page_prot
+    );
   } else {
     return -EFAULT;
   }
@@ -114,13 +129,75 @@ static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
   return 0;
 }
 
+static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
+
+  int err = 0;
+
+  // Extract the type and number bitfields, and don't decode
+  // wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
+  //
+  if ( _IOC_TYPE(cmd) != FPGALINK_IOC_MAGIC ) {
+    return -ENOTTY;
+  }
+  if ( _IOC_NR(cmd) > FPGALINK_IOC_MAXNR ) {
+    return -ENOTTY;
+  }
+
+  // the direction is a bitmask, and VERIFY_WRITE catches R/W
+  // transfers. `Type' is user-oriented, while
+  // access_ok is kernel-oriented, so the concept of "read" and
+  // "write" is reversed
+  //
+  if ( _IOC_DIR(cmd) & _IOC_READ ) {
+    err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+  } else if ( _IOC_DIR(cmd) & _IOC_WRITE ) {
+    err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+  }
+  if ( err ) {
+    return -EFAULT;
+  }
+
+  if (arg == 23) {
+    printk(KERN_DEBUG "Resetting everything...\n", cmd, arg);
+    REG_WR(DMA_ENABLE, 0);  // reset everything
+    REG_RD(DMA_ENABLE);  // wait for FPGA to finish any previous DMA writes
+    memset((void*)ape.mtrVA, 0, PAGE_SIZE);
+    memset((void*)ape.f2cVA, 0, 2*PAGE_SIZE);
+    REG_WR(MTR_BASE, ape.mtrBA>>3);  // metrics base address as a QW offset
+    REG_WR(F2C_BASE, ape.f2cBA>>3);  // FPGA->CPU buffer base address as a QW offset
+    REG_WR(DMA_ENABLE, 1);
+  } else if (arg == 42) {
+    size_t i, j;
+    u64 *dst;
+    printk(KERN_DEBUG "Demo'ing 1GiB of write-combined writes...\n");
+    local_irq_disable();
+    for (j = 0; j < 64*16*1024*1024/PAGE_SIZE; ++j) {
+      dst = ape.c2fVA;
+      for (i = 0; i < PAGE_SIZE/64; ++i) {
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        *dst++ = 0x290A560B0B7D2CD4ULL;
+        __asm volatile("sfence" ::: "memory");
+      }
+    }
+    local_irq_enable();
+  }
+  return 0;
+}
+
 // Callbacks for file operations on /dev/fpga0
 //
 static const struct file_operations cdevFileOps = {
-  .owner   = THIS_MODULE,
-  .open    = cdevOpen,
-  .release = cdevRelease,
-  .mmap    = cdevMMap
+  .owner          = THIS_MODULE,
+  .open           = cdevOpen,
+  .release        = cdevRelease,
+  .mmap           = cdevMMap,
+  .unlocked_ioctl = cdevIOCtl
 };
 
 // Called when the PCI subsystem thinks we can control the given device. Inspect
@@ -176,34 +253,56 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
   }
 
   // Get FPGA register BAR base address, and validate its size
-  ape.bar0 = pci_resource_start(dev, 0);
-  if (!ape.bar0 || pci_resource_len(dev, 0) != 4096) {
+  ape.regBA = pci_resource_start(dev, 0);
+  if (!ape.regBA || pci_resource_len(dev, 0) != PAGE_SIZE) {
     printk(KERN_DEBUG "BAR0 has bad configuration\n");
-    rc = -1; goto err_map;
+    rc = -1; goto err_map0;
   }
-  printk(KERN_DEBUG "BAR0 @0x%08X\n", (u32)ape.bar0);
+  printk(KERN_DEBUG "BAR0 @0x%08X\n", (u32)ape.regBA);
+  ape.regVA = pci_iomap(dev, 0, PAGE_SIZE);
+  if (!ape.regVA) {
+    printk(KERN_DEBUG "Could not map BAR0 into kernel address-space!\n");
+    rc = -1; goto err_iomap0;
+  }
 
   // Get CPU->FPGA BAR base address, and validate its size
-  ape.bar2 = pci_resource_start(dev, 2);
-  if (!ape.bar2 || pci_resource_len(dev, 2) != 4096) {
+  ape.c2fBA = pci_resource_start(dev, 2);
+  if (!ape.c2fBA || pci_resource_len(dev, 2) != PAGE_SIZE) {
     printk(KERN_DEBUG "BAR2 has bad configuration\n");
-    rc = -1; goto err_map;
+    rc = -1; goto err_map2;
   }
-  printk(KERN_DEBUG "BAR2 @0x%pa\n", &ape.bar2);
+  printk(KERN_DEBUG "BAR2 @0x%pa\n", &ape.c2fBA);
+  ape.c2fVA = (u64 *)ioremap_wc(ape.c2fBA, PAGE_SIZE);
+  if (!ape.c2fVA) {
+    printk(KERN_DEBUG "Could not map BAR2 into kernel address-space!\n");
+    rc = -1; goto err_iomap2;
+  }
 
   // Allocate and map coherently-cached memory for a DMA-able buffer (see
   // Documentation/PCI/PCI-DMA-mapping.txt, near line 318)
   //
-  ape.bufVA = (u32 *)__get_free_pages(GFP_USER | GFP_DMA32, DMA_PAGE_ORD);
-  if ( !ape.bufVA ) {
+  ape.mtrVA = (volatile u32 *)__get_free_pages(GFP_USER | GFP_DMA32, 0);  // one page for metrics
+  if ( !ape.mtrVA ) {
+    printk(KERN_DEBUG "Could not allocate metrics buffer!\n");
+    rc = -ENOMEM; goto err_mtr_alloc;
+  }
+  ape.mtrBA = dma_map_single(
+    &dev->dev, (void*)ape.mtrVA, PAGE_SIZE, DMA_FROM_DEVICE);
+  printk(
+    KERN_DEBUG "Allocated metrics buffer (virt: %p; bus: 0x%08X).\n",
+    ape.mtrVA, (u32)ape.mtrBA
+  );
+
+  ape.f2cVA = (volatile u32 *)__get_free_pages(GFP_USER | GFP_DMA32, DMA_PAGE_ORD);
+  if ( !ape.f2cVA ) {
     printk(KERN_DEBUG "Could not allocate DMA buffer!\n");
     rc = -ENOMEM; goto err_buf_alloc;
   }
-  ape.bufBA = dma_map_single(
-    &dev->dev, ape.bufVA, DMA_BUFSIZE, DMA_FROM_DEVICE);
+  ape.f2cBA = dma_map_single(
+    &dev->dev, (void*)ape.f2cVA, DMA_BUFSIZE, DMA_FROM_DEVICE);
   printk(
     KERN_DEBUG "Allocated DMA buffer (virt: %p; bus: 0x%08X).\n",
-    ape.bufVA, (u32)ape.bufBA
+    ape.f2cVA, (u32)ape.f2cBA
   );
 
   // Allocate char driver major/minor
@@ -231,10 +330,18 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 err_cdev_add:
   unregister_chrdev_region(ape.devNum, 1);
 err_cdev_alloc:
-  dma_unmap_single(&dev->dev, ape.bufBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
-  free_pages((unsigned long)ape.bufVA, DMA_PAGE_ORD);
+  dma_unmap_single(&dev->dev, ape.f2cBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
+  free_pages((unsigned long)ape.f2cVA, DMA_PAGE_ORD);
 err_buf_alloc:
-err_map:
+  dma_unmap_single(&dev->dev, ape.mtrBA, PAGE_SIZE, DMA_FROM_DEVICE);
+  free_pages((unsigned long)ape.mtrVA, 0);
+err_mtr_alloc:
+  pci_iounmap(dev, (void __iomem *)ape.c2fVA);
+err_iomap2:
+err_map2:
+  pci_iounmap(dev, ape.regVA);
+err_iomap0:
+err_map0:
 err_mask:
   pci_release_regions(dev);
 err_regions:
@@ -258,8 +365,18 @@ static void pcieRemove(struct pci_dev *dev) {
   unregister_chrdev_region(ape.devNum, 1);
 
   // Free DMA buffer
-  dma_unmap_single(&dev->dev, ape.bufBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
-  free_pages((unsigned long)ape.bufVA, DMA_PAGE_ORD);
+  dma_unmap_single(&dev->dev, ape.f2cBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
+  free_pages((unsigned long)ape.f2cVA, DMA_PAGE_ORD);
+
+  // Free metrics buffer
+  dma_unmap_single(&dev->dev, ape.mtrBA, PAGE_SIZE, DMA_FROM_DEVICE);
+  free_pages((unsigned long)ape.mtrVA, 0);
+
+  // Unmap CPU->FPGA buffer region from kernel virtual address-space
+  pci_iounmap(dev, (void __iomem *)ape.c2fVA);
+
+  // Unmap register region from kernel virtual address-space
+  pci_iounmap(dev, ape.regVA);
 
   // Release BAR mappings
   pci_release_regions(dev);

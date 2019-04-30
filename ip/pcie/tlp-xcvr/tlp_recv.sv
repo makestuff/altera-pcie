@@ -41,10 +41,10 @@ module tlp_recv(
   // FSM states
   typedef enum {
     S_IDLE,
-    S_READ,
-    S_WRITE,
-    S_CMP1,
-    S_CMP2
+    S_REG_READ,
+    S_REG_WRITE,
+    S_BURST_WRITE1,
+    S_BURST_WRITE2
   } State;
   State state = S_IDLE;
   State state_next;
@@ -64,10 +64,6 @@ module tlp_recv(
   RdReq1 rr1;
   Write0 rw0;
   Write1 rw1;
-  Completion0 rc0;
-  `ifdef SIMULATION
-    Completion1 rc1;
-  `endif
 
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
@@ -102,38 +98,37 @@ module tlp_recv(
     rr1 = 'X;
     rw0 = 'X;
     rw1 = 'X;
-    rc0 = 'X;
-    `ifdef SIMULATION
-      rc1 = 'X;
-    `endif
 
     // Next state logic
     case (state)
-      // Host is reading
-      S_READ: begin
+      // Host is reading a register
+      S_REG_READ: begin
         rr1 = rxData_in;
         actData_out = genRegRead(ExtChan'(rr1.qwAddr), reqID, tag);
         actValid_out = 1;
         state_next = S_IDLE;
       end
 
-      // Host is writing
-      S_WRITE: begin
+      // Host is writing to a register
+      S_REG_WRITE: begin
         rw1 = rxData_in;
         actData_out = genRegWrite(ExtChan'(rw1.qwAddr), rw1.data);
         actValid_out = 1;
         state_next = S_IDLE;
       end
 
-      // Host is giving us some DMA data
-      S_CMP1: begin
-        `ifdef SIMULATION
-          rc1 = rxData_in;
-        `endif
+      // Host is doing a burst write to the CPU->FPGA region
+      S_BURST_WRITE1: begin
+        rw1 = rxData_in;
         qwCount_next = qwCount;
-        state_next = S_CMP2;
+        if (qwCount != 7) begin
+          // if the burst is not a full 64-byte line
+          actData_out = genErrorCode(23);
+          actValid_out = 1;
+        end
+        state_next = S_BURST_WRITE2;
       end
-      S_CMP2: begin
+      S_BURST_WRITE2: begin
         c2fData_out = rxData_in;
         c2fValid_out = 1;
         qwCount_next = QWCount'(qwCount - 1);
@@ -154,11 +149,11 @@ module tlp_recv(
               // The CPU is writing to the FPGA, hopefully in the CPU->FPGA data region. We'll find
               // out the address and data on subsequent cycles
               qwCount_next = QWCount'(rw0.dwCount/2 - 1);  // FIXME: this assumes the dwCount is always even
-              state_next = S_CMP1;
+              state_next = S_BURST_WRITE1;
             end else if (rw0.lastBE == 'h0 && rw0.firstBE == 'hF && rw0.dwCount == 1) begin  // TODO: also check address range to distinguish CPU->FPGA data writes
               // The CPU is writing to the FPGA, hopefully in the register region. We'll find out the
               // address and data word on the next cycle.
-              state_next = S_WRITE;
+              state_next = S_REG_WRITE;
             end
           end else if (hdr.fmt == H3DW_NODATA && hdr.typ == MEM_RW_REQ) begin
             // The CPU is reading from the FPGA; save the msgID. See fig 2-13 in
@@ -167,11 +162,7 @@ module tlp_recv(
             rr0 = rxData_in;
             reqID_next = rr0.reqID;
             tag_next = rr0.tag;
-            state_next = S_READ;
-          end else if (hdr.fmt == H3DW_WITHDATA && hdr.typ == COMPLETION) begin
-            rc0 = rxData_in;
-            qwCount_next = QWCount'(rc0.dwCount/2 - 1);  // FIXME: this assumes the dwCount is always even
-            state_next = S_CMP1;
+            state_next = S_REG_READ;
           end
         end
       end

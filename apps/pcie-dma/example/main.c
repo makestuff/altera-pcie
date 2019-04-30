@@ -28,21 +28,32 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <emmintrin.h>
+
+#include "fpgalink.h"
 
 #define PAGE_SIZE 4096
 
 // FPGA hardware registers
 #define REG(x) (fpgaBase[2*(x)+1])
 
-#define CTL_BASE 256
-#define F2C_BASE (CTL_BASE + 0)
-#define F2C_RDPTR (CTL_BASE + 1)
-#define C2F_BASE (CTL_BASE + 2)
-#define C2F_WRPTR (CTL_BASE + 3)
-#define DMA_ENABLE (CTL_BASE + 4)
+struct Metrics {
+  uint32_t f2cWrPtr;
+  uint32_t c2fRdPtr;
+  uint32_t shortBurstCount;
+};
 
-void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
+void c2fKernelWrite(volatile uint32_t *const fpgaBase, const volatile struct Metrics *metrics, int dev) {
+  uint64_t fpgaCkSum;
+  printf("Kernel CPU->FPGA burst-write test...\n");
+  ioctl(dev, FPGALINK_INIT, 23);  // init
+  ioctl(dev, FPGALINK_INIT, 42);  // write 1GiB in 64-byte bursts
+  fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
+  printf(
+    "  fpgaCkSum = 0x%016"PRIX64"; shortBurstCount = %u\n\n",
+    fpgaCkSum, metrics->shortBurstCount);
+}
+
+void c2fUserWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, const volatile struct Metrics *metrics, int dev) {
   // Try writing to CPU->FPGA buffer
   struct timeval tvStart, tvEnd;
   long long startTime, endTime;
@@ -51,6 +62,10 @@ void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
   uint64_t *const buf = malloc(dataLen);
   uint64_t fpgaCkSum;
   FILE *f = fopen("/tmp/random.dat", "rb");  // e.g dd if=/dev/urandom bs=4096 count=4096 > /tmp/random.dat
+  if (!f) {
+    fprintf(stderr, "Cannot open /tmp/random.dat. Create one like this:\ndd if=/dev/urandom bs=4096 count=4096 > /tmp/random.dat\n");
+    exit(1);
+  }
   const size_t bytesRead = fread(buf, 1, dataLen, f);
   if (bytesRead != dataLen) {
     fprintf(stderr, "Expected to read %zu bytes; actually read %zu!\n", dataLen, bytesRead);
@@ -58,26 +73,25 @@ void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
   }
   fclose(f);
   
-  printf("Write to the FPGA...\n");
-  for (int run = 0; run < 16; ++run) {
+  printf("Userspace CPU->FPGA burst-write test...\n");
+  ioctl(dev, FPGALINK_INIT, 23);
+  for (int run = 0; run < 32; ++run) {
     uint64_t *src = buf;
     uint64_t *dst;
     uint64_t cpuCkSum = 0;
     gettimeofday(&tvStart, NULL);
-    REG(DMA_ENABLE) = 0;  // reset everything
-    for (size_t page = 0; page < 4096; ++page) {
-      dst = c2fBase;
-      for (size_t i = 0; i < 4096/64; ++i) {
+    REG(DMA_ENABLE) = 0;  // reset fpgaCkSum
+    for (size_t page = 0; page < dataLen/PAGE_SIZE; ++page) {
+      dst = c2fBuffer;
+      for (size_t i = 0; i < PAGE_SIZE/64; ++i) {
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
-
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
         cpuCkSum += *src; *dst++ = *src++;
-
         __asm volatile("sfence" ::: "memory");
       }
     }
@@ -92,10 +106,9 @@ void c2fWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBase) {
     totalTime = (double)(endTime - startTime);
     totalTime /= 1000000; // convert from uS to S.
     printf(
-      "  Run %d speed: %0.2f MiB/s; cpuCkSum = 0x%"PRIX64"; fpgaCkSum = 0x%"PRIX64"\n",
-      run, 16.0/totalTime, cpuCkSum, fpgaCkSum);
+      "  Run %d: time: %0.6f s; speed: %0.2f MiB/s; cpuCkSum = 0x%"PRIX64"; fpgaCkSum = 0x%"PRIX64"; shortBurstCount = %u\n",
+      run, totalTime, 16.0/totalTime, cpuCkSum, fpgaCkSum, metrics->shortBurstCount);
   }
-  printf("\n");
 }
 
 int main(int argc, const char* argv[]) {
@@ -140,11 +153,8 @@ int main(int argc, const char* argv[]) {
   const bool doWrite = (argc > 2) ?
     argv[2][0] == '1' :
     false;
-  //const bool keepReading = (argc > 3) ?
-  //  argv[3][0] == '1' :
-  //  false;
   size_t i;
-  
+
   // Connect to the kernel driver...
   dev = open("/dev/fpga0", O_RDWR|O_SYNC);
   if (dev < 0) {
@@ -152,28 +162,33 @@ int main(int argc, const char* argv[]) {
     retVal = 1; goto exit;
   }
 
-  // Map FPGA registers into userspace
-  volatile uint32_t *const fpgaBase = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 0);
+  // The FPGA register region (R/W, noncacheable): one 4KiB page mapped to BAR0 on the FPGA
+  volatile uint32_t *const fpgaBase = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 0*PAGE_SIZE);
   if (fpgaBase == MAP_FAILED) {
     fprintf(stderr, "Call to mmap() for fpgaBase failed!\n");
     retVal = 2; goto dev_close;
   }
-  uint64_t *const c2fBase = mmap(NULL, PAGE_SIZE, PROT_WRITE, MAP_SHARED, dev, PAGE_SIZE);
-  if (c2fBase == MAP_FAILED) {
-    fprintf(stderr, "Call to mmap() for c2fBase failed!\n");
+
+  // The metrics buffer (e.g f2cWrPtr, c2fRdPtr - read-only): one 4KiB page allocated by the kernel and DMA'd into by the FPGA
+  const volatile struct Metrics *const metrics = mmap(NULL, PAGE_SIZE, PROT_READ, MAP_SHARED, dev, 1*PAGE_SIZE);
+  if (metrics == MAP_FAILED) {
+    fprintf(stderr, "Call to mmap() for metrics failed!\n");
     retVal = 3; goto dev_close;
   }
 
-  // Map DMA buffer read-only into userspace
-  volatile uint64_t *const dmaBaseVA = mmap(NULL, 16*PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, dev, 2*PAGE_SIZE);
-  if (dmaBaseVA == MAP_FAILED) {
-    fprintf(stderr, "Call to mmap() for dmaBaseVA failed!\n");
+  // The CPU->FPGA region (write-only, write-combined): multiple 4KiB pages mapped to BAR2 on the FPGA
+  uint64_t *const c2fBuffer = mmap(NULL, 2*PAGE_SIZE, PROT_WRITE, MAP_SHARED, dev, 2*PAGE_SIZE);
+  if (c2fBuffer == MAP_FAILED) {
+    fprintf(stderr, "Call to mmap() for c2fBuffer failed!\n");
     retVal = 4; goto dev_close;
   }
-  const uint32_t dmaBaseBA = (uint32_t)(dmaBaseVA[0]>>3);  // driver helpfully wrote the bus-address here for us
 
-  // Write data to FPGA
-  c2fWrite(fpgaBase, c2fBase);
+  // The FPGA->CPU buffer (read-only): multiple 4KiB pages allocated by the kernel and DMA'd into by the FPGA
+  const volatile uint64_t *const f2cBuffer = mmap(NULL, 2*PAGE_SIZE, PROT_READ, MAP_SHARED, dev, 3*PAGE_SIZE);
+  if (f2cBuffer == MAP_FAILED) {
+    fprintf(stderr, "Call to mmap() for f2cBuffer failed!\n");
+    retVal = 5; goto dev_close;
+  }
 
   // Direct userspace readback
   printf("Write FPGA registers & readback using I/O region mmap()'d into userspace:\n");
@@ -182,82 +197,31 @@ int main(int argc, const char* argv[]) {
   }
   for (i = 0; i < numValues; i++) {
     const uint32_t value = REG(i);
-    printf(
-      "  %zu: 0x%08X %s\n", i, value,
-      (values[i] == value) ? "(✓)" : "(✗)"
-    );
+    printf("  %zu: 0x%08X %s\n", i, value, (values[i] == value) ? "(✓)" : "(✗)");
   }
+  printf("\n");
+
+  // Write data to FPGA
+  c2fKernelWrite(fpgaBase, metrics, dev);
+  c2fUserWrite(fpgaBase, c2fBuffer, metrics, dev);
+  printf("\n");
 
   // Try DMA
   if (doWrite) {
-    printf("\nFPGA->CPU DMA Test:");
-    memset((void*)dmaBaseVA, 0, 16*PAGE_SIZE);
+    printf("FPGA->CPU DMA Test:\n");
     uint32_t rdPtr = 0;
-    volatile uint32_t *wrPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
-    #define isEmpty() (rdPtr == *wrPtr)
-    REG(DMA_ENABLE) = 0;  // reset everything
-    REG(F2C_BASE) = dmaBaseBA;
-    REG(DMA_ENABLE) = 1;
+    ioctl(dev, FPGALINK_INIT, 23);
     for (uint32_t i = 0; i < numValues; ++i) {
-      while (isEmpty());
-      printf("\n  TLP %"PRIu32" (@%"PRIu32"):\n", i, rdPtr);
+      while (rdPtr == metrics->f2cWrPtr);
+      printf("  TLP %"PRIu32" (@%"PRIu32"):\n", i, rdPtr);
       for (uint32_t j = 0; j < 16; ++j) {
-        printf("    %016"PRIX64"\n", dmaBaseVA[rdPtr*16 + j]);
+        printf("    %016"PRIX64"\n", f2cBuffer[rdPtr*16 + j]);
       }
       ++rdPtr; rdPtr &= 0xF;
       REG(F2C_RDPTR) = rdPtr;  // tell FPGA we're finished with this TLP
-    }
-    REG(DMA_ENABLE) = 0;  // reset everything
-  }
-
-  /*printf("\nCPU->FPGA DMA Test:\n");
-  FILE *f = fopen("random.dat", "r");
-  uint64_t cpuCkSum = 0, fpgaCkSum;
-  volatile uint32_t *rdPtr = (volatile uint32_t *)&dmaBaseVA[16*16];
-  volatile uint64_t *slot;
-  uint32_t wrPtr = 0;
-  *rdPtr = 0;  // zero our copy of the FPGA rdPtr
-  REG(DMA_ENABLE) = 0;  // reset everything
-  REG(C2F_BASE) = dmaBaseBA;
-  while (!feof(f)) {
-    const uint32_t nextWrPtr = (wrPtr + 1) & 0xF;
-    while (nextWrPtr == *rdPtr);  // if full, wait until there's room
-    slot = dmaBaseVA + wrPtr*16;
-    const size_t bytesRead = fread((void*)slot, 1, 128, f);
-    if (bytesRead == 128) {
-      wrPtr = nextWrPtr;
-      REG(C2F_WRPTR) = wrPtr;  // tell FPGA there's stuff for it
-      __asm volatile("mfence" ::: "memory");  // prevent StoreLoad reordering
-      //printf("Got TLP:\n");
-      for (int i = 0; i < 16; ++i) {
-	     //printf("  %016"PRIX64"\n", slot[i]);
-        cpuCkSum += slot[i];
-      }
-      //printf("\n");
+      printf("\n");
     }
   }
-  while (*rdPtr != wrPtr);  // wait for FPGA to catch up
-  dmaBaseVA[(wrPtr-1)*16+0] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+1] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+2] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+3] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+4] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+5] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+6] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+7] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+8] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+9] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+10] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+11] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+12] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+13] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+14] = 0ULL;
-  dmaBaseVA[(wrPtr-1)*16+15] = 0ULL;
-  usleep(10000);
-  fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
-  printf("cpuCkSum = 0x%"PRIX64"; fpgaCkSum = 0x%"PRIX64"\n", cpuCkSum, fpgaCkSum);
-  fclose(f);
-  */
 
 dev_close:
   close(dev);

@@ -22,9 +22,9 @@ package tlp_xcvr_pkg;
   localparam int CTL_BASE = 2**CHAN_WIDTH;  // ...and another 256 control registers
   localparam int F2C_BASE = CTL_BASE + 0;   // FPGA->CPU base address
   localparam int F2C_RDPTR = CTL_BASE + 1;  // FPGA->CPU read pointer
-  localparam int C2F_BASE = CTL_BASE + 2;   // CPU->FPGA base address
   localparam int C2F_WRPTR = CTL_BASE + 3;  // CPU->FPGA write pointer
   localparam int DMA_ENABLE = CTL_BASE + 4;
+  localparam int MTR_BASE = CTL_BASE + 5;
 
   typedef enum logic[1:0] {
     H3DW_NODATA   = 2'b00,  // header is three DWs, no data (32-bit addressing)
@@ -53,7 +53,7 @@ package tlp_xcvr_pkg;
   typedef enum logic[1:0] {
     ACT_READ,
     ACT_WRITE,
-    ACT_RESERVED1,
+    ACT_ERROR,
     ACT_RESERVED2
   } ActionType;
   typedef struct packed {
@@ -68,6 +68,11 @@ package tlp_xcvr_pkg;
     ExtChan chan;
     Data data;
   } RegWrite;
+  typedef struct packed {
+    ActionType typ;
+    ExtChan reserved;
+    Data code;
+  } ErrorCode;
   //localparam int ACTION_BITS = $size(RegWrite);  // Quartus 16.1 doesn't $size() structs correctly
   localparam int ACTION_BITS = $size(ActionType) + $size(ExtChan) + $size(Data);
   typedef struct packed {
@@ -89,6 +94,13 @@ package tlp_xcvr_pkg;
     result.typ = ACT_WRITE;
     result.chan = c;
     result.data = d;
+    return result;
+  endfunction
+
+  function RegWrite genErrorCode(int code);
+    ErrorCode result; result = '0;
+    result.typ = ACT_ERROR;
+    result.code = code;
     return result;
   endfunction
 
