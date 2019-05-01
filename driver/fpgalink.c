@@ -271,7 +271,7 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
     printk(KERN_DEBUG "BAR2 has bad configuration\n");
     rc = -1; goto err_map2;
   }
-  printk(KERN_DEBUG "BAR2 @0x%pa\n", &ape.c2fBA);
+  printk(KERN_DEBUG "BAR2 @0x%08X\n", (u32)ape.c2fBA);
   ape.c2fVA = (u64 *)ioremap_wc(ape.c2fBA, PAGE_SIZE);
   if (!ape.c2fVA) {
     printk(KERN_DEBUG "Could not map BAR2 into kernel address-space!\n");

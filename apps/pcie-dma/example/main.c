@@ -42,6 +42,13 @@ struct Metrics {
   uint32_t shortBurstCount;
 };
 
+struct Chunk {
+  uint64_t qw[7];
+  uint32_t lw;
+  uint16_t w;
+  uint8_t b[2];
+} __attribute__((packed));
+
 void c2fKernelWrite(volatile uint32_t *const fpgaBase, const volatile struct Metrics *const metrics, int dev) {
   uint64_t fpgaCkSum;
   printf("Kernel CPU->FPGA burst-write test...\n");
@@ -51,6 +58,32 @@ void c2fKernelWrite(volatile uint32_t *const fpgaBase, const volatile struct Met
   printf(
     "  fpgaCkSum = 0x%016"PRIX64"; shortBurstCount = %u\n\n",
     fpgaCkSum, metrics->shortBurstCount);
+}
+
+void c2fUserWrite2(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, const volatile struct Metrics *const metrics, int dev) {
+  // Try writing to CPU->FPGA buffer
+  printf("Userspace CPU->FPGA burst-write test (sizeof(Chunk) = %zu)...\n", sizeof(struct Chunk));
+  ioctl(dev, FPGALINK_INIT, 23);
+  struct Chunk *dst = (struct Chunk *)c2fBuffer;
+  uint64_t fpgaCkSum;
+  REG(DMA_ENABLE) = 0;  // reset fpgaCkSum
+  for (size_t i = 0; i < 4; ++i) {
+    dst->qw[0] = 0xCAFEBABEDEADF00DULL;
+    dst->qw[1] = 0xCAFEBABEDEADF00DULL;
+    dst->qw[2] = 0xCAFEBABEDEADF00DULL;
+    dst->qw[3] = 0xCAFEBABEDEADF00DULL;
+    dst->qw[4] = 0xCAFEBABEDEADF00DULL;
+    dst->qw[5] = 0xCAFEBABEDEADF00DULL;
+    dst->qw[6] = 0xCAFEBABEDEADF00DULL;
+    dst->lw = 0xC0DEFACE;
+    dst->w = 0x1BAD;
+    dst++;
+    __asm volatile("sfence" ::: "memory");
+  }
+  fpgaCkSum = REG(255); fpgaCkSum <<= 32U; fpgaCkSum |= REG(254);
+    printf(
+      "  fpgaCkSum = 0x%"PRIX64"; shortBurstCount = %u\n",
+      fpgaCkSum, metrics->shortBurstCount);
 }
 
 void c2fUserWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, const volatile struct Metrics *const metrics, int dev) {
@@ -204,6 +237,7 @@ int main(int argc, const char* argv[]) {
   // Write data to FPGA
   c2fKernelWrite(fpgaBase, metrics, dev);
   c2fUserWrite(fpgaBase, c2fBuffer, metrics, dev);
+  //c2fUserWrite2(fpgaBase, c2fBuffer, metrics, dev);
   printf("\n");
 
   // Try DMA

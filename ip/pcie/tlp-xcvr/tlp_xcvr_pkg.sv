@@ -26,6 +26,11 @@ package tlp_xcvr_pkg;
   localparam int DMA_ENABLE = CTL_BASE + 4;
   localparam int MTR_BASE = CTL_BASE + 5;
 
+  localparam int REG_BAR = 0;  // BAR0 used for the register region
+  localparam int C2F_BAR = 2;  // BAR2 used for the CPU->FPGA pipe
+  localparam int BAR0_OFFSET_NBITS = 12;
+  localparam int BAR2_OFFSET_NBITS = 12;
+
   typedef enum logic[1:0] {
     H3DW_NODATA   = 2'b00,  // header is three DWs, no data (32-bit addressing)
     H4DW_NODATA   = 2'b01,  // header is four  DWs, no data (64-bit addressing)

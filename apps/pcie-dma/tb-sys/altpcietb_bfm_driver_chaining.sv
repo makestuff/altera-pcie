@@ -70,17 +70,17 @@ module altpcietb_bfm_driver_chaining#(
     bit isPref;
     bit is64b;
     ebfm_cfg_decode_bar(barTable, bar, log2Size, isMem, isPref, is64b);
-    $display("INFO: %15d ns BAR %0d: {log2Size=%0d, isMem=%0d, isPref=%0d, is64b=%0d}", $time()/1000, bar, log2Size, isMem, isPref, is64b);
+    $display("INFO: %15d ns   BAR %0d: {log2Size=%0d, isMem=%0d, isPref=%0d, is64b=%0d}", $time()/1000, bar, log2Size, isMem, isPref, is64b);
   endtask
 
-  task fpgaRead(int fpgaBar, ExtChan chan, output Data into);
-    parameter int LOCAL_ADDR = 16*128+8;  // space for one TLP of DMA data below
-    ebfm_barrd_wait(BAR_TABLE_POINTER, fpgaBar, 8*chan+4, LOCAL_ADDR, 4, 0);
+  task fpgaRead(ExtChan chan, output Data into);
+    parameter int LOCAL_ADDR = 2*4096;  // TODO: position this properly
+    ebfm_barrd_wait(BAR_TABLE_POINTER, REG_BAR, 8*chan+4, LOCAL_ADDR, 4, 0);
     into = shmem_read(LOCAL_ADDR, 4);
   endtask
 
-  task fpgaWrite(int fpgaBar, ExtChan chan, Data val);
-    ebfm_barwr_imm(BAR_TABLE_POINTER, fpgaBar, 8*chan+4, val, 4, 0);
+  task fpgaWrite(ExtChan chan, Data val);
+    ebfm_barwr_imm(BAR_TABLE_POINTER, REG_BAR, 8*chan+4, val, 4, 0);
   endtask
 
   task hostWrite(int addr, uint64 value);
@@ -96,7 +96,7 @@ module altpcietb_bfm_driver_chaining#(
     Data u32, x, y;
     uint64 u64;
     bit retCode;
-    int fpgaBar, tlp, qw;
+    int tlp, qw;
     automatic uint64 rdPtr = 0;
     automatic bit success = 1;
 
@@ -107,33 +107,40 @@ module altpcietb_bfm_driver_chaining#(
       1,                  // device number for EP
       512,                // maximum read request size for RC
       1,                  // display EP config space after setup
-      0                   // don't limit the BAR assignments to 4GB address map
+      1                   // limit the BAR assignments to 4GB address map
     );
 
-    // Find the BAR to used to talk to the FPGA
-    //findMemBar(BAR_TABLE_POINTER, 6'b000001, 12, .into(fpgaBar));
-
-    fpgaBar = 0;
+    // Get BAR configs
+    $display("\nINFO: %15d ns Getting BAR config:", $time()/1000);
     for (int i = 0; i < 6; i = i + 1)
       validateBar(BAR_TABLE_POINTER, i);
 
-    for (int i = 0; i < 128; i = i + 1)
+    // Initialize FPGA
+    fpgaWrite(F2C_BASE, 0);       // set base address of FPGA->CPU buffer
+    fpgaWrite(MTR_BASE, 4096/8);  // set base address of metrics buffer
+    fpgaWrite(DMA_ENABLE, 0);     // reset everything
+
+    // Do some burst-write, and verify checksum
+    $display("\nINFO: %15d ns Doing block-write of 1024 bytes, in 64-byte chunks:", $time()/1000);
+    for (int i = 0; i < 256; i = i + 1)
       hostWrite(32'h00000000 + 4*i, dvr_rng_pkg::SEQ32[i]);
-    $display("INFO: %15d ns   Doing block-write of 128 bytes", $time()/1000);
-    ebfm_barwr(BAR_TABLE_POINTER, 2, 0,   0,   128, 0);  // ebfm_barwr(bar_table, bar_num, pcie_offset, lcladdr, byte_len, tclass)
-    ebfm_barwr(BAR_TABLE_POINTER, 2, 128, 128, 128, 0);  // ebfm_barwr(bar_table, bar_num, pcie_offset, lcladdr, byte_len, tclass)
+    for (int i = 0; i < 16; i = i + 1)
+      ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, i*64, i*64, 64, 0);  // ebfm_barwr(bar_table, bar_num, pcie_offset, lcladdr, byte_len, tclass)
+    fpgaRead(254, .into(x));
+    fpgaRead(255, .into(y));
+    $display("INFO: %15d ns   Checksum: 0x%s%s", $time()/1000, himage8(y), himage8(x));
 
     // Write to registers...
     $display("\nINFO: %15d ns Writing %0d registers:", $time()/1000, NUM_ITERATIONS);
     for (int i = 0; i < NUM_ITERATIONS; i = i + 1) begin
       $display("INFO: %15d ns   Write[%0d, 0x%s]", $time()/1000, i, himage8(dvr_rng_pkg::SEQ32[i]));
-      fpgaWrite(fpgaBar, i, dvr_rng_pkg::SEQ32[i]);
+      fpgaWrite(i, dvr_rng_pkg::SEQ32[i]);
     end
 
     // Read it all back
     $display("\nINFO: %15d ns Reading %0d registers:", $time()/1000, NUM_ITERATIONS);
     for (int i = 0; i < NUM_ITERATIONS; i = i + 1) begin
-      fpgaRead(fpgaBar, i, .into(u32));
+      fpgaRead(i, .into(u32));
       if (u32 == dvr_rng_pkg::SEQ32[i]) begin
         $display("INFO: %15d ns   Read[%0d] = 0x%s (Y)", $time()/1000, i, himage8(u32));
       end else begin
@@ -144,11 +151,10 @@ module altpcietb_bfm_driver_chaining#(
 
     // Try DMA write
     $display("\nINFO: %15d ns Testing DMA write:", $time()/1000);
-    fpgaWrite(fpgaBar, F2C_BASE, 0);    // set base address
-    fpgaWrite(fpgaBar, DMA_ENABLE, 1);  // enable DMA
+    fpgaWrite(DMA_ENABLE, 1);  // enable DMA
     for (tlp = 0; tlp < NUM_ITERATIONS; tlp = tlp + 1) begin
       // Wait for a TLP to arrive
-      while (rdPtr == hostRead(16*128))
+      while (rdPtr == hostRead(4096))
         #8000;  // 8ns
       $display("INFO: %15d ns   TLP %0d (@%0d):", $time()/1000, tlp, rdPtr);
       for (qw = 0; qw < 16; qw = qw + 1) begin
@@ -165,29 +171,10 @@ module altpcietb_bfm_driver_chaining#(
         end
       end
       rdPtr = (rdPtr + 1) & 4'hF;
-      fpgaWrite(fpgaBar, F2C_RDPTR, rdPtr);  // tell FPGA we're finished with this TLP
+      fpgaWrite(F2C_RDPTR, rdPtr);  // tell FPGA we're finished with this TLP
       $display();
     end
-    fpgaWrite(fpgaBar, DMA_ENABLE, 0);  // disable DMA
-
-    // Try DMA read
-    #(10*8000)
-    $display("\nINFO: %15d ns Testing DMA read:", $time()/1000);
-    hostWrite(32'h00000100 + 16*128, 0);
-    for (qw = 0; qw < 16; qw = qw + 1)
-      hostWrite(32'h00000100 + 8*qw, dvr_rng_pkg::SEQ64[qw]);
-    fpgaWrite(fpgaBar, DMA_ENABLE, 0);           // reset everything
-    fpgaWrite(fpgaBar, C2F_BASE, 32'h00000020);  // set base address
-    fpgaWrite(fpgaBar, C2F_WRPTR, 1);            // trigger DMA read
-    #8000;
-    while (hostRead(32'h00000100 + 16*128) == 0)
-      #8000;  // 8ns
-    $display("INFO: %15d ns   FPGA updated read pointer!", $time()/1000);
-
-    #(80*8000);
-    fpgaRead(fpgaBar, 254, .into(x));
-    fpgaRead(fpgaBar, 255, .into(y));
-    $display("INFO: %15d ns   Checksum: %H%H", $time()/1000, y, x);
+    fpgaWrite(DMA_ENABLE, 0);  // disable DMA
 
     // Pass or fail
     if (success) begin

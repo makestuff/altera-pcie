@@ -78,11 +78,11 @@ add wave -hex pcie_app/cfgBusDev_in
 
 add wave -div "RX Pipe"
 add wave -hex pcie_app/tlp_inst/recv/rxData_in
+add wave -hex pcie_app/tlp_inst/recv/hdr
 add wave -hex pcie_app/tlp_inst/recv/rw0
 add wave -hex pcie_app/tlp_inst/recv/rw1
 add wave -hex pcie_app/tlp_inst/recv/rr0;
 add wave -hex pcie_app/tlp_inst/recv/rr1;
-add wave -hex pcie_app/tlp_inst/recv/rc0;
 add wave      pcie_app/rxValid_in
 add wave      pcie_app/rxReady_out
 add wave      pcie_app/rxSOP_in
@@ -116,6 +116,10 @@ add wave      pcie_app/tlp_inst/f2cValid_in
 add wave      pcie_app/tlp_inst/f2cReady_out
 add wave      pcie_app/tlp_inst/f2cReset_out
 
+add wave -div "CPU->FPGA Pipe"
+add wave -hex pcie_app/tlp_inst/c2fData_out
+add wave      pcie_app/tlp_inst/c2fValid_out
+
 add wave -div "Receiver Internals"
 add wave      pcie_app/tlp_inst/recv/state
 add wave -hex pcie_app/tlp_inst/recv/qwCount
@@ -125,7 +129,6 @@ add wave      pcie_app/tlp_inst/send/state
 add wave -hex pcie_app/tlp_inst/send/f2cBase
 add wave -radix unsigned pcie_app/tlp_inst/send/f2cWrPtr
 add wave -radix unsigned pcie_app/tlp_inst/send/f2cRdPtr
-add wave -hex pcie_app/tlp_inst/send/c2fBase
 add wave -radix unsigned pcie_app/tlp_inst/send/c2fWrPtr
 add wave -radix unsigned pcie_app/tlp_inst/send/c2fRdPtr
 add wave -hex pcie_app/tlp_inst/send/rdData
