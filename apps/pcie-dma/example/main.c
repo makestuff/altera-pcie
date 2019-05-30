@@ -105,7 +105,7 @@ void c2fUserWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, 
     exit(1);
   }
   fclose(f);
-  
+
   printf("Userspace CPU->FPGA burst-write test...\n");
   ioctl(dev, FPGALINK_INIT, 23);
   for (int run = 0; run < 32; ++run) {

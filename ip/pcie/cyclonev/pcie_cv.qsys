@@ -82,7 +82,7 @@
   <parameter name="track_rxfc_cplbuf_ovf_hwtcl" value="0" />
   <parameter name="use_crc_forwarding_hwtcl" value="0" />
   <parameter name="use_ep_simple_downstream_apps_hwtcl" value="0" />
-  <parameter name="use_rx_st_be_hwtcl" value="1" />
+  <parameter name="use_rx_st_be_hwtcl" value="0" />
  </module>
  <module name="DUT" kind="altera_pcie_cv_hip_ast" version="16.1" enabled="1">
   <parameter name="ACDS_VERSION_HWTCL" value="14.0" />
@@ -484,7 +484,7 @@
   <parameter name="tx_cdc_almost_full_advanced_default_hwtcl" value="11" />
   <parameter name="use_aer_hwtcl" value="0" />
   <parameter name="use_crc_forwarding_hwtcl" value="0" />
-  <parameter name="use_rx_st_be_hwtcl" value="1" />
+  <parameter name="use_rx_st_be_hwtcl" value="0" />
   <parameter name="use_tl_cfg_sync_advanced_default_hwtcl" value="1" />
   <parameter name="user_id_hwtcl" value="0" />
   <parameter name="vc0_clk_enable_advanced_default_hwtcl" value="true" />

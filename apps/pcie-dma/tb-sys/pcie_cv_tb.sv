@@ -108,7 +108,7 @@ module pcie_cv_tb#(
   BusID  cfgBusDev;  // the device ID assigned to the FPGA on enumeration
 
   uint64 rxData;     // incoming requests from the CPU
-  logic  rxSOP;
+  SopBar rxSOP;
   logic  rxEOP;
   logic  rxValid;
   logic  rxReady;

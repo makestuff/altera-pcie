@@ -26,7 +26,7 @@ module pcie_app#(
     input tlp_xcvr_pkg::uint64 rxData_in,
     input logic rxValid_in,
     output logic rxReady_out,
-    input logic rxSOP_in,
+    input tlp_xcvr_pkg::SopBar rxSOP_in,
     input logic rxEOP_in,
 
     // Outgoing responses from the FPGA
@@ -128,9 +128,9 @@ module pcie_app#(
     else
       ckSum_next = ckSum;
 
-    if (cpuChan == 254)
+    if (cpuChan == pcie_app_pkg::CKSUM_LSW)
       tempData = ckSum[31:0];
-    else if (cpuChan == 255)
+    else if (cpuChan == pcie_app_pkg::CKSUM_MSW)
       tempData = ckSum[63:32];
     else
       tempData = regArray[cpuChan];

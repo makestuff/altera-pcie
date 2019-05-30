@@ -28,7 +28,7 @@ module top_level#(
   logic pcieClk;
   tlp_xcvr_pkg::BusID cfgBusDev;
   tlp_xcvr_pkg::uint64 rxData;
-  logic rxSOP;
+  tlp_xcvr_pkg::SopBar rxSOP;
   logic rxEOP;
   logic rxValid;
   logic rxReady;

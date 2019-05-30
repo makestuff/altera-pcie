@@ -88,7 +88,7 @@
   <parameter name="track_rxfc_cplbuf_ovf_hwtcl" value="0" />
   <parameter name="use_crc_forwarding_hwtcl" value="0" />
   <parameter name="use_ep_simple_downstream_apps_hwtcl" value="0" />
-  <parameter name="use_rx_st_be_hwtcl" value="1" />
+  <parameter name="use_rx_st_be_hwtcl" value="0" />
  </module>
  <module name="DUT" kind="altera_pcie_sv_hip_ast" version="16.1" enabled="1">
   <parameter name="INTENDED_DEVICE_FAMILY" value="Stratix V" />
@@ -165,8 +165,8 @@
   <parameter name="bar0_type_hwtcl" value="2" />
   <parameter name="bar1_size_mask_hwtcl" value="0" />
   <parameter name="bar1_type_hwtcl" value="0" />
-  <parameter name="bar2_size_mask_hwtcl" value="0" />
-  <parameter name="bar2_type_hwtcl" value="0" />
+  <parameter name="bar2_size_mask_hwtcl" value="12" />
+  <parameter name="bar2_type_hwtcl" value="1" />
   <parameter name="bar3_size_mask_hwtcl" value="0" />
   <parameter name="bar3_type_hwtcl" value="0" />
   <parameter name="bar4_size_mask_hwtcl" value="0" />
@@ -493,7 +493,7 @@
   <parameter name="use_cvp_update_core_pof_hwtcl" value="0" />
   <parameter name="use_pci_ext_hwtcl" value="0" />
   <parameter name="use_pcie_ext_hwtcl" value="0" />
-  <parameter name="use_rx_st_be_hwtcl" value="1" />
+  <parameter name="use_rx_st_be_hwtcl" value="0" />
   <parameter name="use_tx_cons_cred_sel_hwtcl" value="0" />
   <parameter name="user_id_hwtcl" value="0" />
   <parameter name="vendor_id_hwtcl" value="4466" />

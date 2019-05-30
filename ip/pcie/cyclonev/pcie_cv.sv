@@ -29,7 +29,7 @@ module pcie_cv(
     output tlp_xcvr_pkg::BusID cfgBusDev_out,
 
     output tlp_xcvr_pkg::uint64 rxData_out,
-    output logic rxSOP_out,
+    output tlp_xcvr_pkg::SopBar rxSOP_out,
     output logic rxEOP_out,
     output logic rxValid_out,
     input logic rxReady_in,
@@ -121,11 +121,13 @@ module pcie_cv(
   logic       pllLocked;
   logic[3:0]  tl_cfg_add;
   logic[31:0] tl_cfg_ctl;
-  logic[65:0] fiData;
+  logic[66:0] fiData;
   logic       fiValid;
-  logic[65:0] foData;
+  logic[66:0] foData;
   logic       foValid;
   logic       foReady;
+  logic       sop;
+  logic[7:0]  bar;
 
   // Instantiate the Verilog config-region sampler unit provided by Altera
   altpcierd_tl_cfg_sample sampler(
@@ -142,7 +144,7 @@ module pcie_cv(
 
   // Small FIFO to avoid rxData being lost because of the two-clock latency from the PCIe IP.
   buffer_fifo#(
-    .WIDTH           (66),    // space for 64-bit data word and the SOP & EOP flags
+    .WIDTH           (67),    // space for 64-bit data word, the EOP flag and the two-bit SOP enum
     .DEPTH           (2),     // space for four entries
     .BLOCK_RAM       (0)      // just use regular registers
   ) recv_fifo (
@@ -166,10 +168,27 @@ module pcie_cv(
   // Drive pcieClk externally
   assign pcieClk_out = pcieClk;
 
+  // Most of the FIFO input bits are driven directly from the hard-IP; the SOP enum is derived here
+  always_comb begin: assign_sopbar
+    import tlp_xcvr_pkg::*;
+    SopBar sopbar;
+    if (sop) begin
+      if (bar == (1 << REG_BAR))
+        sopbar = SOP_REG;    // this is the register region
+      else if (bar == (1 << C2F_BAR))
+        sopbar = SOP_C2F;    // this is the CPU->FPGA write-combined region
+      else
+        sopbar = SOP_OTHER;  // this is something else (e.g a DMA read completion)
+    end else begin
+      sopbar = SOP_NONE;     // this is not a start-of-packet cycle
+    end
+    fiData[66:65] = sopbar;
+  end
+
   // External connection to FIFO output
   assign rxData_out = foData[63:0];
-  assign rxSOP_out = foData[64];
-  assign rxEOP_out = foData[65];
+  assign rxSOP_out = tlp_xcvr_pkg::SopBar'(foData[66:65]);
+  assign rxEOP_out = foData[64];
   assign rxValid_out = foValid;
   assign foReady = rxReady_in;
 
@@ -787,13 +806,12 @@ module pcie_cv(
     .tx_out2                (pcieTX_out[2]),                 //                   .tx_out2
     .tx_out3                (pcieTX_out[3]),                 //                   .tx_out3
     .rx_st_valid            (fiValid),                       //              rx_st.valid
-    .rx_st_sop              (fiData[64]),                    //                   .startofpacket
-    .rx_st_eop              (fiData[65]),                    //                   .endofpacket
+    .rx_st_sop              (sop),                           //                   .startofpacket
+    .rx_st_eop              (fiData[64]),                    //                   .endofpacket
     .rx_st_ready            (foReady),                       //                   .ready
     .rx_st_err              (),                              //                   .error
     .rx_st_data             (fiData[63:0]),                  //                   .data
-    .rx_st_bar              (),                              //          rx_bar_be.rx_st_bar
-    .rx_st_be               (),                              //                   .rx_st_be
+    .rx_st_bar              (bar),                           //          rx_bar_be.rx_st_bar
     .rx_st_mask             (1'b0),                          //                   .rx_st_mask
     .tx_st_valid            (txValid_in),                    //              tx_st.valid
     .tx_st_sop              (txSOP_in),                      //                   .startofpacket
@@ -938,6 +956,7 @@ module pcie_cv(
     .rx_fifo_empty          (),                              //        (terminated)
     .rx_fifo_full           (),                              //        (terminated)
     .rx_bar_dec_func_num    (),                              //        (terminated)
+    .rx_st_be               (),                              //        (terminated)
     .tx_st_empty            (1'b0),                          //        (terminated)
     .tx_fifo_full           (),                              //        (terminated)
     .tx_fifo_rdp            (),                              //        (terminated)
