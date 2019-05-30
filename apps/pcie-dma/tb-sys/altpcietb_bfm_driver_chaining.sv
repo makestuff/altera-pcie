@@ -46,6 +46,11 @@ module altpcietb_bfm_driver_chaining#(
   // Import types, etc
   import tlp_xcvr_pkg::*;
 
+  // Regions of host memory the FPGA can DMA into
+  localparam int F2C_BASE_ADDR = 0;
+  localparam int MTR_BASE_ADDR = F2C_BASE_ADDR + F2C_SIZE;
+  localparam int TMP_BASE_ADDR = MTR_BASE_ADDR + MTR_SIZE;
+
   // Examine the BAR setup and pick a reasonable BAR to use
   task findMemBar(int barTable, bit[5:0] allowedBars, int log2MinSize, output int into);
     automatic int curBar = 0;
@@ -64,19 +69,21 @@ module altpcietb_bfm_driver_chaining#(
     into = 7 ; // invalid BAR if we get this far...
   endtask
 
-  task validateBar(int barTable, int bar); //, int expectedLog2Size, bit expectedIsMem, bit expectedIsPref, bit expectedIs64b);
+  task displayBarConfigs();
     int log2Size;
     bit isMem;
     bit isPref;
     bit is64b;
-    ebfm_cfg_decode_bar(barTable, bar, log2Size, isMem, isPref, is64b);
-    $display("INFO: %15d ns   BAR %0d: {log2Size=%0d, isMem=%0d, isPref=%0d, is64b=%0d}", $time()/1000, bar, log2Size, isMem, isPref, is64b);
+    $display("\nINFO: %15d ns Getting BAR config:", $time()/1000);
+    for (int i = 0; i < 6; i = i + 1) begin
+      ebfm_cfg_decode_bar(BAR_TABLE_POINTER, i, log2Size, isMem, isPref, is64b);
+      $display("INFO: %15d ns   BAR %0d: {log2Size=%0d, isMem=%0d, isPref=%0d, is64b=%0d}", $time()/1000, i, log2Size, isMem, isPref, is64b);
+    end
   endtask
 
   task fpgaRead(ExtChan chan, output Data into);
-    parameter int LOCAL_ADDR = 2*4096;  // TODO: position this properly
-    ebfm_barrd_wait(BAR_TABLE_POINTER, REG_BAR, 8*chan+4, LOCAL_ADDR, 4, 0);
-    into = shmem_read(LOCAL_ADDR, 4);
+    ebfm_barrd_wait(BAR_TABLE_POINTER, REG_BAR, 8*chan+4, TMP_BASE_ADDR, 4, 0);
+    into = shmem_read(TMP_BASE_ADDR, 4);
   endtask
 
   task fpgaWrite(ExtChan chan, Data val);
@@ -93,11 +100,11 @@ module altpcietb_bfm_driver_chaining#(
 
   // Main program
   initial begin: main
-    Data u32, x, y;
+    Data u32;
     uint64 u64;
     bit retCode;
     int tlp, qw;
-    automatic uint64 rdPtr = 0;
+    automatic uint32 rdPtr = 0;
     automatic bit success = 1;
 
     // Setup the RC and EP config spaces
@@ -111,24 +118,34 @@ module altpcietb_bfm_driver_chaining#(
     );
 
     // Get BAR configs
-    $display("\nINFO: %15d ns Getting BAR config:", $time()/1000);
-    for (int i = 0; i < 6; i = i + 1)
-      validateBar(BAR_TABLE_POINTER, i);
+    displayBarConfigs();
 
     // Initialize FPGA
-    fpgaWrite(F2C_BASE, 0);       // set base address of FPGA->CPU buffer
-    fpgaWrite(MTR_BASE, 4096/8);  // set base address of metrics buffer
-    fpgaWrite(DMA_ENABLE, 0);     // reset everything
+    fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);  // set base address of FPGA->CPU buffer
+    fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);  // set base address of metrics buffer
+    fpgaWrite(DMA_ENABLE, 0);              // reset everything
 
     // Do some burst-write, and verify checksum
-    $display("\nINFO: %15d ns Doing block-write of 1024 bytes, in 64-byte chunks:", $time()/1000);
+    /*$display("\nINFO: %15d ns Doing block-write of 1024 bytes, in 64-byte chunks:", $time()/1000);
     for (int i = 0; i < 256; i = i + 1)
-      hostWrite(32'h00000000 + 4*i, dvr_rng_pkg::SEQ32[i]);
+      hostWrite(TMP_BASE_ADDR + 4*i, dvr_rng_pkg::SEQ32[i]);
+
+    tlp = 1;
+    for (int i = 1; i < 64; i = i + 1) begin
+      ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, tlp*64 + i, TMP_BASE_ADDR + tlp*64 + i, 64 - i, 0);
+    end
+
     for (int i = 0; i < 16; i = i + 1)
-      ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, i*64, i*64, 64, 0);  // ebfm_barwr(bar_table, bar_num, pcie_offset, lcladdr, byte_len, tclass)
-    fpgaRead(254, .into(x));
-    fpgaRead(255, .into(y));
-    $display("INFO: %15d ns   Checksum: 0x%s%s", $time()/1000, himage8(y), himage8(x));
+      ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, i*64, TMP_BASE_ADDR + i*64, 64, 0);
+    fpgaRead(pcie_app_pkg::CKSUM_LSW, .into(u64[31:0]));
+    fpgaRead(pcie_app_pkg::CKSUM_MSW, .into(u64[63:32]));
+    if (u64 == 64'hD469CC514DE38AFA) begin
+      $display("INFO: %15d ns   Checksum: 0x%s (Y)", $time()/1000, himage16(u64));
+    end else begin
+      $display("INFO: %15d ns   Checksum: 0x%s (N)", $time()/1000, himage16(u64));
+      success = 0;
+    end
+    */
 
     // Write to registers...
     $display("\nINFO: %15d ns Writing %0d registers:", $time()/1000, NUM_ITERATIONS);
@@ -154,7 +171,7 @@ module altpcietb_bfm_driver_chaining#(
     fpgaWrite(DMA_ENABLE, 1);  // enable DMA
     for (tlp = 0; tlp < NUM_ITERATIONS; tlp = tlp + 1) begin
       // Wait for a TLP to arrive
-      while (rdPtr == hostRead(4096))
+      while (rdPtr == hostRead(MTR_BASE_ADDR))
         #8000;  // 8ns
       $display("INFO: %15d ns   TLP %0d (@%0d):", $time()/1000, tlp, rdPtr);
       for (qw = 0; qw < 16; qw = qw + 1) begin

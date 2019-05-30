@@ -35,39 +35,45 @@ file delete -force work
 vmap -modelsimini $IP_DIR/sim-libs/modelsim.ini -c
 vlib work
 vmap work_lib work
+onbreak resume
 
-vlog -sv -novopt $IP_DIR/reg-mux/reg_mux.sv              -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv -novopt ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff
+vlog -sv $IP_DIR/reg-mux/reg_mux.sv              -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff
+vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff
 
-if {$env(FPGA) in [list "svgx"]} {
+if {[lsearch {svgx} $env(FPGA)] >= 0} {
   # Do a Stratix V simulation
-  vlog -sv -novopt $IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules/altpcie_monitor_sv_dlhip_sim.sv -work pcie_sv
-  vlog -sv -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
-  vlog -sv -novopt -hazards -lint -pedanticerrors $IP_DIR/pcie/stratixv/pcie_sv.sv -work makestuff
-  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_sv_tb.sv -L makestuff
-  vsim -novopt -t ps -g EN_SWAP=$env(EN_SWAP) -g dut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
+  vlog -sv $IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules/altpcie_monitor_sv_dlhip_sim.sv -work pcie_sv
+  vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
+  vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/stratixv/pcie_sv.sv -work makestuff
+  vlog -sv -hazards -lint -pedanticerrors pcie_sv_tb.sv -L makestuff
+  vopt +acc pcie_sv_tb -o pcie_sv_tb_opt \
+    -gEN_SWAP=$env(EN_SWAP) \
+    -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
     -L work -L work_lib -L makestuff -L pcie_sv -L pcie_sv_tb \
     -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
     -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
-    -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver \
-    pcie_sv_tb
-} elseif {$env(FPGA) in [list "cvgt"]} {
+    -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver
+  vsim -t ps pcie_sv_tb_opt
+} elseif {[lsearch {cvgt} $env(FPGA)] >= 0} {
   # Do a Cyclone V simulation
-  vlog -sv -novopt -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
-  vlog -sv -novopt -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work makestuff
-  vlog -sv -novopt -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff
-  vsim -novopt -t ps -g EN_SWAP=$env(EN_SWAP) -g dut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
+  vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
+  vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work makestuff
+  vlog -sv -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff
+  vopt +acc pcie_cv_tb -o pcie_cv_tb_opt \
+    -gEN_SWAP=$env(EN_SWAP) \
+    -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
     -L work -L work_lib -L makestuff -L pcie_cv -L pcie_cv_tb \
     -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
     -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
-    -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
-    pcie_cv_tb
+    -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver
+  vsim -t ps pcie_cv_tb_opt
 } else {
   puts "\nUnrecognised FPGA: \"$env(FPGA)\"!\n"
   quit
@@ -122,7 +128,9 @@ add wave      pcie_app/tlp_inst/c2fValid_out
 
 add wave -div "Receiver Internals"
 add wave      pcie_app/tlp_inst/recv/state
-add wave -hex pcie_app/tlp_inst/recv/qwCount
+add wave -hex pcie_app/tlp_inst/recv/dwCount
+add wave -hex pcie_app/tlp_inst/recv/firstBE
+add wave -hex pcie_app/tlp_inst/recv/lastBE
 
 add wave -div "Sender Internals"
 add wave      pcie_app/tlp_inst/send/state
@@ -144,7 +152,6 @@ add wave -div ""
 if {[info exists ::env(GUI)] && $env(GUI)} {
   configure wave -namecolwidth 340
   configure wave -valuecolwidth 132
-  onbreak resume
   run -all
   view wave
   bookmark add wave default {{56120ns} {56280ns}}

@@ -20,13 +20,14 @@ file delete -force modelsim.ini
 file delete -force work
 vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
+onbreak resume
 
-vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv -work makestuff +define+SIMULATION
-vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_send.sv     -work makestuff +define+SIMULATION
-vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_recv.sv     -work makestuff +define+SIMULATION
-vlog -sv -novopt -hazards -lint -pedanticerrors ../tlp_xcvr.sv     -work makestuff +define+SIMULATION
-vlog -sv -novopt -hazards -lint -pedanticerrors tlp_xcvr_tb.sv        -L makestuff
-vsim     -novopt -t ps +nowarn3116 -L work -L makestuff -L altera_mf_ver tlp_xcvr_tb
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv     -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv     -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv     -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv        -L makestuff
+vsim -t ps -novopt +nowarn3116 -L work -L makestuff -L altera_mf_ver tlp_xcvr_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      dispClk
@@ -71,11 +72,14 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
 
   add wave -div "CPU->FPGA Burst Pipe"
   add wave -hex uut/c2fData_out
+  add wave      uut/c2fBE_out
   add wave      uut/c2fValid_out
 
   add wave -div "Internals"
   add wave      uut/recv/state
-  add wave -uns uut/recv/qwCount
+  add wave -uns uut/recv/dwCount
+  add wave -uns uut/recv/firstBE
+  add wave -uns uut/recv/lastBE
 
   add wave      uut/send/state
   add wave -hex uut/send/reqID
@@ -95,16 +99,15 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -div ""
 
   configure wave -namecolwidth 265
-  configure wave -valuecolwidth 25
+  configure wave -valuecolwidth 105
   configure wave -gridoffset 0ns
   configure wave -gridperiod 10ns
-  onbreak resume
   run -all
   view wave
-  bookmark add wave default {{0ns} {300ns}}
+  bookmark add wave default {{67920ns} {68220ns}}
   bookmark goto wave default
   wave activecursor 1
-  wave cursortime -time "70 ns"
+  wave cursortime -time "67940 ns"
   wave refresh
 } else {
   run -all

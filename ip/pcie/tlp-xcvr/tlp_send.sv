@@ -185,7 +185,7 @@ module tlp_send(
       // Send second QW of DmaWrite packet
       S_DMA1: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite1(QWAddr'(f2cBase+f2cWrPtr*16));
+          txData_out = genDmaWrite1(f2cBase*2 + f2cWrPtr*32);
           txValid_out = 1;
           qwCount_next = 15;
           state_next = S_DMA2;
@@ -219,7 +219,7 @@ module tlp_send(
       end
       S_MTR1: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite1(mtrBase);  // metrics buffer
+          txData_out = genDmaWrite1(mtrBase*2);  // metrics buffer
           txValid_out = 1;
           state_next = S_MTR2;
         end

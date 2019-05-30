@@ -24,7 +24,7 @@ module tlp_recv(
     input tlp_xcvr_pkg::uint64 rxData_in,
     input logic rxValid_in,
     output logic rxReady_out,
-    input logic rxSOP_in,
+    input tlp_xcvr_pkg::SopBar rxSOP_in,
     input logic rxEOP_in,
 
     // Action FIFO, telling the tlp_send module what to do
@@ -32,6 +32,7 @@ module tlp_recv(
     output logic actValid_out,
 
     output tlp_xcvr_pkg::uint64 c2fData_out,
+    output tlp_xcvr_pkg::ByteMask64 c2fBE_out,
     output logic c2fValid_out
   );
 
@@ -44,7 +45,8 @@ module tlp_recv(
     S_REG_READ,
     S_REG_WRITE,
     S_BURST_WRITE1,
-    S_BURST_WRITE2
+    S_BURST_WRITE2,
+    S_BURST_WRITE3
   } State;
   State state = S_IDLE;
   State state_next;
@@ -54,9 +56,12 @@ module tlp_recv(
   BusID reqID_next;
   Tag tag = 'X;
   Tag tag_next;
-  typedef logic[4:0] QWCount;
-  QWCount qwCount = 'X;
-  QWCount qwCount_next;
+  DWCount dwCount = 'X;
+  DWCount dwCount_next;
+  ByteMask32 firstBE = 'X;
+  ByteMask32 firstBE_next;
+  ByteMask32 lastBE = 'X;
+  ByteMask32 lastBE_next;
 
   // Typed versions of incoming messages
   Header hdr;
@@ -65,12 +70,24 @@ module tlp_recv(
   Write0 rw0;
   Write1 rw1;
 
+  // Generate masked 64-bit data word
+  function uint64 maskData64(uint64 data, ByteMask64 mask);
+    uint64 result; result = 0;
+    for (int i = 0; i < 8; i = i + 1) begin
+      if (mask[i])
+        result[8*i +: 8] = data[8*i +: 8];
+    end
+    return result;
+  endfunction
+
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
     state <= state_next;
     reqID <= reqID_next;
     tag <= tag_next;
-    qwCount <= qwCount_next;
+    dwCount <= dwCount_next;
+    firstBE <= firstBE_next;
+    lastBE <= lastBE_next;
   end
 
   // Receiver FSM processes messages from the root port (e.g CPU writes & read requests)
@@ -79,7 +96,9 @@ module tlp_recv(
     state_next = state;
     reqID_next = 'X;
     tag_next = 'X;
-    qwCount_next = 'X;
+    dwCount_next = 'X;
+    firstBE_next = 'X;
+    lastBE_next = 'X;
 
     // Action FIFO
     actData_out = 'X;
@@ -90,6 +109,7 @@ module tlp_recv(
 
     // CPU->FPGA DMA pipe
     c2fData_out = 'X;
+    c2fBE_out = 'X;
     c2fValid_out = 0;
 
     // Typed messages
@@ -112,29 +132,92 @@ module tlp_recv(
       // Host is writing to a register
       S_REG_WRITE: begin
         rw1 = rxData_in;
-        actData_out = genRegWrite(ExtChan'(rw1.qwAddr), rw1.data);
+        actData_out = genRegWrite(ExtChan'(rw1.dwAddr/2), rw1.data);
         actValid_out = 1;
         state_next = S_IDLE;
       end
 
       // Host is doing a burst write to the CPU->FPGA region
+      // TODO: register address
       S_BURST_WRITE1: begin
         rw1 = rxData_in;
-        qwCount_next = qwCount;
-        if (qwCount != 7) begin
-          // if the burst is not a full 64-byte line
-          actData_out = genErrorCode(23);
-          actValid_out = 1;
+        if (rw1.dwAddr & 1) begin
+          // The first DW is rw1.data (i.e MSW of rw1)
+          c2fBE_out = {firstBE, 4'b0000};
+          c2fData_out = maskData64({rw1.data, 32'h0}, c2fBE_out);
+          c2fValid_out = 1;
+          if (dwCount == 1) begin
+            // We're done
+            dwCount_next = 'X;
+            firstBE_next = 'X;
+            lastBE_next = 'X;
+            state_next = S_IDLE;
+          end else begin
+            // There's more data to come
+            dwCount_next = DWCount'(dwCount - 1);
+            firstBE_next = 'X;
+            lastBE_next = lastBE;
+            state_next = S_BURST_WRITE3;  // go straight to the loop state
+          end
+        end else begin
+          // There is no data in rw1
+          dwCount_next = dwCount;
+          firstBE_next = firstBE;
+          lastBE_next = lastBE;
+          state_next = S_BURST_WRITE2;
         end
-        state_next = S_BURST_WRITE2;
       end
+
+      // First pair of DWs, with mask
       S_BURST_WRITE2: begin
-        c2fData_out = rxData_in;
-        c2fValid_out = 1;
-        qwCount_next = QWCount'(qwCount - 1);
-        if (qwCount == 0) begin
+        if (dwCount <= 2) begin
+          // This is the last one or two DWs
+          c2fBE_out = {
+            (dwCount==1) ? 4'b0000 : lastBE,
+            firstBE
+          };
+          dwCount_next = 'X;
+          lastBE_next = 'X;
           state_next = S_IDLE;
-          qwCount_next = 'X;
+        end else begin
+          // There's more data to come
+          c2fBE_out = {4'b1111, firstBE};
+          dwCount_next = DWCount'(dwCount - 2);
+          lastBE_next = lastBE;
+          state_next = S_BURST_WRITE3;
+        end
+        c2fData_out = maskData64(rxData_in, c2fBE_out);
+        c2fValid_out = 1;
+      end
+
+      // Main loop
+      S_BURST_WRITE3: begin
+        if (dwCount == 2) begin
+          // last pair of DWs is in rxData_in
+          state_next = S_IDLE;
+          c2fBE_out = {lastBE, 4'b1111};
+          c2fData_out = maskData64(rxData_in, c2fBE_out);
+          c2fValid_out = 1;
+          dwCount_next = 'X;
+          firstBE_next = 'X;
+          lastBE_next = 'X;
+        end else if (dwCount == 1) begin
+          // last DW is in LSW of rxData_in
+          state_next = S_IDLE;
+          c2fBE_out = {4'b0000, lastBE};
+          c2fData_out = maskData64(rxData_in, c2fBE_out);
+          c2fValid_out = 1;
+          dwCount_next = 'X;
+          firstBE_next = 'X;
+          lastBE_next = 'X;
+        end else begin
+          // A pair of DWs in rxData_in
+          state_next = S_BURST_WRITE3;
+          c2fBE_out = '1;
+          c2fData_out = rxData_in;
+          c2fValid_out = 1;
+          dwCount_next = DWCount'(dwCount - 2);
+          lastBE_next = lastBE;
         end
       end
 
@@ -144,21 +227,24 @@ module tlp_recv(
         if (rxValid_in && rxSOP_in) begin
           // We have the first two longwords in a new message...
           if (hdr.fmt == H3DW_WITHDATA && hdr.typ == MEM_RW_REQ) begin
+            // The CPU is writing to the FPGA
             rw0 = rxData_in;
-            if (rw0.lastBE == 'hF && rw0.firstBE == 'hF) begin  // TODO: also check address range to distinguish register writes
-              // The CPU is writing to the FPGA, hopefully in the CPU->FPGA data region. We'll find
-              // out the address and data on subsequent cycles
-              qwCount_next = QWCount'(rw0.dwCount/2 - 1);  // FIXME: this assumes the dwCount is always even
+            if (rxSOP_in == SOP_C2F) begin
+              // The CPU is writing to the FPGA, in the CPU->FPGA data region. We'll find out the
+              // address and data on subsequent cycles
+              dwCount_next = rw0.dwCount;
+              firstBE_next = rw0.firstBE;
+              lastBE_next = rw0.lastBE;
               state_next = S_BURST_WRITE1;
-            end else if (rw0.lastBE == 'h0 && rw0.firstBE == 'hF && rw0.dwCount == 1) begin  // TODO: also check address range to distinguish CPU->FPGA data writes
-              // The CPU is writing to the FPGA, hopefully in the register region. We'll find out the
-              // address and data word on the next cycle.
+            end else if (rxSOP_in == SOP_REG && rw0.lastBE == 'h0 && rw0.firstBE == 'hF && rw0.dwCount == 1) begin
+              // The CPU is writing to the FPGA, in the register region. We'll find out the address
+              // and data word on the next cycle.
               state_next = S_REG_WRITE;
             end
           end else if (hdr.fmt == H3DW_NODATA && hdr.typ == MEM_RW_REQ) begin
-            // The CPU is reading from the FPGA; save the msgID. See fig 2-13 in
-            // the PCIe spec: the msgID is a 16-bit requester ID and an 8-bit tag.
-            // We'll find out the address on the next cycle.
+            // The CPU is reading from the FPGA; save the msgID. See fig 2-13 in the PCIe spec: the
+            // msgID is a 16-bit requester ID and an 8-bit tag. We'll find out the address on the
+            // next cycle.
             rr0 = rxData_in;
             reqID_next = rr0.reqID;
             tag_next = rr0.tag;

@@ -30,7 +30,7 @@ module tlp_xcvr_tb;
   uint64 rxData;
   logic rxValid;
   logic rxReady;
-  logic rxSOP;
+  SopBar rxSOP;
   logic rxEOP;
 
   // Outgoing messages to the CPU
@@ -59,6 +59,7 @@ module tlp_xcvr_tb;
 
   // 64-bit CPU->FPGA burst-pipe
   uint64 c2fData;
+  ByteMask64 c2fBE;
   logic c2fValid;
 
   // Register array
@@ -81,7 +82,7 @@ module tlp_xcvr_tb;
     cpuWrData, cpuWrValid, cpuWrReady,       // register write pipe
     cpuRdData, cpuRdValid, cpuRdReady,       // register read pipe
     f2cData, f2cValid, f2cReady, f2cReset,   // FPGA->CPU DMA pipe
-    c2fData, c2fValid                        // CPU->FPGA burst pipe
+    c2fData, c2fBE, c2fValid                 // CPU->FPGA burst pipe
   );
 
   // Instantiate 64-bit random-number generator, as FPGA->CPU DMA data-source
@@ -113,10 +114,10 @@ module tlp_xcvr_tb;
   task doWrite(ExtChan chan, Data val, int ticks = 3);
     rxData = genRegWrite0(.reqID(CPU_ID));
     rxValid = 1;
-    rxSOP = 1;
+    rxSOP = SOP_REG;
     @(posedge sysClk);
     rxData = genRegWrite1(.qwAddr('h40000 + chan), .data(val));
-    rxSOP = 0;
+    rxSOP = SOP_NONE;
     rxEOP = 1;
     @(posedge sysClk);
     rxData = 'X;
@@ -125,16 +126,30 @@ module tlp_xcvr_tb;
     tick(ticks);
   endtask
 
-  task doBurstWrite(int startIndex);
-    rxData = genDmaWrite0(.reqID(CPU_ID), .dwCount(16));
+  task doBurstWrite(int index, int dstAddr, int dwCount);
+    rxData = genDmaWrite0(.reqID(CPU_ID), .dwCount(dwCount));
     rxValid = 1;
-    rxSOP = 1;
+    rxSOP = SOP_C2F;
     @(posedge sysClk);
-    rxSOP = 0;
-    rxData = genDmaWrite1(0);
-    for (int i = 0; i < 8; i = i + 1) begin
+    rxSOP = SOP_NONE;
+    if (dstAddr & 1) begin
+      // Unaligned write
+      rxData = genDmaWrite1(dstAddr, dvr_rng_pkg::SEQ32[index]);
+      index = index + 1;
+      dwCount = dwCount - 1;
+    end else begin
+      // Aligned write
+      rxData = genDmaWrite1(dstAddr);
+    end
+    while (dwCount >= 2) begin
       @(posedge sysClk);
-      rxData = dvr_rng_pkg::SEQ64[startIndex+i];
+      rxData = {dvr_rng_pkg::SEQ32[index+1], dvr_rng_pkg::SEQ32[index]};
+      index = index + 2;
+      dwCount = dwCount - 2;
+    end
+    if (dwCount == 1) begin
+      @(posedge sysClk);
+      rxData = {32'h00000000, dvr_rng_pkg::SEQ32[index]};
     end
     rxEOP = 1;
     @(posedge sysClk);
@@ -166,11 +181,11 @@ module tlp_xcvr_tb;
   task doRead(ExtChan chan, output Data readData);
     rxData = genRegRdReq0(.reqID(CPU_ID));
     rxValid = 1;
-    rxSOP = 1;
+    rxSOP = SOP_REG;
     @(posedge sysClk);
 
     rxData = genRegRdReq1(.qwAddr('h40000 + chan));
-    rxSOP = 0;
+    rxSOP = SOP_NONE;
     rxEOP = 1;
     @(posedge sysClk);
 
@@ -205,43 +220,43 @@ module tlp_xcvr_tb;
     int tlp, qw;
     rxData = 'X;
     rxValid = 0;
-    rxSOP = 0;
+    rxSOP = SOP_NONE;
     rxEOP = 0;
     txReady = 1;
     cfgBusDev = FPGA_ID;
 
     // The TLP message-types must all be 64-bits wide
-    if ($size(Header) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Header has an illegal width (%0d)", $size(Header)); $stop(1);
+    if ($bits(Header) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::Header has an illegal width (%0d)", $bits(Header)); $stop(1);
     end
 
-    if ($size(Write0) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Write0 has an illegal width (%0d)", $size(Write0)); $stop(1);
+    if ($bits(Write0) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::Write0 has an illegal width (%0d)", $bits(Write0)); $stop(1);
     end
-    if ($size(Write1) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Write1 has an illegal width (%0d)", $size(Write1)); $stop(1);
-    end
-
-    if ($size(RdReq0) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RdReq0 has an illegal width (%0d)", $size(RdReq0)); $stop(1);
-    end
-    if ($size(RdReq1) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RdReq1 has an illegal width (%0d)", $size(RdReq1)); $stop(1);
+    if ($bits(Write1) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::Write1 has an illegal width (%0d)", $bits(Write1)); $stop(1);
     end
 
-    if ($size(Completion0) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Completion0 has an illegal width (%0d)", $size(Completion0)); $stop(1);
+    if ($bits(RdReq0) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::RdReq0 has an illegal width (%0d)", $bits(RdReq0)); $stop(1);
     end
-    if ($size(Completion1) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Completion1 has an illegal width (%0d)", $size(Completion1)); $stop(1);
+    if ($bits(RdReq1) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::RdReq1 has an illegal width (%0d)", $bits(RdReq1)); $stop(1);
+    end
+
+    if ($bits(Completion0) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::Completion0 has an illegal width (%0d)", $bits(Completion0)); $stop(1);
+    end
+    if ($bits(Completion1) != 64) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::Completion1 has an illegal width (%0d)", $bits(Completion1)); $stop(1);
     end
 
     // The Action message-types must all be ACTION_BITS wide
-    if ($size(RegRead) != ACTION_BITS) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RegRead has an illegal width (%0d)", $size(RegRead)); $stop(1);
+    if ($bits(RegRead) != ACTION_BITS) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::RegRead has an illegal width (%0d)", $bits(RegRead)); $stop(1);
     end
-    if ($size(RegWrite) != ACTION_BITS) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RegWrite has an illegal width (%0d)", $size(RegWrite)); $stop(1);
+    if ($bits(RegWrite) != ACTION_BITS) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::RegWrite has an illegal width (%0d)", $bits(RegWrite)); $stop(1);
     end
 
     // Register readback test
@@ -325,9 +340,11 @@ module tlp_xcvr_tb;
     tick(8);
     doWrite(C2F_WRPTR, 1);
 
-
     tick(20);
-    doBurstWrite(0);
+    for (int i = 1; i <= 16; i = i + 1)
+      doBurstWrite(0, 0, i);
+    for (int i = 1; i <= 16; i = i + 1)
+      doBurstWrite(0, 1, i);
 
     tick(300);
     $display("\nSUCCESS: Simulation stopped due to successful completion!");

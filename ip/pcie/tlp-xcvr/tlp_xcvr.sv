@@ -25,7 +25,7 @@ module tlp_xcvr(
     input tlp_xcvr_pkg::uint64 rxData_in,
     input logic rxValid_in,
     output logic rxReady_out,
-    input logic rxSOP_in,
+    input tlp_xcvr_pkg::SopBar rxSOP_in,
     input logic rxEOP_in,
 
     // Outgoing messages to the CPU
@@ -54,6 +54,7 @@ module tlp_xcvr(
 
     // Sink for CPU->FPGA burst stream
     output tlp_xcvr_pkg::uint64 c2fData_out,
+    output tlp_xcvr_pkg::ByteMask64 c2fBE_out,
     output logic c2fValid_out
   );
 
@@ -106,6 +107,7 @@ module tlp_xcvr(
 
     // Sink for CPU->FPGA DMA stream
     .c2fData_out     (c2fData_out),
+    .c2fBE_out       (c2fBE_out),
     .c2fValid_out    (c2fValid_out)
   );
 
