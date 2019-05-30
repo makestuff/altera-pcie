@@ -28,7 +28,9 @@ fi
 rm -rf libraries sim-libs modelsim.ini
 
 # Build tools
-make -C tools
+if [ "$OS" != "Windows_NT" ]; then
+  make -C tools
+fi
 
 # Construct random number generators
 echo "Starting RNG generation..."
