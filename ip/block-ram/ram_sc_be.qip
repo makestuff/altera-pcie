@@ -1,0 +1,1 @@
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "ram_sc_be.sv"]
