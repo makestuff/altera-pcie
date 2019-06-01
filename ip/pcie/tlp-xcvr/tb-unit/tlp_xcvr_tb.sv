@@ -58,6 +58,8 @@ module tlp_xcvr_tb;
   assign f2cDataX = (f2cValid && f2cReady) ? f2cData : 'X;
 
   // 64-bit CPU->FPGA burst-pipe
+  C2FChunkIndex c2fChunkIndex;
+  C2FChunkOffset c2fChunkOffset;
   uint64 c2fData;
   ByteMask64 c2fBE;
   logic c2fValid;
@@ -76,13 +78,13 @@ module tlp_xcvr_tb;
   // Instantiate transciever
   tlp_xcvr uut(
     sysClk, cfgBusDev,
-    rxData, rxValid, rxReady, rxSOP, rxEOP,  // CPU->FPGA messages
-    txData, txValid, txReady, txSOP, txEOP,  // FPGA->CPU messages
-    cpuChan,                                 // register address
-    cpuWrData, cpuWrValid, cpuWrReady,       // register write pipe
-    cpuRdData, cpuRdValid, cpuRdReady,       // register read pipe
-    f2cData, f2cValid, f2cReady, f2cReset,   // FPGA->CPU DMA pipe
-    c2fData, c2fBE, c2fValid                 // CPU->FPGA burst pipe
+    rxData, rxValid, rxReady, rxSOP, rxEOP,                  // CPU->FPGA messages
+    txData, txValid, txReady, txSOP, txEOP,                  // FPGA->CPU messages
+    cpuChan,                                                 // register address
+    cpuWrData, cpuWrValid, cpuWrReady,                       // register write pipe
+    cpuRdData, cpuRdValid, cpuRdReady,                       // register read pipe
+    f2cData, f2cValid, f2cReady, f2cReset,                   // FPGA->CPU DMA pipe
+    c2fChunkIndex, c2fChunkOffset, c2fData, c2fBE, c2fValid  // CPU->FPGA burst pipe
   );
 
   // Instantiate 64-bit random-number generator, as FPGA->CPU DMA data-source
@@ -126,8 +128,8 @@ module tlp_xcvr_tb;
     tick(ticks);
   endtask
 
-  task doBurstWrite(int index, int dstAddr, int dwCount);
-    rxData = genDmaWrite0(.reqID(CPU_ID), .dwCount(dwCount));
+  task doBurstWrite(int index, int dstAddr, int dwCount, ByteMask32 firstBE = 4'b1111, ByteMask32 lastBE = 4'b1111);
+    rxData = genDmaWrite0(.reqID(CPU_ID), .dwCount(dwCount), .firstBE(firstBE), .lastBE(lastBE));
     rxValid = 1;
     rxSOP = SOP_C2F;
     @(posedge sysClk);
@@ -342,9 +344,9 @@ module tlp_xcvr_tb;
 
     tick(20);
     for (int i = 1; i <= 16; i = i + 1)
-      doBurstWrite(0, 0, i);
+      doBurstWrite(0, 0, i, 4'b1110, 4'b0111);
     for (int i = 1; i <= 16; i = i + 1)
-      doBurstWrite(0, 1, i);
+      doBurstWrite(0, 1, i, 4'b1110, 4'b0111);
 
     tick(300);
     $display("\nSUCCESS: Simulation stopped due to successful completion!");

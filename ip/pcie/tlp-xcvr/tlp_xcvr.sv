@@ -38,11 +38,11 @@ module tlp_xcvr(
     // Internal read/write interface
     output tlp_xcvr_pkg::Channel cpuChan_out,
 
-    output tlp_xcvr_pkg::Data cpuWrData_out,  // Host >> FPGA pipe:
+    output tlp_xcvr_pkg::Data cpuWrData_out,  // Host >> FPGA register pipe:
     output logic cpuWrValid_out,
     input logic cpuWrReady_in,
 
-    input tlp_xcvr_pkg::Data cpuRdData_in,    // Host << FPGA pipe:
+    input tlp_xcvr_pkg::Data cpuRdData_in,    // Host << FPGA register pipe:
     input logic cpuRdValid_in,
     output logic cpuRdReady_out,
 
@@ -52,7 +52,9 @@ module tlp_xcvr(
     output logic f2cReady_out,
     output logic f2cReset_out,
 
-    // Sink for CPU->FPGA burst stream
+    // Sink for the memory-mapped CPU->FPGA burst pipe
+    output tlp_xcvr_pkg::C2FChunkIndex c2fChunkIndex_out,
+    output tlp_xcvr_pkg::C2FChunkOffset c2fChunkOffset_out,
     output tlp_xcvr_pkg::uint64 c2fData_out,
     output tlp_xcvr_pkg::ByteMask64 c2fBE_out,
     output logic c2fValid_out
@@ -92,23 +94,25 @@ module tlp_xcvr(
 
   // TLP Receiver
   tlp_recv recv(
-    .pcieClk_in      (pcieClk_in),
+    .pcieClk_in         (pcieClk_in),
 
     // Incoming messages from the CPU
-    .rxData_in       (rxData_in),
-    .rxValid_in      (rxValid_in),
-    .rxReady_out     (rxReady_out),
-    .rxSOP_in        (rxSOP_in),
-    .rxEOP_in        (rxEOP_in),
+    .rxData_in          (rxData_in),
+    .rxValid_in         (rxValid_in),
+    .rxReady_out        (rxReady_out),
+    .rxSOP_in           (rxSOP_in),
+    .rxEOP_in           (rxEOP_in),
 
     // Outgoing messages to the tlp_send unit
-    .actData_out     (fiData),
-    .actValid_out    (fiValid),
+    .actData_out        (fiData),
+    .actValid_out       (fiValid),
 
     // Sink for CPU->FPGA DMA stream
-    .c2fData_out     (c2fData_out),
-    .c2fBE_out       (c2fBE_out),
-    .c2fValid_out    (c2fValid_out)
+    .c2fChunkIndex_out  (c2fChunkIndex_out),
+    .c2fChunkOffset_out (c2fChunkOffset_out),
+    .c2fData_out        (c2fData_out),
+    .c2fBE_out          (c2fBE_out),
+    .c2fValid_out       (c2fValid_out)
   );
 
   // TLP Sender

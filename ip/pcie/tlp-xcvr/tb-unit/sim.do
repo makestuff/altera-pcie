@@ -71,6 +71,8 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      uut/f2cReady_out
 
   add wave -div "CPU->FPGA Burst Pipe"
+  add wave -hex uut/c2fChunkIndex_out
+  add wave -hex uut/c2fChunkOffset_out
   add wave -hex uut/c2fData_out
   add wave      uut/c2fBE_out
   add wave      uut/c2fValid_out
@@ -78,8 +80,8 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -div "Internals"
   add wave      uut/recv/state
   add wave -uns uut/recv/dwCount
-  add wave -uns uut/recv/firstBE
-  add wave -uns uut/recv/lastBE
+  add wave      uut/recv/firstBE
+  add wave      uut/recv/lastBE
 
   add wave      uut/send/state
   add wave -hex uut/send/reqID
