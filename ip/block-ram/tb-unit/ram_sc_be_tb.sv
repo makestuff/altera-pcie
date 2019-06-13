@@ -21,22 +21,21 @@
 module ram_sc_be_tb;
   localparam int CLK_PERIOD = 10;
   localparam int ADDR_NBITS = 5;  // i.e 2^5 = 32 addressible rows
-  localparam int NUM_SPANS = 8;   // each addressible row has this many spans
   localparam int SPAN_NBITS = 8;  // if 8 then writeEnable_in are byte-enables
   typedef logic[ADDR_NBITS-1 : 0] Addr;  // ADDR_NBITS x 1-bit
-  typedef logic[SPAN_NBITS-1 : 0] Data;  // SPAN_NBITS x 1-bit
-  typedef logic[NUM_SPANS-1 : 0] WriteEnable;
-  typedef Data[NUM_SPANS-1 : 0] Row;     // NUM_SPANS x Data
+  typedef logic[SPAN_NBITS-1 : 0] Byte;  // SPAN_NBITS x 1-bit
+  typedef logic[7:0] ByteEnables;
+  typedef Byte[7:0] Row;     // 8 * Byte
   localparam Row XXX = 'X;
 
-  logic sysClk, dispClk;
+  logic sysClk, dispClk, writeEnable;
   Row writeData, readData;
   Addr writeAddr, readAddr;
-  WriteEnable writeEnable;
+  ByteEnables byteEnables;
 
-  ram_sc_be#(ADDR_NBITS, NUM_SPANS, SPAN_NBITS) uut(
+  ram_sc_be#(ADDR_NBITS, SPAN_NBITS) uut(
     sysClk,
-    writeAddr, writeData, writeEnable,
+    writeEnable, byteEnables, writeAddr, writeData,
     readAddr, readData);
 
   initial begin: sysClk_drv
@@ -51,22 +50,24 @@ module ram_sc_be_tb;
     forever #(1000*CLK_PERIOD/2) dispClk = ~dispClk;
   end
 
-  task doWrite(Addr addr, WriteEnable we, Row data = XXX);
+  task doWrite(Addr addr, ByteEnables be, Row data = XXX);
     if (data === XXX) begin
       typedef logic[31:0] uint32;
-      localparam int NUM_DWS = SPAN_NBITS*NUM_SPANS/32;
+      localparam int NUM_DWS = SPAN_NBITS*8/32;
       uint32[NUM_DWS-1 : 0] randomData;
       for (int i = 0; i < NUM_DWS; i = i + 1) begin
         randomData[i] = $urandom();
       end
       data = randomData;
     end
+    writeEnable = 1;
+    byteEnables = be;
     writeAddr = addr;
-    writeEnable = we;
     writeData = data;
     @(posedge sysClk);
+    writeEnable = 0;
+    byteEnables = 'X;
     writeAddr = 'X;
-    writeEnable = '0;
     writeData = 'X;
   endtask
 
@@ -77,8 +78,9 @@ module ram_sc_be_tb;
   endtask
 
   initial begin: input_drv
+    writeEnable = 0;
+    byteEnables = 'X;
     writeAddr = 'X;
-    writeEnable = '0;
     writeData = 'X;
     readAddr = 'X;
     @(posedge sysClk);

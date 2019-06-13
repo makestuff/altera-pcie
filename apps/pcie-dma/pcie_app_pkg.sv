@@ -17,6 +17,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 package pcie_app_pkg;
-  localparam int CKSUM_LSW = 254;
-  localparam int CKSUM_MSW = 255;
+  localparam int C2FADDR = 253;
+  localparam int C2FDATA_LSW = 254;
+  localparam int C2FDATA_MSW = 255;
 endpackage

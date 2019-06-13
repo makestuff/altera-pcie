@@ -32,11 +32,11 @@ module tlp_recv(
     output logic actValid_out,
 
     // The memory-mapped CPU->FPGA pipe
+    output logic c2fWriteEnable_out,
+    output tlp_xcvr_pkg::ByteMask64 c2fByteMask_out,
     output tlp_xcvr_pkg::C2FChunkIndex c2fChunkIndex_out,
     output tlp_xcvr_pkg::C2FChunkOffset c2fChunkOffset_out,
-    output tlp_xcvr_pkg::uint64 c2fData_out,
-    output tlp_xcvr_pkg::ByteMask64 c2fBE_out,
-    output logic c2fValid_out
+    output tlp_xcvr_pkg::uint64 c2fData_out
   );
 
   // Get stuff from the associated package
@@ -116,9 +116,9 @@ module tlp_recv(
     rxReady_out = 1;
 
     // CPU->FPGA DMA pipe
+    c2fWriteEnable_out = 0;
+    c2fByteMask_out = 'X;
     c2fData_out = 'X;
-    c2fBE_out = 'X;
-    c2fValid_out = 0;
 
     // Typed messages
     hdr = 'X;
@@ -151,9 +151,9 @@ module tlp_recv(
         if (rw1.dwAddr & 1) begin
           // The first DW is rw1.data (i.e MSW of rw1)
           {c2fChunkIndex_out, c2fChunkOffset_out} = C2FAddr'(rw1.dwAddr>>1);
-          c2fBE_out = {firstBE, 4'b0000};
-          c2fData_out = maskData64({rw1.data, 32'h0}, c2fBE_out);
-          c2fValid_out = 1;
+          c2fByteMask_out = {firstBE, 4'b0000};
+          c2fData_out = maskData64({rw1.data, 32'h0}, c2fByteMask_out);
+          c2fWriteEnable_out = 1;
           if (dwCount == 1) begin
             // We're done
             dwCount_next = 'X;
@@ -182,7 +182,7 @@ module tlp_recv(
       S_BURST_WRITE2: begin
         if (dwCount <= 2) begin
           // This is the last one or two DWs
-          c2fBE_out = {
+          c2fByteMask_out = {
             (dwCount==1) ? 4'b0000 : lastBE,
             firstBE
           };
@@ -191,41 +191,41 @@ module tlp_recv(
           state_next = S_IDLE;
         end else begin
           // There's more data to come
-          c2fBE_out = {4'b1111, firstBE};
+          c2fByteMask_out = {4'b1111, firstBE};
           dwCount_next = DWCount'(dwCount - 2);
           lastBE_next = lastBE;
           state_next = S_BURST_WRITE3;
         end
         {c2fChunkIndex_out, c2fChunkOffset_out} = c2fAddr;
-        c2fData_out = maskData64(rxData_in, c2fBE_out);
-        c2fValid_out = 1;
+        c2fData_out = maskData64(rxData_in, c2fByteMask_out);
+        c2fWriteEnable_out = 1;
         c2fAddr_next = C2FAddr'(1 + c2fAddr);
       end
 
       // Main loop
       S_BURST_WRITE3: begin
         {c2fChunkIndex_out, c2fChunkOffset_out} = c2fAddr;
-        c2fValid_out = 1;
+        c2fWriteEnable_out = 1;
         if (dwCount == 2) begin
           // last pair of DWs is in rxData_in
           state_next = S_IDLE;
-          c2fBE_out = {lastBE, 4'b1111};
-          c2fData_out = maskData64(rxData_in, c2fBE_out);
+          c2fByteMask_out = {lastBE, 4'b1111};
+          c2fData_out = maskData64(rxData_in, c2fByteMask_out);
           dwCount_next = 'X;
           firstBE_next = 'X;
           lastBE_next = 'X;
         end else if (dwCount == 1) begin
           // last DW is in LSW of rxData_in
           state_next = S_IDLE;
-          c2fBE_out = {4'b0000, lastBE};
-          c2fData_out = maskData64(rxData_in, c2fBE_out);
+          c2fByteMask_out = {4'b0000, lastBE};
+          c2fData_out = maskData64(rxData_in, c2fByteMask_out);
           dwCount_next = 'X;
           firstBE_next = 'X;
           lastBE_next = 'X;
         end else begin
           // A pair of DWs in rxData_in
           state_next = S_BURST_WRITE3;
-          c2fBE_out = '1;
+          c2fByteMask_out = '1;
           c2fData_out = rxData_in;
           dwCount_next = DWCount'(dwCount - 2);
           c2fAddr_next = C2FAddr'(1 + c2fAddr);

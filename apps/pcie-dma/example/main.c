@@ -30,6 +30,7 @@
 #include <sys/time.h>
 
 #include "fpgalink.h"
+#include "u64.h"
 
 #define PAGE_SIZE 4096
 
@@ -224,6 +225,33 @@ int main(int argc, const char* argv[]) {
   }
 
   // Direct userspace readback
+  for (size_t j = 0; j < 64; ++j) {
+    printf("Offset %zu; length %zu:\n", j, 64-j);
+    for (i = 0; i < 512; ++i) {
+      c2fBuffer[i] = 0xCACACACACACACACAULL;
+    }
+    uint8_t* const dst = (uint8_t*)c2fBuffer;
+    const uint8_t* const src = (const uint8_t*)values64;
+    for (i = 0; i < 64-j; ++i) {
+      dst[i+j] = src[i];
+    }
+    __asm volatile("sfence" ::: "memory");
+    for (i = 0; i < 512; ++i) {
+      const uint32_t lsw = REG(254);
+      const uint32_t msw = REG(255);
+      uint64_t val = msw;
+      val <<= 32U;
+      val |= lsw;
+      if (i <= 8)
+        printf("  %016" PRIX64 "\n", val);
+    }
+    printf("\n");
+  }
+  goto dev_close;
+
+
+
+
   printf("Write FPGA registers & readback using I/O region mmap()'d into userspace:\n");
   for (i = 0; i < numValues; i++) {
     REG(i) = values[i];

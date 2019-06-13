@@ -22,7 +22,7 @@ vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 onbreak resume
 
-vlog -sv -novopt -hazards -lint -pedanticerrors ../ram_sc_be.sv -work makestuff
+vlog -sv -novopt -hazards -lint -pedanticerrors ../ram_sc_be.sv +incdir+.. -work makestuff
 vlog -sv -novopt -hazards -lint -pedanticerrors ram_sc_be_tb.sv
 vsim -t ps -novopt -L work -L makestuff -L altera_mf_ver ram_sc_be_tb
 
@@ -30,9 +30,10 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      dispClk
 
   add wave -div "Write Side"
+  add wave      uut/writeEnable_in
+  add wave -hex uut/spanEnable_in
   add wave -hex uut/writeAddr_in
   add wave -hex uut/writeData_in
-  add wave      uut/writeEnable_in
 
   add wave -div "Read Side"
   add wave -hex uut/readAddr_in
@@ -42,8 +43,8 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -hex uut/memArray
   add wave -div ""
 
-  configure wave -namecolwidth 265
-  configure wave -valuecolwidth 25
+  configure wave -namecolwidth 216
+  configure wave -valuecolwidth 130
   configure wave -gridoffset 0ns
   configure wave -gridperiod 10ns
   run -all

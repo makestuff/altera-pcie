@@ -113,9 +113,7 @@ package tlp_xcvr_pkg;
     ExtChan reserved;
     Data code;
   } ErrorCode;
-  localparam int ACTION_BITS = $bits(RegWrite);  // Quartus 16.1 doesn't $size() structs correctly
-  //localparam int ACTION_BITS = $size(ActionType) + $size(ExtChan) + $size(Data);
-  //localparam int ACTION_BITS = 2 + CHAN_WIDTH + 1 + 32;
+  localparam int ACTION_BITS = $bits(RegWrite);
   typedef struct packed {
     ActionType typ;
     logic[ACTION_BITS-$bits(ActionType)-1:0] reserved;

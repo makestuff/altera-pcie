@@ -53,11 +53,11 @@ module tlp_xcvr(
     output logic f2cReset_out,
 
     // Sink for the memory-mapped CPU->FPGA burst pipe
+    output logic c2fWriteEnable_out,
+    output tlp_xcvr_pkg::ByteMask64 c2fByteMask_out,
     output tlp_xcvr_pkg::C2FChunkIndex c2fChunkIndex_out,
     output tlp_xcvr_pkg::C2FChunkOffset c2fChunkOffset_out,
-    output tlp_xcvr_pkg::uint64 c2fData_out,
-    output tlp_xcvr_pkg::ByteMask64 c2fBE_out,
-    output logic c2fValid_out
+    output tlp_xcvr_pkg::uint64 c2fData_out
   );
 
   // Get stuff from the associated package
@@ -108,11 +108,11 @@ module tlp_xcvr(
     .actValid_out       (fiValid),
 
     // Sink for CPU->FPGA DMA stream
+    .c2fWriteEnable_out (c2fWriteEnable_out),
+    .c2fByteMask_out    (c2fByteMask_out),
     .c2fChunkIndex_out  (c2fChunkIndex_out),
     .c2fChunkOffset_out (c2fChunkOffset_out),
-    .c2fData_out        (c2fData_out),
-    .c2fBE_out          (c2fBE_out),
-    .c2fValid_out       (c2fValid_out)
+    .c2fData_out        (c2fData_out)
   );
 
   // TLP Sender

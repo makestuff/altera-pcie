@@ -48,6 +48,7 @@ module pcie_app#(
   Data tempData;
   Data cpuRdData;
   logic cpuRdValid;
+  logic cpuRdReady;
 
   // 64-bit RNG as DMA data-source
   uint64 f2cData;
@@ -56,14 +57,25 @@ module pcie_app#(
   logic f2cReset;
 
   // CPU->FPGA data
-  uint64 c2fData;
-  logic c2fValid;
+  logic c2fWriteEnable;
+  ByteMask64 c2fByteMask;
+  C2FChunkIndex c2fChunkIndex;
+  C2FChunkOffset c2fChunkOffset;
+  uint64 c2fWriteData;
+  uint64 c2fReadData;
 
   // Register array
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
   Data[0:2**CHAN_WIDTH-1] regArray_next;
-  uint64 ckSum = 0;
-  uint64 ckSum_next;
+  C2FAddr c2fAddr = '0;
+  C2FAddr c2fAddr_next;
+
+  // RAM block to receive CPU->FPGA burst-writes
+  ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
+    pcieClk_in,
+    c2fWriteEnable, c2fByteMask, {c2fChunkIndex, c2fChunkOffset}, c2fWriteData,
+    c2fAddr, c2fReadData
+  );
 
   // TLP-level interface
   tlp_xcvr tlp_inst(
@@ -91,11 +103,14 @@ module pcie_app#(
     .cpuWrReady_in  (cpuWrReady),
     .cpuRdData_in   (cpuRdData),
     .cpuRdValid_in  (cpuRdValid),
-    .cpuRdReady_out (),
+    .cpuRdReady_out (cpuRdReady),
 
-    // CPU->FPGA DMA stream
-    .c2fData_out    (c2fData),
-    .c2fValid_out   (c2fValid),
+    // CPU->FPGA burst pipe
+    .c2fWriteEnable_out (c2fWriteEnable),
+    .c2fByteMask_out    (c2fByteMask),
+    .c2fChunkIndex_out  (c2fChunkIndex),
+    .c2fChunkOffset_out (c2fChunkOffset),
+    .c2fData_out        (c2fWriteData),
 
     // FPGA->CPU DMA stream
     .f2cData_in     (f2cData),
@@ -116,35 +131,34 @@ module pcie_app#(
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
     regArray <= regArray_next;
-    ckSum <= ckSum_next;
+    c2fAddr <= c2fAddr_next;
   end
 
   // Next state logic
   always_comb begin: next_state
-    if (f2cReset)
-      ckSum_next = 0;
-    else if (c2fValid)
-      ckSum_next = ckSum + c2fData;
-    else
-      ckSum_next = ckSum;
-
-    if (cpuChan == pcie_app_pkg::CKSUM_LSW)
-      tempData = ckSum[31:0];
-    else if (cpuChan == pcie_app_pkg::CKSUM_MSW)
-      tempData = ckSum[63:32];
-    else
-      tempData = regArray[cpuChan];
-
-    if (EN_SWAP)
-      cpuRdData = {tempData[15:0], tempData[31:16]};
-    else
-      cpuRdData = tempData;
-
+    c2fAddr_next = c2fAddr;
+    tempData = 'X;
+    cpuRdData = 'X;
+    if (cpuRdReady) begin
+      if (cpuChan == pcie_app_pkg::C2FADDR) begin
+        tempData = c2fAddr;
+      end else if (cpuChan == pcie_app_pkg::C2FDATA_LSW) begin
+        tempData = c2fReadData[31:0];
+      end else if (cpuChan == pcie_app_pkg::C2FDATA_MSW) begin
+        tempData = c2fReadData[63:32];
+        c2fAddr_next = C2FAddr'(c2fAddr + 1);
+      end else begin
+        tempData = regArray[cpuChan];
+      end
+      if (EN_SWAP)
+        cpuRdData = {tempData[15:0], tempData[31:16]};
+      else
+        cpuRdData = tempData;
+    end
     cpuRdValid = 1;  // always ready to supply data
     cpuWrReady = 1;  // always ready to receive data
     regArray_next = regArray;
     if (cpuWrValid)
       regArray_next[cpuChan] = cpuWrData;
   end
-
 endmodule

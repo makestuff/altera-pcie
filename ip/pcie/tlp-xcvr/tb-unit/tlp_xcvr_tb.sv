@@ -58,11 +58,13 @@ module tlp_xcvr_tb;
   assign f2cDataX = (f2cValid && f2cReady) ? f2cData : 'X;
 
   // 64-bit CPU->FPGA burst-pipe
+  logic c2fWriteEnable;
+  ByteMask64 c2fByteMask;
   C2FChunkIndex c2fChunkIndex;
   C2FChunkOffset c2fChunkOffset;
-  uint64 c2fData;
-  ByteMask64 c2fBE;
-  logic c2fValid;
+  uint64 c2fWriteData;
+  uint64 c2fReadData;
+  C2FAddr c2fReadAddr;
 
   // Register array
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
@@ -78,13 +80,20 @@ module tlp_xcvr_tb;
   // Instantiate transciever
   tlp_xcvr uut(
     sysClk, cfgBusDev,
-    rxData, rxValid, rxReady, rxSOP, rxEOP,                  // CPU->FPGA messages
-    txData, txValid, txReady, txSOP, txEOP,                  // FPGA->CPU messages
-    cpuChan,                                                 // register address
-    cpuWrData, cpuWrValid, cpuWrReady,                       // register write pipe
-    cpuRdData, cpuRdValid, cpuRdReady,                       // register read pipe
-    f2cData, f2cValid, f2cReady, f2cReset,                   // FPGA->CPU DMA pipe
-    c2fChunkIndex, c2fChunkOffset, c2fData, c2fBE, c2fValid  // CPU->FPGA burst pipe
+    rxData, rxValid, rxReady, rxSOP, rxEOP,                                    // CPU->FPGA messages
+    txData, txValid, txReady, txSOP, txEOP,                                    // FPGA->CPU messages
+    cpuChan,                                                                   // register address
+    cpuWrData, cpuWrValid, cpuWrReady,                                         // register write pipe
+    cpuRdData, cpuRdValid, cpuRdReady,                                         // register read pipe
+    f2cData, f2cValid, f2cReady, f2cReset,                                     // FPGA->CPU DMA pipe
+    c2fWriteEnable, c2fByteMask, c2fChunkIndex, c2fChunkOffset, c2fWriteData   // CPU->FPGA burst pipe
+  );
+
+  // RAM block to receive CPU->FPGA burst-writes
+  ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
+    sysClk,
+    c2fWriteEnable, c2fByteMask, {c2fChunkIndex, c2fChunkOffset}, c2fWriteData,
+    c2fReadAddr, c2fReadData
   );
 
   // Instantiate 64-bit random-number generator, as FPGA->CPU DMA data-source

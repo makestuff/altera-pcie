@@ -37,7 +37,8 @@ vlib work
 vmap work_lib work
 onbreak resume
 
-vlog -sv $IP_DIR/reg-mux/reg_mux.sv              -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
+vlog -sv $IP_DIR/block-ram/ram_sc_be.sv          -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION +incdir+$IP_DIR/block-ram
+vlog -sv $IP_DIR/dvr-rng/dvr_rng_pkg.sv          -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
@@ -74,6 +75,7 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
   }
 } elseif {[lsearch {cvgt} $env(FPGA)] >= 0} {
   # Do a Cyclone V simulation
+  echo "Foobar"
   vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
   vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work makestuff
   vlog -sv -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff
@@ -145,8 +147,12 @@ add wave      pcie_app/tlp_inst/f2cReady_out
 add wave      pcie_app/tlp_inst/f2cReset_out
 
 add wave -div "CPU->FPGA Pipe"
+add wave      pcie_app/tlp_inst/c2fWriteEnable_out
+add wave      pcie_app/tlp_inst/c2fByteMask_out
+add wave -hex pcie_app/tlp_inst/c2fChunkIndex_out
+add wave -hex pcie_app/tlp_inst/c2fChunkOffset_out
 add wave -hex pcie_app/tlp_inst/c2fData_out
-add wave      pcie_app/tlp_inst/c2fValid_out
+add wave -hex pcie_app/c2f_ram/memArray
 
 add wave -div "Receiver Internals"
 add wave      pcie_app/tlp_inst/recv/state
@@ -168,7 +174,7 @@ add wave -hex pcie_app/tlp_inst/send/lowAddr
 add wave -hex pcie_app/tlp_inst/send/qwCount
 
 add wave -div "App Internals"
-add wave -hex pcie_app/ckSum
+add wave -hex pcie_app/c2fAddr
 add wave -div ""
 
 if {[info exists ::env(GUI)] && $env(GUI)} {

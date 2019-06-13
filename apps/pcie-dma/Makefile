@@ -14,6 +14,9 @@ all: build/proj.sof
 build/proj.sof: build/proj.qpf
 	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
 
+syn: build/proj.qpf
+	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_map --read_settings_files=off --write_settings_files=off build/proj.qpf -c proj | tee -a build/build.log
+
 # Launch the Quartus GUI
 gui: build/proj.qpf
 	quartus build/proj.qpf

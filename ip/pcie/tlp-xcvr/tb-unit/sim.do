@@ -22,11 +22,12 @@ vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 onbreak resume
 
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv     -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv     -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv     -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv        -L makestuff
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv                        -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv                            -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv                            -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv                            -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors $env(MAKESTUFF)/ip/block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv                               -L makestuff
 vsim -t ps -novopt +nowarn3116 -L work -L makestuff -L altera_mf_ver tlp_xcvr_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
@@ -71,11 +72,11 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      uut/f2cReady_out
 
   add wave -div "CPU->FPGA Burst Pipe"
+  add wave      uut/c2fWriteEnable_out
+  add wave      uut/c2fByteMask_out
   add wave -hex uut/c2fChunkIndex_out
   add wave -hex uut/c2fChunkOffset_out
   add wave -hex uut/c2fData_out
-  add wave      uut/c2fBE_out
-  add wave      uut/c2fValid_out
 
   add wave -div "Internals"
   add wave      uut/recv/state
@@ -98,7 +99,9 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -uns uut/send/c2fWrPtr
   add wave -uns uut/send/c2fRdPtr
   add wave -hex regArray
-  add wave -div ""
+
+  add wave -div "CPU->FPGA RAM"
+  add wave -hex c2f_ram/memArray
 
   configure wave -namecolwidth 265
   configure wave -valuecolwidth 105

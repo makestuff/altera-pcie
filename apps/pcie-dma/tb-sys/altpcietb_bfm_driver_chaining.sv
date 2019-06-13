@@ -120,32 +120,29 @@ module altpcietb_bfm_driver_chaining#(
     // Get BAR configs
     displayBarConfigs();
 
+    // Do some burst-writes...
+    $display("\nINFO: %15d ns Burst-writing 4096 bytes (this'll take a while!)", $time()/1000);
+    for (int i = 0; i < 512; i = i + 1)
+      hostWrite(TMP_BASE_ADDR + 8*i, dvr_rng_pkg::SEQ64[i]);
+    ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, 0, TMP_BASE_ADDR, 4096, 0);
+
+    // ...and verify readback
+    $display("INFO: %15d ns Verifying %0d QWs...", $time()/1000, NUM_ITERATIONS*2);
+    for (int i = 0; i < NUM_ITERATIONS*2; i = i + 1) begin
+      fpgaRead(pcie_app_pkg::C2FDATA_LSW, .into(u64[31:0]));
+      fpgaRead(pcie_app_pkg::C2FDATA_MSW, .into(u64[63:32]));
+      if (u64 == dvr_rng_pkg::SEQ64[i]) begin
+        $display("INFO: %15d ns   Got QW[%0d]: 0x%s (Y)", $time()/1000, i, himage16(u64));
+      end else begin
+        $display("INFO: %15d ns   Got QW[%0d]: 0x%s (N)", $time()/1000, i, himage16(u64));
+        success = 0;
+      end
+    end
+
     // Initialize FPGA
     fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);  // set base address of FPGA->CPU buffer
     fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);  // set base address of metrics buffer
     fpgaWrite(DMA_ENABLE, 0);              // reset everything
-
-    // Do some burst-write, and verify checksum
-    /*$display("\nINFO: %15d ns Doing block-write of 1024 bytes, in 64-byte chunks:", $time()/1000);
-    for (int i = 0; i < 256; i = i + 1)
-      hostWrite(TMP_BASE_ADDR + 4*i, dvr_rng_pkg::SEQ32[i]);
-
-    tlp = 1;
-    for (int i = 1; i < 64; i = i + 1) begin
-      ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, tlp*64 + i, TMP_BASE_ADDR + tlp*64 + i, 64 - i, 0);
-    end
-
-    for (int i = 0; i < 16; i = i + 1)
-      ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, i*64, TMP_BASE_ADDR + i*64, 64, 0);
-    fpgaRead(pcie_app_pkg::CKSUM_LSW, .into(u64[31:0]));
-    fpgaRead(pcie_app_pkg::CKSUM_MSW, .into(u64[63:32]));
-    if (u64 == 64'hD469CC514DE38AFA) begin
-      $display("INFO: %15d ns   Checksum: 0x%s (Y)", $time()/1000, himage16(u64));
-    end else begin
-      $display("INFO: %15d ns   Checksum: 0x%s (N)", $time()/1000, himage16(u64));
-      success = 0;
-    end
-    */
 
     // Write to registers...
     $display("\nINFO: %15d ns Writing %0d registers:", $time()/1000, NUM_ITERATIONS);
