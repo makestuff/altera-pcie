@@ -93,16 +93,16 @@ module tlp_send(
   uint32 shortBurstCount_next;
 
   // FPGA copies of FPGA->CPU circular-buffer reader and writer pointers
-  CBPtr f2cWrPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP write
-  CBPtr f2cWrPtr_next;
-  CBPtr f2cRdPtr = '0;  // updated by the CPU (via register write: "I've finished with these items")
-  CBPtr f2cRdPtr_next;
+  F2CChunkIndex f2cWrPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP write
+  F2CChunkIndex f2cWrPtr_next;
+  F2CChunkIndex f2cRdPtr = '0;  // updated by the CPU (via register write: "I've finished with these items")
+  F2CChunkIndex f2cRdPtr_next;
 
   // FPGA copies of CPU->FPGA circular-buffer reader and writer pointers
-  CBPtr c2fWrPtr = '0;  // updated by the CPU (via register write: "I've written one or more items for you")
-  CBPtr c2fWrPtr_next;
-  CBPtr c2fRdPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP read
-  CBPtr c2fRdPtr_next;
+  C2FChunkIndex c2fWrPtr = '0;  // updated by the CPU (via register write: "I've written one or more items for you")
+  C2FChunkIndex c2fWrPtr_next;
+  C2FChunkIndex c2fRdPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP read
+  C2FChunkIndex c2fRdPtr_next;
 
   // Typed versions of incoming actions
   RegRead rr;
@@ -202,7 +202,7 @@ module tlp_send(
           if (qwCount == 0) begin
             qwCount_next = 'X;
             txEOP_out = 1;
-            f2cWrPtr_next = CBPtr'(f2cWrPtr+1);  // increment FPGA->CPU write-pointer
+            f2cWrPtr_next = F2CChunkIndex'(f2cWrPtr+1);  // increment FPGA->CPU write-pointer
             state_next = S_MTR0;
           end
         end
@@ -246,7 +246,7 @@ module tlp_send(
           state_next = doRegRead();
         else if (actValid_in && actData_in.typ == ACT_WRITE)
           state_next = doRegWrite();
-        else if (txReady_in && f2cValid_in && CBPtr'(f2cWrPtr+1) != f2cRdPtr && f2cEnabled)
+        else if (txReady_in && f2cValid_in && F2CChunkIndex'(f2cWrPtr+1) != f2cRdPtr && f2cEnabled)
           state_next = doDmaWrite();
         else if (txReady_in && actValid_in && actData_in.typ == ACT_ERROR)
           state_next = doErrorCode();
@@ -306,10 +306,10 @@ module tlp_send(
       f2cBase_next = QWAddr'(rw.data);
     end else if (rw.chan == F2C_RDPTR) begin
       // CPU is giving us a new FPGA->CPU read pointer
-      f2cRdPtr_next = CBPtr'(rw.data);
+      f2cRdPtr_next = F2CChunkIndex'(rw.data);
     end else if (rw.chan == C2F_WRPTR) begin
       // CPU is giving us a new CPU->FPGA write pointer
-      c2fWrPtr_next = CBPtr'(rw.data);
+      c2fWrPtr_next = C2FChunkIndex'(rw.data);
     end else if (rw.chan == DMA_ENABLE) begin
       // CPU is enabling or disabling DMA writes
       if (rw.data[0]) begin

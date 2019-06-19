@@ -82,10 +82,10 @@ package tlp_xcvr_pkg;
   typedef logic[9:0] DWCount;
   typedef logic[29:0] DWAddr;
   typedef logic[28:0] QWAddr;
-  typedef logic[3:0] CBPtr;  // circular buffer pointers (TODO: parameterize)
   typedef logic[63:0] uint64;
   typedef logic[31:0] uint32;
-  typedef logic[C2F_NUMCHUNKS_NBITS-1 : 0] C2FChunkIndex;     // chunk index (e.g 0-15)
+  typedef logic[F2C_NUMCHUNKS_NBITS-1 : 0] F2CChunkIndex;     // chunk index in the FPGA->CPU direction (e.g 0-31)
+  typedef logic[C2F_NUMCHUNKS_NBITS-1 : 0] C2FChunkIndex;     // chunk index in the CPU->FPGA direction (e.g 0-15)
   typedef logic[C2F_CHUNKSIZE_NBITS-3-1 : 0] C2FChunkOffset;  // offset in QWs (e.g 0-511) [the -3 is because there are 2^3=8 bytes in a QW]
   typedef logic[C2F_SIZE_NBITS-3-1 : 0] C2FAddr;              // overall QW address incorporating chunk index and offset
 

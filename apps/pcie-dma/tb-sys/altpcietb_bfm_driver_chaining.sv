@@ -50,6 +50,14 @@ module altpcietb_bfm_driver_chaining#(
   localparam int F2C_BASE_ADDR = 0;
   localparam int MTR_BASE_ADDR = F2C_BASE_ADDR + F2C_SIZE;
   localparam int TMP_BASE_ADDR = MTR_BASE_ADDR + MTR_SIZE;
+  localparam int F2C_WRPTR_ADDR = MTR_BASE_ADDR + 0;
+  localparam int C2F_RDPTR_ADDR = MTR_BASE_ADDR + 4;
+
+  // Success or failure
+  typedef enum logic {
+    SUCCESS = 1,
+    FAILURE = 0
+  } Result;
 
   // Examine the BAR setup and pick a reasonable BAR to use
   task findMemBar(int barTable, bit[5:0] allowedBars, int log2MinSize, output int into);
@@ -94,8 +102,11 @@ module altpcietb_bfm_driver_chaining#(
     shmem_write(addr, value, 8);
   endtask
 
-  function uint64 hostRead(int addr);
+  function uint64 hostRead64(int addr);
     return shmem_read(addr, 8);
+  endfunction
+  function uint32 hostRead32(int addr);
+    return shmem_read(addr, 4);
   endfunction
 
   // Main program
@@ -104,8 +115,8 @@ module altpcietb_bfm_driver_chaining#(
     uint64 u64;
     bit retCode;
     int tlp, qw;
-    automatic uint32 rdPtr = 0;
-    automatic bit success = 1;
+    automatic F2CChunkIndex rdPtr = 0;
+    automatic Result result = SUCCESS;
 
     // Setup the RC and EP config spaces
     ebfm_cfg_rp_ep(
@@ -135,7 +146,7 @@ module altpcietb_bfm_driver_chaining#(
         $display("INFO: %15d ns   Got QW[%0d]: 0x%s (Y)", $time()/1000, i, himage16(u64));
       end else begin
         $display("INFO: %15d ns   Got QW[%0d]: 0x%s (N)", $time()/1000, i, himage16(u64));
-        success = 0;
+        result = FAILURE;
       end
     end
 
@@ -159,7 +170,7 @@ module altpcietb_bfm_driver_chaining#(
         $display("INFO: %15d ns   Read[%0d] = 0x%s (Y)", $time()/1000, i, himage8(u32));
       end else begin
         $display("INFO: %15d ns   Read[%0d] = 0x%s (N)", $time()/1000, i, himage8(u32));
-        success = 0;
+        result = FAILURE;
       end
     end
 
@@ -168,30 +179,30 @@ module altpcietb_bfm_driver_chaining#(
     fpgaWrite(DMA_ENABLE, 1);  // enable DMA
     for (tlp = 0; tlp < NUM_ITERATIONS; tlp = tlp + 1) begin
       // Wait for a TLP to arrive
-      while (rdPtr == hostRead(MTR_BASE_ADDR))
+      while (rdPtr == hostRead32(F2C_WRPTR_ADDR))
         #8000;  // 8ns
       $display("INFO: %15d ns   TLP %0d (@%0d):", $time()/1000, tlp, rdPtr);
       for (qw = 0; qw < 16; qw = qw + 1) begin
-        u64 = hostRead(rdPtr*128 + qw*8);
+        u64 = hostRead64(rdPtr*128 + qw*8);
         if (tlp*16+qw < 256) begin
           if (u64 === dvr_rng_pkg::SEQ64[tlp*16+qw]) begin
             $display("INFO: %15d ns     %s (Y)", $time()/1000, himage16(u64));
           end else begin
             $display("INFO: %15d ns     %s (N)", $time()/1000, himage16(u64));
-            success = 0;
+            result = FAILURE;
           end
         end else begin
           $display("INFO: %15d ns     %s", $time()/1000, himage16(u64));
         end
       end
-      rdPtr = (rdPtr + 1) & 4'hF;
+      rdPtr = rdPtr + 1;
       fpgaWrite(F2C_RDPTR, rdPtr);  // tell FPGA we're finished with this TLP
       $display();
     end
     fpgaWrite(DMA_ENABLE, 0);  // disable DMA
 
     // Pass or fail
-    if (success) begin
+    if (result) begin
       $display("INFO: %15d ns Tests PASSED!\n", $time()/1000);
       retCode = ebfm_log_stop_sim(1);
     end else begin
