@@ -46,10 +46,10 @@ module altpcietb_bfm_driver_chaining#(
   // Import types, etc
   import tlp_xcvr_pkg::*;
 
-  // Regions of host memory the FPGA can DMA into
-  localparam int F2C_BASE_ADDR = 0;
-  localparam int MTR_BASE_ADDR = F2C_BASE_ADDR + F2C_SIZE;
-  localparam int TMP_BASE_ADDR = MTR_BASE_ADDR + MTR_SIZE;
+  // Regions of host memory
+  localparam int F2C_BASE_ADDR = 0;                         // this is used for the FPGA->CPU DMA buffer
+  localparam int MTR_BASE_ADDR = F2C_BASE_ADDR + F2C_SIZE;  // this is used for the metrics buffer (e.g read & write pointers)
+  localparam int TMP_BASE_ADDR = MTR_BASE_ADDR + MTR_SIZE;  // this is used for temporary buffer space (e.g for block writes to FPGA regions)
   localparam int F2C_WRPTR_ADDR = MTR_BASE_ADDR + 0;
   localparam int C2F_RDPTR_ADDR = MTR_BASE_ADDR + 4;
 
@@ -58,24 +58,6 @@ module altpcietb_bfm_driver_chaining#(
     SUCCESS = 1,
     FAILURE = 0
   } Result;
-
-  // Examine the BAR setup and pick a reasonable BAR to use
-  task findMemBar(int barTable, bit[5:0] allowedBars, int log2MinSize, output int into);
-    automatic int curBar = 0;
-    int log2Size;
-    bit isMem;
-    bit isPref;
-    bit is64b;
-    while (curBar < 6) begin
-      ebfm_cfg_decode_bar(barTable, curBar, log2Size, isMem, isPref, is64b);
-      if (isMem && log2Size >= log2MinSize && allowedBars[curBar]) begin
-        into = curBar;
-        return;
-      end
-      curBar = curBar + (is64b ? 2 : 1);
-    end
-    into = 7 ; // invalid BAR if we get this far...
-  endtask
 
   task displayBarConfigs();
     int log2Size;
@@ -98,7 +80,7 @@ module altpcietb_bfm_driver_chaining#(
     ebfm_barwr_imm(BAR_TABLE_POINTER, REG_BAR, 8*chan+4, val, 4, 0);
   endtask
 
-  task hostWrite(int addr, uint64 value);
+  task hostWrite64(int addr, uint64 value);
     shmem_write(addr, value, 8);
   endtask
 
@@ -109,6 +91,42 @@ module altpcietb_bfm_driver_chaining#(
     return shmem_read(addr, 4);
   endfunction
 
+  task c2fWriteChunk(Result expecting);
+    static int index = 0;  // index into the dvr_rng_pkg::SEQ64 array of precomputed pseudorandom numbers
+    static C2FChunkIndex wrPtr = 0;
+    const automatic C2FChunkIndex newWrPtr = wrPtr + 1;  // wraps appropriately
+    const automatic C2FChunkIndex rdPtr = hostRead32(C2F_RDPTR_ADDR);  // FPGA DMAs its read-pointer here
+    if (newWrPtr == rdPtr) begin
+      if (expecting == SUCCESS) begin
+        $display(
+          "\nFAILURE [%0dns]: Expected success from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it failed!",
+          $time()/1000, wrPtr, rdPtr
+        );
+        $stop(1);
+      end
+    end else begin
+      // Write each line of this chunk...
+      for (int i = 0; i < C2F_CHUNKSIZE/64; i = i + 1) begin
+        // First prepare one 64-byte line
+        for (int j = 0; j < 64/8; j = j + 1) begin
+          hostWrite64(TMP_BASE_ADDR + 8*j, dvr_rng_pkg::SEQ64[index]);
+          index = (index + 1) % $size(dvr_rng_pkg::SEQ64);
+        end
+
+        // Now write that line to the FPGA
+        ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, wrPtr * C2F_CHUNKSIZE + i * 64, TMP_BASE_ADDR, 64, 0);
+      end
+      wrPtr = newWrPtr;  // increment wrPtr
+      if (expecting == FAILURE) begin
+        $display(
+          "\nFAILURE [%0dns]: Expected failure from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it was successful!",
+          $time()/1000, wrPtr, rdPtr
+        );
+        $stop(1);
+      end
+    end
+  endtask
+
   // Main program
   initial begin: main
     Data u32;
@@ -117,6 +135,8 @@ module altpcietb_bfm_driver_chaining#(
     int tlp, qw;
     automatic F2CChunkIndex rdPtr = 0;
     automatic Result result = SUCCESS;
+    //parameter int NUM_QWS = (C2F_NUMCHUNKS-1)*C2F_CHUNKSIZE/8;  // verify all C2F_NUMCHUNKS-1 chunks of CPU->FPGA data
+    parameter int NUM_QWS = NUM_ITERATIONS*2;  // verify just a few QWs
 
     // Setup the RC and EP config spaces
     ebfm_cfg_rp_ep(
@@ -133,16 +153,16 @@ module altpcietb_bfm_driver_chaining#(
 
     // Do some burst-writes...
     $display("\nINFO: %15d ns Burst-writing 4096 bytes (this'll take a while!)", $time()/1000);
-    for (int i = 0; i < 512; i = i + 1)
-      hostWrite(TMP_BASE_ADDR + 8*i, dvr_rng_pkg::SEQ64[i]);
-    ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, 0, TMP_BASE_ADDR, 4096, 0);
+    for (int i = 0; i < C2F_NUMCHUNKS-1; i = i + 1)
+      c2fWriteChunk(.expecting(SUCCESS));
+    c2fWriteChunk(.expecting(FAILURE));
 
     // ...and verify readback
-    $display("INFO: %15d ns Verifying %0d QWs...", $time()/1000, NUM_ITERATIONS*2);
-    for (int i = 0; i < NUM_ITERATIONS*2; i = i + 1) begin
+    $display("INFO: %15d ns Verifying %0d QWs...", $time()/1000, NUM_QWS);
+    for (int i = 0; i < NUM_QWS; i = i + 1) begin
       fpgaRead(pcie_app_pkg::C2FDATA_LSW, .into(u64[31:0]));
       fpgaRead(pcie_app_pkg::C2FDATA_MSW, .into(u64[63:32]));
-      if (u64 == dvr_rng_pkg::SEQ64[i]) begin
+      if (u64 == dvr_rng_pkg::SEQ64[i % $size(dvr_rng_pkg::SEQ64)]) begin
         $display("INFO: %15d ns   Got QW[%0d]: 0x%s (Y)", $time()/1000, i, himage16(u64));
       end else begin
         $display("INFO: %15d ns   Got QW[%0d]: 0x%s (N)", $time()/1000, i, himage16(u64));
@@ -195,7 +215,7 @@ module altpcietb_bfm_driver_chaining#(
           $display("INFO: %15d ns     %s", $time()/1000, himage16(u64));
         end
       end
-      rdPtr = rdPtr + 1;
+      rdPtr = rdPtr + 1;  // wraps appropriately
       fpgaWrite(F2C_RDPTR, rdPtr);  // tell FPGA we're finished with this TLP
       $display();
     end
