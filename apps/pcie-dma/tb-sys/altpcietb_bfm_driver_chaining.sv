@@ -97,6 +97,7 @@ module altpcietb_bfm_driver_chaining#(
     const automatic C2FChunkIndex newWrPtr = wrPtr + 1;  // wraps appropriately
     const automatic C2FChunkIndex rdPtr = hostRead32(C2F_RDPTR_ADDR);  // FPGA DMAs its read-pointer here
     if (newWrPtr == rdPtr) begin
+      // There's no room for more data; hopefully we're expecting that to be the case
       if (expecting == SUCCESS) begin
         $display(
           "\nFAILURE [%0dns]: Expected success from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it failed!",
@@ -105,6 +106,15 @@ module altpcietb_bfm_driver_chaining#(
         $stop(1);
       end
     end else begin
+      // There is room for more data; hopefully we're expecting that to be the case
+      if (expecting == FAILURE) begin
+        $display(
+          "\nFAILURE [%0dns]: Expected failure from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it was successful!",
+          $time()/1000, wrPtr, rdPtr
+        );
+        $stop(1);
+      end
+
       // Write each line of this chunk...
       for (int i = 0; i < C2F_CHUNKSIZE/64; i = i + 1) begin
         // First prepare one 64-byte line
@@ -117,13 +127,6 @@ module altpcietb_bfm_driver_chaining#(
         ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, wrPtr * C2F_CHUNKSIZE + i * 64, TMP_BASE_ADDR, 64, 0);
       end
       wrPtr = newWrPtr;  // increment wrPtr
-      if (expecting == FAILURE) begin
-        $display(
-          "\nFAILURE [%0dns]: Expected failure from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it was successful!",
-          $time()/1000, wrPtr, rdPtr
-        );
-        $stop(1);
-      end
     end
   endtask
 
