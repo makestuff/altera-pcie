@@ -149,7 +149,7 @@ module tlp_recv(
       S_BURST_WRITE1: begin
         rw1 = rxData_in;
         if (rw1.dwAddr & 1) begin
-          // The first DW is rw1.data (i.e MSW of rw1)
+          // The address is odd, therefore the first DW is rw1.data (i.e MSW of rw1)
           {c2fChunkIndex_out, c2fChunkOffset_out} = C2FAddr'(rw1.dwAddr>>1);
           c2fByteMask_out = {firstBE, 4'b0000};
           c2fData_out = maskData64({rw1.data, 32'h0}, c2fByteMask_out);
@@ -169,7 +169,7 @@ module tlp_recv(
             state_next = S_BURST_WRITE3;  // go straight to the loop state
           end
         end else begin
-          // There is no data in rw1
+          // The address is even, therefore there's no data in rw1
           dwCount_next = dwCount;
           firstBE_next = firstBE;
           lastBE_next = lastBE;
