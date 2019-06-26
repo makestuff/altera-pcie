@@ -46,8 +46,10 @@ package tlp_xcvr_pkg;
   localparam int C2F_NUMCHUNKS = (1<<C2F_NUMCHUNKS_NBITS);
 
   // The FPGA->CPU buffer (read-only): potentially multiple 4KiB pages allocated by the kernel and DMA'd into by the FPGA
-  localparam int F2C_SIZE_NBITS = 12;      // the FPGA->CPU buffer is one 4KiB page (2^12 = 4096)
-  localparam int F2C_CHUNKSIZE_NBITS = 9;  // each chunk is 512 bytes -> therefore there will be 4096/512 = 8 chunks
+  localparam int F2C_TLPSIZE_NBITS = 7;                 // usually <=8, meaning F2C_TLPSIZE <=256 bytes
+  localparam int F2C_TLPSIZE = (1<<F2C_TLPSIZE_NBITS);
+  localparam int F2C_SIZE_NBITS = 12;                   // the FPGA->CPU buffer is one 4KiB page (2^12 = 4096)
+  localparam int F2C_CHUNKSIZE_NBITS = 9;               // each chunk is 512 bytes -> therefore there will be 4096/512 = 8 chunks
   localparam int F2C_NUMCHUNKS_NBITS = F2C_SIZE_NBITS - F2C_CHUNKSIZE_NBITS;
   localparam int F2C_SIZE =      (1<<F2C_SIZE_NBITS);
   localparam int F2C_CHUNKSIZE = (1<<F2C_CHUNKSIZE_NBITS);

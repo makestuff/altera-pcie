@@ -85,8 +85,9 @@ module tlp_send(
   QWAddr mtrBase_next;
   QWAddr f2cBase = '0;
   QWAddr f2cBase_next;
-  logic[3:0] qwCount = 'X;
-  logic[3:0] qwCount_next;
+  typedef logic[F2C_TLPSIZE_NBITS-3-1 : 0] QWCount;  // needs to be able to uniquely index each QW in a TLP
+  QWCount qwCount = 'X;
+  QWCount qwCount_next;
   logic f2cEnabled = 0;
   logic f2cEnabled_next;
   uint32 shortBurstCount = '0;
@@ -185,9 +186,9 @@ module tlp_send(
       // Send second QW of DmaWrite packet
       S_DMA1: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite1(f2cBase*2 + f2cWrPtr*32);
+          txData_out = genDmaWrite1(f2cBase*2 + f2cWrPtr*F2C_TLPSIZE/4);
           txValid_out = 1;
-          qwCount_next = 15;
+          qwCount_next = '1;  // since QWCount has F2C_TLPSIZE_NBITS-3 bits, this will be F2C_TLPSIZE/8 - 1;
           state_next = S_DMA2;
         end
       end
@@ -198,7 +199,7 @@ module tlp_send(
           txData_out = f2cData_in;
           txValid_out = 1;
           f2cReady_out = 1;  // commit read from DMA pipe
-          qwCount_next = qwCount - 4'd1;
+          qwCount_next = QWCount'(qwCount - 1);
           if (qwCount == 0) begin
             qwCount_next = 'X;
             txEOP_out = 1;

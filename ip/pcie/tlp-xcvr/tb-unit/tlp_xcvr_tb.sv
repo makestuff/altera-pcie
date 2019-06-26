@@ -284,7 +284,7 @@ module tlp_xcvr_tb;
     for (int i = CTL_BASE; i < 2*CTL_BASE; i = i + 1) begin
       doRead(i, readValue);
       if (readValue !== 32'hDEADBEEF) begin
-        $display("\nFAILURE [%0dns]: Expected doRead(%0d) to return DEADDEAD; actually got %H", $time()/1000, i, readValue); tick(4); $stop(1);
+        $display("\nFAILURE [%0dns]: Expected doRead(%0d) to return DEADBEEF; actually got %H", $time()/1000, i, readValue); tick(4); $stop(1);
       end
       $display("  doRead(%0d) -> %H", i, readValue);
     end
@@ -311,8 +311,8 @@ module tlp_xcvr_tb;
     // Wait for DMA writes to start
     @(posedge uut.f2cValid_in);
 
-    // We should get 15 TLPs (0-14) in quick succession
-    for (tlp = 0; tlp < 15; tlp = tlp + 1) begin
+    // We should get F2C_NUMCHUNKS-1 TLPs in quick succession
+    for (tlp = 0; tlp < F2C_NUMCHUNKS-1; tlp = tlp + 1) begin
       // Verify packet header
       expectTX({FPGA_ID, 48'h00FF40000020}, '1, 1, 1, 0);
       expectTX(8*F2CBASE_VALUE + tlp*128, '1, 1, 0, 0);
