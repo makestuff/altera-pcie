@@ -135,7 +135,6 @@ module altpcietb_bfm_driver_chaining#(
     Data u32;
     uint64 u64;
     bit retCode;
-    int tlp, qw;
     automatic F2CChunkIndex rdPtr = 0;
     automatic Result result = SUCCESS;
     //parameter int NUM_QWS = (C2F_NUMCHUNKS-1)*C2F_CHUNKSIZE/8;  // verify all C2F_NUMCHUNKS-1 chunks of CPU->FPGA data
@@ -200,26 +199,28 @@ module altpcietb_bfm_driver_chaining#(
     // Try DMA write
     $display("\nINFO: %15d ns Testing DMA write:", $time()/1000);
     fpgaWrite(DMA_ENABLE, 1);  // enable DMA
-    for (tlp = 0; tlp < NUM_ITERATIONS; tlp = tlp + 1) begin
-      // Wait for a TLP to arrive
+    for (int chunk = 0; chunk < NUM_ITERATIONS; chunk = chunk + 1) begin
+      // Wait for a chunk to arrive
       while (rdPtr == hostRead32(F2C_WRPTR_ADDR))
         #8000;  // 8ns
-      $display("INFO: %15d ns   TLP %0d (@%0d):", $time()/1000, tlp, rdPtr);
-      for (qw = 0; qw < 16; qw = qw + 1) begin
-        u64 = hostRead64(rdPtr*128 + qw*8);
-        if (tlp*16+qw < 256) begin
-          if (u64 === dvr_rng_pkg::SEQ64[tlp*16+qw]) begin
-            $display("INFO: %15d ns     %s (Y)", $time()/1000, himage16(u64));
+      $display("INFO: %15d ns   chunk %0d (@%0d):", $time()/1000, chunk, rdPtr);
+      for (int tlp = 0; tlp < F2C_CHUNKSIZE/F2C_TLPSIZE; tlp = tlp + 1) begin
+        for (int qw = 0; qw < F2C_TLPSIZE/8-1; qw = qw + 1) begin
+          u64 = hostRead64(rdPtr*F2C_CHUNKSIZE + tlp*F2C_TLPSIZE + qw*8);
+          if (chunk*F2C_CHUNKSIZE/8 < $size(dvr_rng_pkg::SEQ64)) begin
+            if (u64 === dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8 + tlp*F2C_TLPSIZE/8 + qw]) begin
+              $display("INFO: %15d ns     %s (Y)", $time()/1000, himage16(u64));
+            end else begin
+              $display("INFO: %15d ns     %s (N)", $time()/1000, himage16(u64));
+              result = FAILURE;
+            end
           end else begin
-            $display("INFO: %15d ns     %s (N)", $time()/1000, himage16(u64));
-            result = FAILURE;
+            $display("INFO: %15d ns     %s", $time()/1000, himage16(u64));
           end
-        end else begin
-          $display("INFO: %15d ns     %s", $time()/1000, himage16(u64));
         end
       end
       rdPtr = rdPtr + 1;  // wraps appropriately
-      fpgaWrite(F2C_RDPTR, rdPtr);  // tell FPGA we're finished with this TLP
+      fpgaWrite(F2C_RDPTR, rdPtr);  // tell FPGA we're finished with this chunk
       $display();
     end
     fpgaWrite(DMA_ENABLE, 0);  // disable DMA
