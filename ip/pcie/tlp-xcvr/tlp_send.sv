@@ -62,6 +62,7 @@ module tlp_send(
   typedef enum {
     S_IDLE,
     S_READ,
+    S_DMA0,
     S_DMA1,
     S_DMA2,
     S_MTR0,
@@ -88,6 +89,11 @@ module tlp_send(
   typedef logic[F2C_TLPSIZE_NBITS-3-1 : 0] QWCount;  // needs to be able to uniquely index each QW in a TLP
   QWCount qwCount = 'X;
   QWCount qwCount_next;
+  DWAddr baseAddr = 'X;
+  DWAddr baseAddr_next;
+  typedef logic[F2C_CHUNKSIZE_NBITS-F2C_TLPSIZE_NBITS-1 : 0] TLPCount;  // needs to be able to uniquely index each TLP in a chunk
+  TLPCount tlpCount = 'X;
+  TLPCount tlpCount_next;
   logic f2cEnabled = 0;
   logic f2cEnabled_next;
   uint32 shortBurstCount = '0;
@@ -120,6 +126,8 @@ module tlp_send(
     mtrBase <= mtrBase_next;
     f2cBase <= f2cBase_next;
     qwCount <= qwCount_next;
+    tlpCount <= tlpCount_next;
+    baseAddr <= baseAddr_next;
     f2cEnabled <= f2cEnabled_next;
     f2cWrPtr <= f2cWrPtr_next;
     f2cRdPtr <= f2cRdPtr_next;
@@ -139,6 +147,8 @@ module tlp_send(
     mtrBase_next = mtrBase;
     f2cBase_next = f2cBase;
     qwCount_next = qwCount;
+    tlpCount_next = tlpCount;
+    baseAddr_next = baseAddr;
     f2cEnabled_next = f2cEnabled;
     f2cWrPtr_next = f2cWrPtr;
     f2cRdPtr_next = f2cRdPtr;
@@ -183,10 +193,21 @@ module tlp_send(
         end
       end
 
+      // Send first QW of DmaWrite packet
+      S_DMA0: begin
+        if (txReady_in) begin
+          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(32));
+          txValid_out = 1;
+          txSOP_out = 1;
+          qwCount_next = 'X;
+          state_next = S_DMA1;
+        end
+      end
+
       // Send second QW of DmaWrite packet
       S_DMA1: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite1(f2cBase*2 + f2cWrPtr*F2C_TLPSIZE/4);
+          txData_out = genDmaWrite1(baseAddr);
           txValid_out = 1;
           qwCount_next = '1;  // since QWCount has F2C_TLPSIZE_NBITS-3 bits, this will be F2C_TLPSIZE/8 - 1;
           state_next = S_DMA2;
@@ -203,8 +224,17 @@ module tlp_send(
           if (qwCount == 0) begin
             qwCount_next = 'X;
             txEOP_out = 1;
-            f2cWrPtr_next = F2CChunkIndex'(f2cWrPtr+1);  // increment FPGA->CPU write-pointer
-            state_next = S_MTR0;
+            tlpCount_next = TLPCount'(tlpCount - 1);
+            if (F2C_CHUNKSIZE_NBITS == F2C_TLPSIZE_NBITS || tlpCount == 0) begin
+              // All TLPs for this chunk have now been sent
+              f2cWrPtr_next = F2CChunkIndex'(f2cWrPtr+1);  // increment FPGA->CPU write-pointer
+              baseAddr_next = 'X;
+              state_next = S_MTR0;
+            end else begin
+              // This chunk has another TLP to send
+              baseAddr_next = baseAddr + F2C_TLPSIZE/4;
+              state_next = S_DMA0;
+            end
           end
         end
       end
@@ -337,6 +367,8 @@ module tlp_send(
     txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(32));
     txValid_out = 1;
     txSOP_out = 1;
+    tlpCount_next = '1;
+    baseAddr_next = DWAddr'(f2cBase*2 + f2cWrPtr*F2C_CHUNKSIZE/4);
     return S_DMA1;
   endfunction
 

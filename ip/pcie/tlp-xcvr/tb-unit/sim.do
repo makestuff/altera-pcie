@@ -92,6 +92,7 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -hex uut/send/mtrBase
   add wave -hex uut/send/f2cBase
   add wave -uns uut/send/qwCount
+  add wave -uns uut/send/tlpCount
   add wave -uns uut/send/f2cEnabled
   add wave -uns uut/send/shortBurstCount
   add wave -uns uut/send/f2cWrPtr

@@ -210,6 +210,31 @@ module tlp_xcvr_tb;
     tick(3);
   endtask
 
+  // Task to verify each chunk as it's DMA'd into host memory. Each chunk consists of one or more
+  // TLPs, back-to-back, followed by a write to the metrics area (mostly to update the write
+  // pointer).
+  task verifyChunk(int chunk);
+    int qw;
+    for (int tlp = 0; tlp < F2C_CHUNKSIZE/F2C_TLPSIZE; tlp = tlp + 1) begin
+      // Verify packet header of this TLP
+      expectTX({FPGA_ID, 48'h00FF40000020}, '1, 1, 1, 0);
+      expectTX(8*F2CBASE_VALUE + chunk*F2C_CHUNKSIZE + tlp*F2C_TLPSIZE, '1, 1, 0, 0);
+
+      // Verify data of this TLP
+      for (qw = 0; qw < F2C_TLPSIZE/8-1; qw = qw + 1) begin
+        expectTX(dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8+tlp*F2C_TLPSIZE/8+qw], '1, 1, 0, 0);
+      end
+      expectTX(dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8+tlp*F2C_TLPSIZE/8+qw], '1, 1, 0, 1);
+    end
+
+    // Verify wrPtr send
+    expectTX({FPGA_ID, 48'h00FF40000004}, '1, 1, 1, 0);
+    expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
+    expectTX((chunk + 1) % F2C_NUMCHUNKS, '1, 1, 0, 0);
+    expectTX(0, '1, 1, 0, 1);
+    $display("  Verified chunk %0d", chunk);
+  endtask
+
   // Infer registers
   always_ff @(posedge sysClk) begin: infer_regs
     regArray <= regArray_next;
@@ -270,6 +295,11 @@ module tlp_xcvr_tb;
       $display("\nFAILURE: tlp_xcvr_pkg::RegWrite has an illegal width (%0d)", $bits(RegWrite)); $stop(1);
     end
 
+    // Verify FPGA->CPU queue geometry
+    if (F2C_CHUNKSIZE_NBITS < F2C_TLPSIZE_NBITS) begin
+      $display("\nFAILURE: tlp_xcvr_pkg::F2C_CHUNKSIZE_NBITS must be greater than or equal to tlp_xcvr_pkg::F2C_TLPSIZE_NBITS. In other words, a chunk must be at least one TLP"); $stop(1);
+    end
+
     // Register readback test
     $display("\nRegister readback test:");
     for (int i = 0; i < CTL_BASE; i = i + 1)
@@ -311,34 +341,22 @@ module tlp_xcvr_tb;
     // Wait for DMA writes to start
     @(posedge uut.f2cValid_in);
 
-    // We should get F2C_NUMCHUNKS-1 TLPs in quick succession
-    for (tlp = 0; tlp < F2C_NUMCHUNKS-1; tlp = tlp + 1) begin
-      // Verify packet header
-      expectTX({FPGA_ID, 48'h00FF40000020}, '1, 1, 1, 0);
-      expectTX(8*F2CBASE_VALUE + tlp*128, '1, 1, 0, 0);
-
-      // Verify data
-      for (qw = 0; qw < 15; qw = qw + 1)
-        expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 0);
-      expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 1);
-
-      // Verify wrPtr send
-      expectTX({FPGA_ID, 48'h00FF40000004}, '1, 1, 1, 0);
-      expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
-      expectTX(tlp+1, '1, 1, 0, 0);
-      expectTX(0, '1, 1, 0, 1);
-      $display("  Verified TLP %0d", tlp);
+    // We should get F2C_NUMCHUNKS-1 chunks in quick succession
+    for (int chunk = 0; chunk < F2C_NUMCHUNKS-1; chunk = chunk + 1) begin
+      verifyChunk(chunk);
     end
 
-    // Acknowledge consumption of first TLP, allowing FPGA to overwrite it
+    // Acknowledge consumption of first TLP, which frees the FPGA to write more data
     tick(4);
     doWrite(F2C_RDPTR, 1, 1);
 
-    // Verify TLP 15
-    expectTX({FPGA_ID, 48'h00FF40000020}, '1, 1, 1, 0);
-    expectTX(8*F2CBASE_VALUE + tlp*128, '1, 1, 0, 0);
+    verifyChunk(F2C_NUMCHUNKS-1);
 
-    for (qw = 0; qw < 15; qw = qw + 1)
+/*    // Verify final chunk
+    expectTX({FPGA_ID, 48'h00FF40000020}, '1, 1, 1, 0);
+    expectTX(8*F2CBASE_VALUE + chunk*F2C_CHUNKSIZE + tlp*F2C_TLPSIZE, '1, 1, 0, 0);
+
+    for (qw = 0; qw < ; qw = qw + 1)
       expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 0);
     expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 1);
 
@@ -346,7 +364,7 @@ module tlp_xcvr_tb;
     expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
     expectTX(0, '1, 1, 0, 0);
     expectTX(0, '1, 1, 0, 1);
-    $display("  Verified TLP %0d", tlp);
+    $display("  Verified TLP %0d", tlp);*/
 
     tick(8);
     doWrite(C2F_WRPTR, 1);
