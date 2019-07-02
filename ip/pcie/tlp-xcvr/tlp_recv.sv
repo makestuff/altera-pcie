@@ -67,6 +67,8 @@ module tlp_recv(
   ByteMask32 lastBE_next;
   C2FAddr c2fAddr = 'X;
   C2FAddr c2fAddr_next;
+  C2FChunkIndex c2fWrPtr = '0;  // updated by the CPU (via register write: "I've written one or more items for you")
+  C2FChunkIndex c2fWrPtr_next;
 
   // Typed versions of incoming messages
   Header hdr;
@@ -94,6 +96,7 @@ module tlp_recv(
     firstBE <= firstBE_next;
     lastBE <= lastBE_next;
     c2fAddr <= c2fAddr_next;
+    c2fWrPtr <= c2fWrPtr_next;
   end
 
   // Receiver FSM processes messages from the root port (e.g CPU writes & read requests)
@@ -107,6 +110,7 @@ module tlp_recv(
     lastBE_next = 'X;
     c2fAddr_next = 'X;
     {c2fChunkIndex_out, c2fChunkOffset_out} = 'X;
+    c2fWrPtr_next = c2fWrPtr;
 
     // Action FIFO
     actData_out = 'X;
@@ -140,8 +144,14 @@ module tlp_recv(
       // Host is writing to a register
       S_REG_WRITE: begin
         rw1 = rxData_in;
-        actData_out = genRegWrite(ExtChan'(rw1.dwAddr/2), rw1.data);
-        actValid_out = 1;
+        if (ExtChan'(rw1.dwAddr/2) == C2F_WRPTR) begin
+          // CPU is giving us a new CPU->FPGA write pointer
+          c2fWrPtr_next = rw1.data;
+        end else begin
+          // Some other register
+          actData_out = genRegWrite(ExtChan'(rw1.dwAddr/2), rw1.data);
+          actValid_out = 1;
+        end
         state_next = S_IDLE;
       end
 

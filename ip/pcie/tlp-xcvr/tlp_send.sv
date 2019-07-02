@@ -106,8 +106,6 @@ module tlp_send(
   F2CChunkIndex f2cRdPtr_next;
 
   // FPGA copies of CPU->FPGA circular-buffer reader and writer pointers
-  C2FChunkIndex c2fWrPtr = '0;  // updated by the CPU (via register write: "I've written one or more items for you")
-  C2FChunkIndex c2fWrPtr_next;
   C2FChunkIndex c2fRdPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP read
   C2FChunkIndex c2fRdPtr_next;
 
@@ -131,7 +129,6 @@ module tlp_send(
     f2cEnabled <= f2cEnabled_next;
     f2cWrPtr <= f2cWrPtr_next;
     f2cRdPtr <= f2cRdPtr_next;
-    c2fWrPtr <= c2fWrPtr_next;
     c2fRdPtr <= c2fRdPtr_next;
     shortBurstCount <= shortBurstCount_next;
   end
@@ -152,7 +149,6 @@ module tlp_send(
     f2cEnabled_next = f2cEnabled;
     f2cWrPtr_next = f2cWrPtr;
     f2cRdPtr_next = f2cRdPtr;
-    c2fWrPtr_next = c2fWrPtr;
     c2fRdPtr_next = c2fRdPtr;
     shortBurstCount_next = shortBurstCount;
 
@@ -338,9 +334,6 @@ module tlp_send(
     end else if (rw.chan == F2C_RDPTR) begin
       // CPU is giving us a new FPGA->CPU read pointer
       f2cRdPtr_next = F2CChunkIndex'(rw.data);
-    end else if (rw.chan == C2F_WRPTR) begin
-      // CPU is giving us a new CPU->FPGA write pointer
-      c2fWrPtr_next = C2FChunkIndex'(rw.data);
     end else if (rw.chan == DMA_ENABLE) begin
       // CPU is enabling or disabling DMA writes
       if (rw.data[0]) begin
@@ -351,7 +344,6 @@ module tlp_send(
         shortBurstCount_next = 0;
         f2cWrPtr_next = 0;
         f2cRdPtr_next = 0;
-        c2fWrPtr_next = 0;
         c2fRdPtr_next = 0;
       end
     end else if (rw.chan == MTR_BASE) begin

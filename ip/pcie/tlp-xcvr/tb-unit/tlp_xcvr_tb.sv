@@ -222,9 +222,9 @@ module tlp_xcvr_tb;
 
       // Verify data of this TLP
       for (qw = 0; qw < F2C_TLPSIZE/8-1; qw = qw + 1) begin
-        expectTX(dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8+tlp*F2C_TLPSIZE/8+qw], '1, 1, 0, 0);
+        expectTX(dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8 + tlp*F2C_TLPSIZE/8 + qw], '1, 1, 0, 0);
       end
-      expectTX(dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8+tlp*F2C_TLPSIZE/8+qw], '1, 1, 0, 1);
+      expectTX(dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8 + tlp*F2C_TLPSIZE/8 + qw], '1, 1, 0, 1);
     end
 
     // Verify wrPtr send

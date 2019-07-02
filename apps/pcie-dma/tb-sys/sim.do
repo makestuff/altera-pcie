@@ -159,13 +159,13 @@ add wave      pcie_app/tlp_inst/recv/state
 add wave -hex pcie_app/tlp_inst/recv/dwCount
 add wave -hex pcie_app/tlp_inst/recv/firstBE
 add wave -hex pcie_app/tlp_inst/recv/lastBE
+add wave -radix unsigned pcie_app/tlp_inst/recv/c2fWrPtr
 
 add wave -div "Sender Internals"
 add wave      pcie_app/tlp_inst/send/state
 add wave -hex pcie_app/tlp_inst/send/f2cBase
 add wave -radix unsigned pcie_app/tlp_inst/send/f2cWrPtr
 add wave -radix unsigned pcie_app/tlp_inst/send/f2cRdPtr
-add wave -radix unsigned pcie_app/tlp_inst/send/c2fWrPtr
 add wave -radix unsigned pcie_app/tlp_inst/send/c2fRdPtr
 add wave -hex pcie_app/tlp_inst/send/rdData
 add wave -hex pcie_app/tlp_inst/send/reqID

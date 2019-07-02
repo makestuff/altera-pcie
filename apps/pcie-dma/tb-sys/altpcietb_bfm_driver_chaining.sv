@@ -126,6 +126,9 @@ module altpcietb_bfm_driver_chaining#(
         // Now write that line to the FPGA
         ebfm_barwr(BAR_TABLE_POINTER, C2F_BAR, wrPtr * C2F_CHUNKSIZE + i * 64, TMP_BASE_ADDR, 64, 0);
       end
+
+      // Finally update the C2F_WRPTR register
+      fpgaWrite(C2F_WRPTR, newWrPtr);
       wrPtr = newWrPtr;  // increment wrPtr
     end
   endtask
