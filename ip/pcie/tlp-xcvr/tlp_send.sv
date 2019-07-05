@@ -48,11 +48,15 @@ module tlp_send(
     input logic cpuRdValid_in,
     output logic cpuRdReady_out,
 
-    // DMA pipes
-    input tlp_xcvr_pkg::uint64 f2cData_in,    // FPGA->CPU DMA pipe
+    // FPGA->CPU DMA pipe
+    input tlp_xcvr_pkg::uint64 f2cData_in,
     input logic f2cValid_in,
     output logic f2cReady_out,
-    output logic f2cReset_out
+    output logic f2cReset_out,
+
+    // CPU->FPGA write-combined region
+    output tlp_xcvr_pkg::C2FChunkIndex c2fRdPtr_out,
+    input logic c2fDTAck_in
   );
 
   // Get stuff from the associated package
@@ -67,8 +71,8 @@ module tlp_send(
     S_DMA2,
     S_MTR0,
     S_MTR1,
-    S_MTR2,
-    S_MTR3
+    S_MTR2  //,
+    //S_MTR3
   } State;
   State state = S_IDLE;
   State state_next;
@@ -96,8 +100,6 @@ module tlp_send(
   TLPCount tlpCount_next;
   logic f2cEnabled = 0;
   logic f2cEnabled_next;
-  uint32 shortBurstCount = '0;
-  uint32 shortBurstCount_next;
 
   // FPGA copies of FPGA->CPU circular-buffer reader and writer pointers
   F2CChunkIndex f2cWrPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP write
@@ -108,6 +110,8 @@ module tlp_send(
   // FPGA copies of CPU->FPGA circular-buffer reader and writer pointers
   C2FChunkIndex c2fRdPtr = '0;  // incremented by the FPGA, and DMA'd to the CPU after each TLP read
   C2FChunkIndex c2fRdPtr_next;
+  logic c2fDTAck = 0;
+  logic c2fDTAck_next;
 
   // Typed versions of incoming actions
   RegRead rr;
@@ -130,7 +134,7 @@ module tlp_send(
     f2cWrPtr <= f2cWrPtr_next;
     f2cRdPtr <= f2cRdPtr_next;
     c2fRdPtr <= c2fRdPtr_next;
-    shortBurstCount <= shortBurstCount_next;
+    c2fDTAck <= c2fDTAck_next;
   end
 
   // Receiver FSM processes messages from the root port (e.g CPU writes & read requests)
@@ -150,7 +154,10 @@ module tlp_send(
     f2cWrPtr_next = f2cWrPtr;
     f2cRdPtr_next = f2cRdPtr;
     c2fRdPtr_next = c2fRdPtr;
-    shortBurstCount_next = shortBurstCount;
+    if (c2fDTAck_in)
+      c2fDTAck_next = 1;
+    else
+      c2fDTAck_next = c2fDTAck;
 
     // PCIe channel to CPU
     txData_out = 'X;
@@ -167,9 +174,12 @@ module tlp_send(
     // Action pipe
     actReady_out = 0;
 
-    // DMA pipe
+    // FPGA->CPU DMA pipe
     f2cReady_out = 0;
     f2cReset_out = 0;
+
+    // CPU->FPGA pipe
+    c2fRdPtr_out = c2fRdPtr;
 
     // Typed actions
     rr = 'X;
@@ -235,10 +245,10 @@ module tlp_send(
         end
       end
 
-      // Send the updated f2cWrPtr, c2fRdPtr and shortBurstCount to the CPU
+      // Send the updated f2cWrPtr & c2fRdPtr to the CPU
       S_MTR0: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(4));
+          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(2));
           txValid_out = 1;
           txSOP_out = 1;
           state_next = S_MTR1;
@@ -253,19 +263,21 @@ module tlp_send(
       end
       S_MTR2: begin
         if (txReady_in) begin
+          c2fDTAck_next = 0;
           txData_out = {c2fRdPtr, f2cWrPtr};
           txValid_out = 1;
-          state_next = S_MTR3;
-        end
-      end
-      S_MTR3: begin
-        if (txReady_in) begin
-          txData_out = uint64'(shortBurstCount);
-          txValid_out = 1;
           txEOP_out = 1;
-          state_next = S_IDLE;
+          state_next = S_IDLE;  //S_MTR3;
         end
       end
+      //S_MTR3: begin
+      //  if (txReady_in) begin
+      //    txData_out = uint64'(shortBurstCount);
+      //    txValid_out = 1;
+      //    txEOP_out = 1;
+      //    state_next = S_IDLE;
+      //  end
+      //end
 
       // S_IDLE and others
       default: begin
@@ -277,6 +289,8 @@ module tlp_send(
           state_next = doDmaWrite();
         else if (txReady_in && actValid_in && actData_in.typ == ACT_ERROR)
           state_next = doErrorCode();
+        else if (txReady_in && (c2fDTAck_in || c2fDTAck))
+          state_next = doPtrUpdates();
       end
     endcase
   end
@@ -341,7 +355,6 @@ module tlp_send(
       end else begin
         f2cEnabled_next = 0;
         f2cReset_out = 1;  // TODO: decide what to do about the following
-        shortBurstCount_next = 0;
         f2cWrPtr_next = 0;
         f2cRdPtr_next = 0;
         c2fRdPtr_next = 0;
@@ -371,7 +384,14 @@ module tlp_send(
     txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(4));
     txValid_out = 1;
     txSOP_out = 1;
-    shortBurstCount_next = shortBurstCount + 1;
+    return S_MTR1;
+  endfunction
+
+  function State doPtrUpdates();
+    // One or more spaces became available in the CPU->FPGA pipe
+    txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(4));
+    txValid_out = 1;
+    txSOP_out = 1;
     return S_MTR1;
   endfunction
 

@@ -34,7 +34,7 @@ module tlp_recv(
     // The memory-mapped CPU->FPGA pipe
     output logic c2fWriteEnable_out,
     output tlp_xcvr_pkg::ByteMask64 c2fByteMask_out,
-    output tlp_xcvr_pkg::C2FChunkIndex c2fChunkIndex_out,
+    output tlp_xcvr_pkg::C2FChunkIndex c2fWrPtr_out,
     output tlp_xcvr_pkg::C2FChunkOffset c2fChunkOffset_out,
     output tlp_xcvr_pkg::uint64 c2fData_out
   );
@@ -65,10 +65,10 @@ module tlp_recv(
   ByteMask32 firstBE_next;
   ByteMask32 lastBE = 'X;
   ByteMask32 lastBE_next;
-  C2FAddr c2fAddr = 'X;
-  C2FAddr c2fAddr_next;
   C2FChunkIndex c2fWrPtr = '0;  // updated by the CPU (via register write: "I've written one or more items for you")
   C2FChunkIndex c2fWrPtr_next;
+  C2FChunkOffset c2fChunkOffset = 'X;
+  C2FChunkOffset c2fChunkOffset_next;
 
   // Typed versions of incoming messages
   Header hdr;
@@ -95,7 +95,7 @@ module tlp_recv(
     dwCount <= dwCount_next;
     firstBE <= firstBE_next;
     lastBE <= lastBE_next;
-    c2fAddr <= c2fAddr_next;
+    c2fChunkOffset <= c2fChunkOffset_next;
     c2fWrPtr <= c2fWrPtr_next;
   end
 
@@ -108,9 +108,10 @@ module tlp_recv(
     dwCount_next = 'X;
     firstBE_next = 'X;
     lastBE_next = 'X;
-    c2fAddr_next = 'X;
-    {c2fChunkIndex_out, c2fChunkOffset_out} = 'X;
+    c2fChunkOffset_next = 'X;
     c2fWrPtr_next = c2fWrPtr;
+    c2fWrPtr_out = c2fWrPtr;
+    c2fChunkOffset_out = 'X;
 
     // Action FIFO
     actData_out = 'X;
@@ -146,7 +147,7 @@ module tlp_recv(
         rw1 = rxData_in;
         if (ExtChan'(rw1.dwAddr/2) == C2F_WRPTR) begin
           // CPU is giving us a new CPU->FPGA write pointer
-          c2fWrPtr_next = rw1.data;
+          c2fWrPtr_next = C2FChunkIndex'(rw1.data);
         end else begin
           // Some other register
           actData_out = genRegWrite(ExtChan'(rw1.dwAddr/2), rw1.data);
@@ -156,11 +157,12 @@ module tlp_recv(
       end
 
       // Host is doing a burst write to the CPU->FPGA region
+      // MAYBE: Verify that chunk being written is the one indexed by the c2fWrPtr register?
       S_BURST_WRITE1: begin
         rw1 = rxData_in;
         if (rw1.dwAddr & 1) begin
           // The address is odd, therefore the first DW is rw1.data (i.e MSW of rw1)
-          {c2fChunkIndex_out, c2fChunkOffset_out} = C2FAddr'(rw1.dwAddr>>1);
+          c2fChunkOffset_out = C2FChunkOffset'(rw1.dwAddr>>1);
           c2fByteMask_out = {firstBE, 4'b0000};
           c2fData_out = maskData64({rw1.data, 32'h0}, c2fByteMask_out);
           c2fWriteEnable_out = 1;
@@ -175,7 +177,7 @@ module tlp_recv(
             dwCount_next = DWCount'(dwCount - 1);
             firstBE_next = 'X;
             lastBE_next = lastBE;
-            c2fAddr_next = C2FAddr'(1 + (rw1.dwAddr>>1));
+            c2fChunkOffset_next = C2FChunkOffset'((rw1.dwAddr>>1) + 1);
             state_next = S_BURST_WRITE3;  // go straight to the loop state
           end
         end else begin
@@ -183,7 +185,7 @@ module tlp_recv(
           dwCount_next = dwCount;
           firstBE_next = firstBE;
           lastBE_next = lastBE;
-          c2fAddr_next = C2FAddr'(rw1.dwAddr>>1);
+          c2fChunkOffset_next = C2FChunkOffset'(rw1.dwAddr>>1);
           state_next = S_BURST_WRITE2;
         end
       end
@@ -206,15 +208,15 @@ module tlp_recv(
           lastBE_next = lastBE;
           state_next = S_BURST_WRITE3;
         end
-        {c2fChunkIndex_out, c2fChunkOffset_out} = c2fAddr;
+        c2fChunkOffset_out = c2fChunkOffset;
         c2fData_out = maskData64(rxData_in, c2fByteMask_out);
         c2fWriteEnable_out = 1;
-        c2fAddr_next = C2FAddr'(1 + c2fAddr);
+        c2fChunkOffset_next = C2FChunkOffset'(c2fChunkOffset + 1);
       end
 
       // Main loop
       S_BURST_WRITE3: begin
-        {c2fChunkIndex_out, c2fChunkOffset_out} = c2fAddr;
+        c2fChunkOffset_out = c2fChunkOffset;
         c2fWriteEnable_out = 1;
         if (dwCount == 2) begin
           // last pair of DWs is in rxData_in
@@ -238,7 +240,7 @@ module tlp_recv(
           c2fByteMask_out = '1;
           c2fData_out = rxData_in;
           dwCount_next = DWCount'(dwCount - 2);
-          c2fAddr_next = C2FAddr'(1 + c2fAddr);
+          c2fChunkOffset_next = C2FChunkOffset'(c2fChunkOffset + 1);
           lastBE_next = lastBE;
         end
       end

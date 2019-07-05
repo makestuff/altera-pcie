@@ -59,7 +59,7 @@ module pcie_app#(
   // CPU->FPGA data
   logic c2fWriteEnable;
   ByteMask64 c2fByteMask;
-  C2FChunkIndex c2fChunkIndex;
+  C2FChunkIndex c2fWrPtr;
   C2FChunkOffset c2fChunkOffset;
   uint64 c2fWriteData;
   uint64 c2fReadData;
@@ -73,7 +73,7 @@ module pcie_app#(
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
     pcieClk_in,
-    c2fWriteEnable, c2fByteMask, {c2fChunkIndex, c2fChunkOffset}, c2fWriteData,
+    c2fWriteEnable, c2fByteMask, {c2fWrPtr, c2fChunkOffset}, c2fWriteData,
     c2fAddr, c2fReadData
   );
 
@@ -108,7 +108,7 @@ module pcie_app#(
     // CPU->FPGA burst pipe
     .c2fWriteEnable_out (c2fWriteEnable),
     .c2fByteMask_out    (c2fByteMask),
-    .c2fChunkIndex_out  (c2fChunkIndex),
+    .c2fWrPtr_out       (c2fWrPtr),
     .c2fChunkOffset_out (c2fChunkOffset),
     .c2fData_out        (c2fWriteData),
 

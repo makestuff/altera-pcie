@@ -149,7 +149,7 @@ add wave      pcie_app/tlp_inst/f2cReset_out
 add wave -div "CPU->FPGA Pipe"
 add wave      pcie_app/tlp_inst/c2fWriteEnable_out
 add wave      pcie_app/tlp_inst/c2fByteMask_out
-add wave -hex pcie_app/tlp_inst/c2fChunkIndex_out
+add wave -hex pcie_app/tlp_inst/c2fWrPtr_out
 add wave -hex pcie_app/tlp_inst/c2fChunkOffset_out
 add wave -hex pcie_app/tlp_inst/c2fData_out
 add wave -hex pcie_app/c2f_ram/memArray

@@ -60,11 +60,13 @@ module tlp_xcvr_tb;
   // 64-bit CPU->FPGA burst-pipe
   logic c2fWriteEnable;
   ByteMask64 c2fByteMask;
-  C2FChunkIndex c2fChunkIndex;
+  C2FChunkIndex c2fWrPtr;
   C2FChunkOffset c2fChunkOffset;
   uint64 c2fWriteData;
   uint64 c2fReadData;
   C2FAddr c2fReadAddr;
+  C2FChunkIndex c2fRdPtr;
+  logic c2fDTAck;
 
   // Register array
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
@@ -80,19 +82,19 @@ module tlp_xcvr_tb;
   // Instantiate transciever
   tlp_xcvr uut(
     sysClk, cfgBusDev,
-    rxData, rxValid, rxReady, rxSOP, rxEOP,                                    // CPU->FPGA messages
-    txData, txValid, txReady, txSOP, txEOP,                                    // FPGA->CPU messages
-    cpuChan,                                                                   // register address
-    cpuWrData, cpuWrValid, cpuWrReady,                                         // register write pipe
-    cpuRdData, cpuRdValid, cpuRdReady,                                         // register read pipe
-    f2cData, f2cValid, f2cReady, f2cReset,                                     // FPGA->CPU DMA pipe
-    c2fWriteEnable, c2fByteMask, c2fChunkIndex, c2fChunkOffset, c2fWriteData   // CPU->FPGA burst pipe
+    rxData, rxValid, rxReady, rxSOP, rxEOP,                                                  // CPU->FPGA messages
+    txData, txValid, txReady, txSOP, txEOP,                                                  // FPGA->CPU messages
+    cpuChan,                                                                                 // register address
+    cpuWrData, cpuWrValid, cpuWrReady,                                                       // register write pipe
+    cpuRdData, cpuRdValid, cpuRdReady,                                                       // register read pipe
+    f2cData, f2cValid, f2cReady, f2cReset,                                                   // FPGA->CPU DMA pipe
+    c2fWriteEnable, c2fByteMask, c2fWrPtr, c2fChunkOffset, c2fWriteData, c2fRdPtr, c2fDTAck  // CPU->FPGA burst pipe
   );
 
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
     sysClk,
-    c2fWriteEnable, c2fByteMask, {c2fChunkIndex, c2fChunkOffset}, c2fWriteData,
+    c2fWriteEnable, c2fByteMask, {c2fWrPtr, c2fChunkOffset}, c2fWriteData,
     c2fReadAddr, c2fReadData
   );
 
@@ -228,10 +230,9 @@ module tlp_xcvr_tb;
     end
 
     // Verify wrPtr send
-    expectTX({FPGA_ID, 48'h00FF40000004}, '1, 1, 1, 0);
+    expectTX({FPGA_ID, 48'h00FF40000002}, '1, 1, 1, 0);
     expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
-    expectTX((chunk + 1) % F2C_NUMCHUNKS, '1, 1, 0, 0);
-    expectTX(0, '1, 1, 0, 1);
+    expectTX((chunk + 1) % F2C_NUMCHUNKS, '1, 1, 0, 1);
     $display("  Verified chunk %0d", chunk);
   endtask
 
@@ -351,21 +352,6 @@ module tlp_xcvr_tb;
     doWrite(F2C_RDPTR, 1, 1);
 
     verifyChunk(F2C_NUMCHUNKS-1);
-
-/*    // Verify final chunk
-    expectTX({FPGA_ID, 48'h00FF40000020}, '1, 1, 1, 0);
-    expectTX(8*F2CBASE_VALUE + chunk*F2C_CHUNKSIZE + tlp*F2C_TLPSIZE, '1, 1, 0, 0);
-
-    for (qw = 0; qw < ; qw = qw + 1)
-      expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 0);
-    expectTX(dvr_rng_pkg::SEQ64[tlp*16+qw], '1, 1, 0, 1);
-
-    expectTX({FPGA_ID, 48'h00FF40000004}, '1, 1, 1, 0);
-    expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
-    expectTX(0, '1, 1, 0, 0);
-    expectTX(0, '1, 1, 0, 1);
-    $display("  Verified TLP %0d", tlp);*/
-
     tick(8);
     doWrite(C2F_WRPTR, 1);
 
