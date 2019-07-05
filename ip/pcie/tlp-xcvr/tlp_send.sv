@@ -154,10 +154,12 @@ module tlp_send(
     f2cWrPtr_next = f2cWrPtr;
     f2cRdPtr_next = f2cRdPtr;
     c2fRdPtr_next = c2fRdPtr;
-    if (c2fDTAck_in)
+    if (c2fDTAck_in) begin
+      c2fRdPtr_next = C2FChunkIndex'(c2fRdPtr + 1);
       c2fDTAck_next = 1;
-    else
+    end else begin
       c2fDTAck_next = c2fDTAck;
+    end
 
     // PCIe channel to CPU
     txData_out = 'X;
@@ -248,10 +250,7 @@ module tlp_send(
       // Send the updated f2cWrPtr & c2fRdPtr to the CPU
       S_MTR0: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(2));
-          txValid_out = 1;
-          txSOP_out = 1;
-          state_next = S_MTR1;
+          state_next = doPtrUpdates();
         end
       end
       S_MTR1: begin
@@ -389,7 +388,7 @@ module tlp_send(
 
   function State doPtrUpdates();
     // One or more spaces became available in the CPU->FPGA pipe
-    txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(4));
+    txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(2));
     txValid_out = 1;
     txSOP_out = 1;
     return S_MTR1;

@@ -149,9 +149,11 @@ add wave      pcie_app/tlp_inst/f2cReset_out
 add wave -div "CPU->FPGA Pipe"
 add wave      pcie_app/tlp_inst/c2fWriteEnable_out
 add wave      pcie_app/tlp_inst/c2fByteMask_out
-add wave -hex pcie_app/tlp_inst/c2fWrPtr_out
+add wave -uns pcie_app/tlp_inst/c2fWrPtr_out
 add wave -hex pcie_app/tlp_inst/c2fChunkOffset_out
 add wave -hex pcie_app/tlp_inst/c2fData_out
+add wave -uns pcie_app/tlp_inst/c2fRdPtr_out
+add wave      pcie_app/tlp_inst/c2fDTAck_in
 add wave -hex pcie_app/c2f_ram/memArray
 
 add wave -div "Receiver Internals"
@@ -159,7 +161,6 @@ add wave      pcie_app/tlp_inst/recv/state
 add wave -hex pcie_app/tlp_inst/recv/dwCount
 add wave -hex pcie_app/tlp_inst/recv/firstBE
 add wave -hex pcie_app/tlp_inst/recv/lastBE
-add wave -radix unsigned pcie_app/tlp_inst/recv/c2fWrPtr
 
 add wave -div "Sender Internals"
 add wave      pcie_app/tlp_inst/send/state
