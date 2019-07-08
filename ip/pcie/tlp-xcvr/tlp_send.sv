@@ -263,7 +263,7 @@ module tlp_send(
       S_MTR2: begin
         if (txReady_in) begin
           c2fDTAck_next = 0;
-          txData_out = {c2fRdPtr, f2cWrPtr};
+          txData_out = {uint32'(c2fRdPtr), uint32'(f2cWrPtr)};
           txValid_out = 1;
           txEOP_out = 1;
           state_next = S_IDLE;  //S_MTR3;

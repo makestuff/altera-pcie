@@ -45,8 +45,9 @@ vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors 
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff
-vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff
+vlog -sv ../consumer.sv                          -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
+vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
+vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
 
 if {[lsearch {svgx} $env(FPGA)] >= 0} {
   # Do a Stratix V simulation
@@ -149,12 +150,15 @@ add wave      pcie_app/tlp_inst/f2cReset_out
 add wave -div "CPU->FPGA Pipe"
 add wave      pcie_app/tlp_inst/c2fWriteEnable_out
 add wave      pcie_app/tlp_inst/c2fByteMask_out
-add wave -uns pcie_app/tlp_inst/c2fWrPtr_out
+add wave -radix unsigned pcie_app/tlp_inst/c2fWrPtr_out
 add wave -hex pcie_app/tlp_inst/c2fChunkOffset_out
 add wave -hex pcie_app/tlp_inst/c2fData_out
-add wave -uns pcie_app/tlp_inst/c2fRdPtr_out
+add wave -radix unsigned pcie_app/tlp_inst/c2fRdPtr_out
 add wave      pcie_app/tlp_inst/c2fDTAck_in
 add wave -hex pcie_app/c2f_ram/memArray
+
+add wave -div "CPU->FPGA Consumer"
+add wave -radix unsigned pcie_app/c2f_consumer/count
 
 add wave -div "Receiver Internals"
 add wave      pcie_app/tlp_inst/recv/state

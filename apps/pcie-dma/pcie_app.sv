@@ -63,11 +63,13 @@ module pcie_app#(
   C2FChunkOffset c2fChunkOffset;
   uint64 c2fWriteData;
   uint64 c2fReadData;
+  C2FChunkIndex c2fRdPtr;
+  logic c2fDTAck;
 
   // Register array
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
   Data[0:2**CHAN_WIDTH-1] regArray_next;
-  C2FAddr c2fAddr = '0;
+  C2FAddr c2fAddr = '0;  // MAYBE: Remove C2FAddr?
   C2FAddr c2fAddr_next;
 
   // RAM block to receive CPU->FPGA burst-writes
@@ -76,6 +78,9 @@ module pcie_app#(
     c2fWriteEnable, c2fByteMask, {c2fWrPtr, c2fChunkOffset}, c2fWriteData,
     c2fAddr, c2fReadData
   );
+
+  // Consumer unit
+  consumer#(128) c2f_consumer(pcieClk_in, c2fWrPtr, c2fRdPtr, c2fDTAck);
 
   // TLP-level interface
   tlp_xcvr tlp_inst(
@@ -105,18 +110,20 @@ module pcie_app#(
     .cpuRdValid_in  (cpuRdValid),
     .cpuRdReady_out (cpuRdReady),
 
-    // CPU->FPGA burst pipe
+    // Source of FPGA->CPU DMA stream
+    .f2cData_in     (f2cData),
+    .f2cValid_in    (f2cValid),
+    .f2cReady_out   (f2cReady),
+    .f2cReset_out   (f2cReset),
+
+    // Sink for the memory-mapped CPU->FPGA burst pipe
     .c2fWriteEnable_out (c2fWriteEnable),
     .c2fByteMask_out    (c2fByteMask),
     .c2fWrPtr_out       (c2fWrPtr),
     .c2fChunkOffset_out (c2fChunkOffset),
     .c2fData_out        (c2fWriteData),
-
-    // FPGA->CPU DMA stream
-    .f2cData_in     (f2cData),
-    .f2cValid_in    (f2cValid),
-    .f2cReady_out   (f2cReady),
-    .f2cReset_out   (f2cReset)
+    .c2fRdPtr_out       (c2fRdPtr),
+    .c2fDTAck_in        (c2fDTAck)
   );
 
   // Instantiate 64-bit random-number generator, as DMA data source
