@@ -36,12 +36,14 @@ module consumer_tb;
   C2FChunkOffset rdOffset;
   uint64 rdData;
   logic dtAck;
+  uint64 csData;
+  logic csValid;
 
   C2FChunkIndex rdIndex = '0;
   C2FChunkIndex rdIndex_next;
 
   // Instantiate consumer
-  consumer#(COUNT_INIT) uut(sysClk, wrIndex, rdIndex, dtAck, rdOffset, rdData);
+  consumer#(COUNT_INIT) uut(sysClk, wrIndex, rdIndex, dtAck, rdOffset, rdData, csData, csValid);
 
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) ram(

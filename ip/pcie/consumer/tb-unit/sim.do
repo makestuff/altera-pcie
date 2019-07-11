@@ -22,9 +22,9 @@ vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 onbreak resume
 
-vlog -sv -hazards -lint -pedanticerrors ../consumer.sv               -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../../block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors consumer_tb.sv                  -L makestuff
+vlog -sv -hazards -lint -pedanticerrors ../consumer.sv                  -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../../../block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors consumer_tb.sv                     -L makestuff
 vsim -t ps -novopt +nowarn3116 -L work -L makestuff consumer_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
