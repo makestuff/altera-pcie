@@ -114,7 +114,8 @@ module tlp_xcvr(
     .c2fByteMask_out    (c2fByteMask_out),
     .c2fWrPtr_out       (c2fWrPtr_out),
     .c2fChunkOffset_out (c2fChunkOffset_out),
-    .c2fData_out        (c2fData_out)
+    .c2fData_out        (c2fData_out),
+    .c2fReset_in        (f2cReset_out)
   );
 
   // TLP Sender

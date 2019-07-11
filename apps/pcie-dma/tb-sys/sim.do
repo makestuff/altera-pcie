@@ -45,7 +45,7 @@ vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors 
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv ../consumer.sv                          -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
+vlog -sv $IP_DIR/pcie/consumer/consumer.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
 vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
 
@@ -155,9 +155,25 @@ add wave -hex pcie_app/tlp_inst/c2fChunkOffset_out
 add wave -hex pcie_app/tlp_inst/c2fData_out
 add wave -radix unsigned pcie_app/tlp_inst/c2fRdPtr_out
 add wave      pcie_app/tlp_inst/c2fDTAck_in
+
+add wave -div "CPU->FPGA Memory"
+add wave -hex pcie_app/c2f_ram/writeEnable_in
+add wave -hex pcie_app/c2f_ram/spanEnables_in
+add wave -hex pcie_app/c2f_ram/writeAddr_in
+add wave -hex pcie_app/c2f_ram/writeData_in
+add wave -hex pcie_app/c2f_ram/readAddr_in
+add wave -hex pcie_app/c2f_ram/readData_out
 add wave -hex pcie_app/c2f_ram/memArray
 
 add wave -div "CPU->FPGA Consumer"
+add wave -radix unsigned pcie_app/c2f_consumer/wrIndex_in
+add wave -radix unsigned pcie_app/c2f_consumer/rdIndex_in
+add wave                 pcie_app/c2f_consumer/dtAck_out
+add wave -radix unsigned pcie_app/c2f_consumer/rdOffset_out
+add wave -hex            pcie_app/c2f_consumer/rdData_in
+add wave -hex            pcie_app/c2f_consumer/csData_out
+add wave                 pcie_app/c2f_consumer/csValid_out
+add wave                 pcie_app/c2f_consumer/state
 add wave -radix unsigned pcie_app/c2f_consumer/count
 
 add wave -div "Receiver Internals"
@@ -177,9 +193,6 @@ add wave -hex pcie_app/tlp_inst/send/reqID
 add wave -hex pcie_app/tlp_inst/send/tag
 add wave -hex pcie_app/tlp_inst/send/lowAddr
 add wave -hex pcie_app/tlp_inst/send/qwCount
-
-add wave -div "App Internals"
-add wave -hex pcie_app/c2fAddr
 add wave -div ""
 
 if {[info exists ::env(GUI)] && $env(GUI)} {

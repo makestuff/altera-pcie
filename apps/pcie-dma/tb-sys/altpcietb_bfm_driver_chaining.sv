@@ -163,17 +163,9 @@ module altpcietb_bfm_driver_chaining#(
     c2fWriteChunk(.expecting(FAILURE));
 
     // ...and verify readback
-    $display("INFO: %15d ns Verifying %0d QWs...", $time()/1000, NUM_QWS);
-    for (int i = 0; i < NUM_QWS; i = i + 1) begin
-      fpgaRead(pcie_app_pkg::C2FDATA_LSW, .into(u64[31:0]));
-      fpgaRead(pcie_app_pkg::C2FDATA_MSW, .into(u64[63:32]));
-      if (u64 == dvr_rng_pkg::SEQ64[i % $size(dvr_rng_pkg::SEQ64)]) begin
-        $display("INFO: %15d ns   Got QW[%0d]: 0x%s (Y)", $time()/1000, i, himage16(u64));
-      end else begin
-        $display("INFO: %15d ns   Got QW[%0d]: 0x%s (N)", $time()/1000, i, himage16(u64));
-        result = FAILURE;
-      end
-    end
+    fpgaRead(pcie_app_pkg::C2FDATA_LSW, .into(u64[31:0]));
+    fpgaRead(pcie_app_pkg::C2FDATA_MSW, .into(u64[63:32]));
+    $display("INFO: %15d ns Got checksum: 0x%s", $time()/1000, himage16(u64));
 
     // Initialize FPGA
     fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);  // set base address of FPGA->CPU buffer

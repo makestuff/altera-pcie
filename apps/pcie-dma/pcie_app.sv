@@ -59,28 +59,29 @@ module pcie_app#(
   // CPU->FPGA data
   logic c2fWriteEnable;
   ByteMask64 c2fByteMask;
-  C2FChunkIndex c2fWrPtr;
-  C2FChunkOffset c2fChunkOffset;
-  uint64 c2fWriteData;
-  uint64 c2fReadData;
-  C2FChunkIndex c2fRdPtr;
+  C2FChunkIndex c2fWrIndex;
+  C2FChunkOffset c2fWrOffset;
+  uint64 c2fWrData;
+  C2FChunkIndex c2fRdIndex;
+  C2FChunkOffset c2fRdOffset;
+  uint64 c2fRdData;
   logic c2fDTAck;
+  uint64 csData;
+  logic csValid;
 
   // Register array
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
   Data[0:2**CHAN_WIDTH-1] regArray_next;
-  C2FAddr c2fAddr = '0;  // MAYBE: Remove C2FAddr?
-  C2FAddr c2fAddr_next;
 
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
     pcieClk_in,
-    c2fWriteEnable, c2fByteMask, {c2fWrPtr, c2fChunkOffset}, c2fWriteData,
-    c2fAddr, c2fReadData
+    c2fWriteEnable, c2fByteMask, {c2fWrIndex, c2fWrOffset}, c2fWrData,
+    {c2fRdIndex, c2fRdOffset}, c2fRdData
   );
 
   // Consumer unit
-  consumer#(128) c2f_consumer(pcieClk_in, c2fWrPtr, c2fRdPtr, c2fDTAck);
+  consumer#(256) c2f_consumer(pcieClk_in, c2fWrIndex, c2fRdIndex, c2fDTAck, c2fRdOffset, c2fRdData, csData, csValid);
 
   // TLP-level interface
   tlp_xcvr tlp_inst(
@@ -119,10 +120,10 @@ module pcie_app#(
     // Sink for the memory-mapped CPU->FPGA burst pipe
     .c2fWriteEnable_out (c2fWriteEnable),
     .c2fByteMask_out    (c2fByteMask),
-    .c2fWrPtr_out       (c2fWrPtr),
-    .c2fChunkOffset_out (c2fChunkOffset),
-    .c2fData_out        (c2fWriteData),
-    .c2fRdPtr_out       (c2fRdPtr),
+    .c2fWrPtr_out       (c2fWrIndex),
+    .c2fChunkOffset_out (c2fWrOffset),
+    .c2fData_out        (c2fWrData),
+    .c2fRdPtr_out       (c2fRdIndex),
     .c2fDTAck_in        (c2fDTAck)
   );
 
@@ -138,22 +139,21 @@ module pcie_app#(
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
     regArray <= regArray_next;
-    c2fAddr <= c2fAddr_next;
   end
 
   // Next state logic
   always_comb begin: next_state
-    c2fAddr_next = c2fAddr;
     tempData = 'X;
     cpuRdData = 'X;
+    cpuWrReady = 1;  // by default, always ready to receive data
+    cpuRdValid = 1;  // by default, always ready to supply data
     if (cpuRdReady) begin
-      if (cpuChan == pcie_app_pkg::C2FADDR) begin
-        tempData = c2fAddr;
-      end else if (cpuChan == pcie_app_pkg::C2FDATA_LSW) begin
-        tempData = c2fReadData[31:0];
+      if (cpuChan == pcie_app_pkg::C2FDATA_LSW) begin
+        tempData = csData[31:0];
+        cpuRdValid = csValid;
       end else if (cpuChan == pcie_app_pkg::C2FDATA_MSW) begin
-        tempData = c2fReadData[63:32];
-        c2fAddr_next = C2FAddr'(c2fAddr + 1);
+        tempData = csData[63:32];
+        cpuRdValid = csValid;
       end else begin
         tempData = regArray[cpuChan];
       end
@@ -162,8 +162,6 @@ module pcie_app#(
       else
         cpuRdData = tempData;
     end
-    cpuRdValid = 1;  // always ready to supply data
-    cpuWrReady = 1;  // always ready to receive data
     regArray_next = regArray;
     if (cpuWrValid)
       regArray_next[cpuChan] = cpuWrData;

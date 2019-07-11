@@ -48,9 +48,9 @@ module ram_sc_be#(
       if (spanEnables_in[6]) memArray[writeAddr_in][6] <= writeData_in[6];
       if (spanEnables_in[7]) memArray[writeAddr_in][7] <= writeData_in[7];
     end
-    if (|readAddr_in !== 1'bX)
-      readData_out <= memArray[readAddr_in];
-    else
+    if (^readAddr_in === 1'bX)
       readData_out <= 'X;
+    else
+      readData_out <= memArray[readAddr_in];
   end
 endmodule

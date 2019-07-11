@@ -36,7 +36,8 @@ module tlp_recv(
     output tlp_xcvr_pkg::ByteMask64 c2fByteMask_out,
     output tlp_xcvr_pkg::C2FChunkIndex c2fWrPtr_out,
     output tlp_xcvr_pkg::C2FChunkOffset c2fChunkOffset_out,
-    output tlp_xcvr_pkg::uint64 c2fData_out
+    output tlp_xcvr_pkg::uint64 c2fData_out,
+    input logic c2fReset_in
   );
 
   // Get stuff from the associated package
@@ -109,7 +110,10 @@ module tlp_recv(
     firstBE_next = 'X;
     lastBE_next = 'X;
     c2fChunkOffset_next = 'X;
-    c2fWrPtr_next = c2fWrPtr;
+    if (c2fReset_in)
+      c2fWrPtr_next = '0;
+    else
+      c2fWrPtr_next = c2fWrPtr;
     c2fWrPtr_out = c2fWrPtr;
     c2fChunkOffset_out = 'X;
 
