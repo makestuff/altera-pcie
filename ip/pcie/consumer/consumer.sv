@@ -66,7 +66,7 @@ module consumer#(
     dtAck_out = 0;
     rdOffset_out = offset;
     csData_out = ckSum;
-    csValid_out = (wrIndex_in == rdIndex_in) ? 1 : 0;
+    csValid_out = (wrIndex_in == rdIndex_in) ? 1'b1 : 1'b0;
 
     // Next state logic
     case (state)

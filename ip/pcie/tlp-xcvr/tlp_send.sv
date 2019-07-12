@@ -240,7 +240,7 @@ module tlp_send(
               state_next = S_MTR0;
             end else begin
               // This chunk has another TLP to send
-              baseAddr_next = baseAddr + F2C_TLPSIZE/4;
+              baseAddr_next = DWAddr'(baseAddr + F2C_TLPSIZE/4);
               state_next = S_DMA0;
             end
           end
