@@ -16,9 +16,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-module consumer#(
-    parameter int COUNT_INIT = 128
-  )(
+module consumer(
     input logic sysClk_in,
     input tlp_xcvr_pkg::C2FChunkIndex wrIndex_in,
     input tlp_xcvr_pkg::C2FChunkIndex rdIndex_in,
@@ -26,7 +24,9 @@ module consumer#(
     output tlp_xcvr_pkg::C2FChunkOffset rdOffset_out,
     input tlp_xcvr_pkg::uint64 rdData_in,
     output tlp_xcvr_pkg::uint64 csData_out,
-    output logic csValid_out
+    output logic csValid_out,
+    input logic csReset_in,
+    input tlp_xcvr_pkg::uint32 countInit_in
   );
 
   import tlp_xcvr_pkg::*;
@@ -62,7 +62,7 @@ module consumer#(
     state_next = state;
     count_next = 'X;
     offset_next = 'X;
-    ckSum_next = ckSum;
+    ckSum_next = csReset_in ? 64'h0 : ckSum;
     dtAck_out = 0;
     rdOffset_out = offset;
     csData_out = ckSum;
@@ -92,7 +92,7 @@ module consumer#(
       S_READ2: begin
         ckSum_next = uint64'(ckSum + rdData_in);  // add QW[N..1] to the checksum
         state_next = S_WAIT;
-        count_next = uint32'(COUNT_INIT - C2F_CHUNKSIZE/8 - 2);
+        count_next = uint32'(countInit_in - C2F_CHUNKSIZE/8 - 2);
       end
 
       // We're counting down
@@ -100,13 +100,14 @@ module consumer#(
         count_next = uint32'(count - 1);
         if (count == 0) begin
           state_next = S_IDLE;
+          count_next = 'X;
           dtAck_out = 1;
         end
       end
 
       // Wait for a chunk to be ready
       S_IDLE: begin
-        if (wrIndex_in != rdIndex_in) begin
+        if (countInit_in != 0 && wrIndex_in != rdIndex_in) begin
           state_next = S_READ0;
           rdOffset_out = '0;  // read address zero
         end

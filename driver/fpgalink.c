@@ -53,7 +53,7 @@ static struct AlteraDevice {
   // Metrics page (mapped read-only in userspace; only mapped into kernel space so the reset ioctl() can zero it)
   dma_addr_t mtrBA;
   volatile u32 *mtrVA;
-  
+
   // CPU->FPGA buffer region (BAR2) - technically write-only; only mapped into kernel space so ioctl() can demonstrate kernel write-combining
   resource_size_t c2fBA;
   u64 *c2fVA;
@@ -162,10 +162,9 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
     REG_WR(DMA_ENABLE, 0);  // reset everything
     REG_RD(DMA_ENABLE);  // wait for FPGA to finish any previous DMA writes
     memset((void*)ape.mtrVA, 0, PAGE_SIZE);
-    memset((void*)ape.f2cVA, 0, 2*PAGE_SIZE);
+    memset((void*)ape.f2cVA, 0, PAGE_SIZE);
     REG_WR(MTR_BASE, ape.mtrBA>>3);  // metrics base address as a QW offset
     REG_WR(F2C_BASE, ape.f2cBA>>3);  // FPGA->CPU buffer base address as a QW offset
-    REG_WR(DMA_ENABLE, 1);
   } else if (arg == 42) {
     size_t i, j;
     u64 *dst;

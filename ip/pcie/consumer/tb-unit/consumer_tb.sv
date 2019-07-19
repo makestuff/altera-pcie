@@ -37,13 +37,14 @@ module consumer_tb;
   uint64 rdData;
   logic dtAck;
   uint64 csData;
-  logic csValid;
+  logic csValid, csReset;
+  uint32 countInit;
 
   C2FChunkIndex rdIndex = '0;
   C2FChunkIndex rdIndex_next;
 
   // Instantiate consumer
-  consumer#(COUNT_INIT) uut(sysClk, wrIndex, rdIndex, dtAck, rdOffset, rdData, csData, csValid);
+  consumer uut(sysClk, wrIndex, rdIndex, dtAck, rdOffset, rdData, csData, csValid, csReset, countInit);
 
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) ram(
@@ -96,6 +97,8 @@ module consumer_tb;
     wrByteMask = 'X;
     wrOffset = 'X;
     wrData = 'X;
+    csReset = 0;
+    countInit = 128;
 
     // Write first chunk
     wrIndex = 0;

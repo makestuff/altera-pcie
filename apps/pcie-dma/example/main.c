@@ -145,6 +145,15 @@ void c2fUserWrite(volatile uint32_t *const fpgaBase, uint64_t *const c2fBuffer, 
   }
 }
 
+uint64_t getChecksum(volatile uint32_t *const fpgaBase) {
+  const uint32_t lsw = REG(254);
+  const uint32_t msw = REG(255);
+  uint64_t val = msw;
+  val <<= 32U;
+  val |= lsw;
+  return val;
+}
+
 int main(int argc, const char* argv[]) {
   int retVal = 0, dev;
   const uint32_t values[] = {
@@ -224,29 +233,30 @@ int main(int argc, const char* argv[]) {
     retVal = 5; goto dev_close;
   }
 
-  // Direct userspace readback
-  for (size_t j = 0; j < 64; ++j) {
-    printf("Offset %zu; length %zu:\n", j, 64-j);
-    for (i = 0; i < 512; ++i) {
-      c2fBuffer[i] = 0xCACACACACACACACAULL;
+  // Write one 256-byte (32QW) chunk
+  uint64_t* dst = c2fBuffer;
+  const uint64_t* src = values64;
+  uint64_t ckSum = 0;
+  uint32_t wrPtr = 0;
+  ioctl(dev, FPGALINK_INIT, 23);
+  for (int chunk = 0; chunk < 4; ++chunk) {
+    printf("[%d]: fpgaChecksum = %016" PRIX64 "; cpuChecksum = %016" PRIX64 "\n", wrPtr, getChecksum(fpgaBase), ckSum);
+    for (i = 0; i < 32; ++i) {
+      *dst++ = *src;
+      ckSum += *src;
+      ++src;
     }
-    uint8_t* const dst = (uint8_t*)c2fBuffer;
-    const uint8_t* const src = (const uint8_t*)values64;
-    for (i = 0; i < 64-j; ++i) {
-      dst[i+j] = src[i];
+    ++wrPtr;
+    REG(C2F_WRPTR) = wrPtr;
+
+    i = 0;
+    while (metrics->c2fRdPtr != wrPtr) {
+      ++i;
     }
-    __asm volatile("sfence" ::: "memory");
-    for (i = 0; i < 512; ++i) {
-      const uint32_t lsw = REG(254);
-      const uint32_t msw = REG(255);
-      uint64_t val = msw;
-      val <<= 32U;
-      val |= lsw;
-      if (i <= 8)
-        printf("  %016" PRIX64 "\n", val);
-    }
-    printf("\n");
+    printf("Got: c2fRdPtr = %du after %zu iterations\n", metrics->c2fRdPtr, i);
   }
+  printf("[%d]: fpgaChecksum = %016" PRIX64 "; cpuChecksum = %016" PRIX64 "\n", wrPtr, getChecksum(fpgaBase), ckSum);
+
   goto dev_close;
 
 

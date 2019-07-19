@@ -69,7 +69,9 @@ module pcie_app#(
   uint64 csData;
   logic csValid;
 
-  // Register array
+  // Registers
+  uint32 countInit = uint32'(128);
+  uint32 countInit_next;
   Data[0:2**CHAN_WIDTH-1] regArray = '0;
   Data[0:2**CHAN_WIDTH-1] regArray_next;
 
@@ -81,7 +83,10 @@ module pcie_app#(
   );
 
   // Consumer unit
-  consumer#(256) c2f_consumer(pcieClk_in, c2fWrIndex, c2fRdIndex, c2fDTAck, c2fRdOffset, c2fRdData, csData, csValid);
+  consumer c2f_consumer(
+    pcieClk_in, c2fWrIndex, c2fRdIndex, c2fDTAck, c2fRdOffset, c2fRdData,
+    csData, csValid, f2cReset, countInit
+  );
 
   // TLP-level interface
   tlp_xcvr tlp_inst(
@@ -138,6 +143,7 @@ module pcie_app#(
 
   // Infer registers
   always_ff @(posedge pcieClk_in) begin: infer_regs
+    countInit <= countInit_next;
     regArray <= regArray_next;
   end
 
@@ -148,10 +154,10 @@ module pcie_app#(
     cpuWrReady = 1;  // by default, always ready to receive data
     cpuRdValid = 1;  // by default, always ready to supply data
     if (cpuRdReady) begin
-      if (cpuChan == pcie_app_pkg::C2FDATA_LSW) begin
+      if (cpuChan == pcie_app_pkg::CHECKSUM_LSW) begin
         tempData = csData[31:0];
         cpuRdValid = csValid;
-      end else if (cpuChan == pcie_app_pkg::C2FDATA_MSW) begin
+      end else if (cpuChan == pcie_app_pkg::CHECKSUM_MSW) begin
         tempData = csData[63:32];
         cpuRdValid = csValid;
       end else begin
@@ -162,8 +168,13 @@ module pcie_app#(
       else
         cpuRdData = tempData;
     end
+    countInit_next = countInit;
     regArray_next = regArray;
-    if (cpuWrValid)
-      regArray_next[cpuChan] = cpuWrData;
+    if (cpuWrValid) begin
+      if (cpuChan == pcie_app_pkg::CONSUMER_RATE)
+        countInit_next = cpuWrData;
+      else
+        regArray_next[cpuChan] = cpuWrData;
+    end
   end
 endmodule

@@ -91,28 +91,58 @@ module altpcietb_bfm_driver_chaining#(
     return shmem_read(addr, 4);
   endfunction
 
-  task c2fWriteChunk(Result expecting);
+  task pollRdPtr();
+    uint32 rdPtr;
+    do begin
+      rdPtr = hostRead32(C2F_RDPTR_ADDR);
+      $display("[%0dns]: pollRdPtr() got %0d %0d %0d %0d", $time()/1000,
+        hostRead32(MTR_BASE_ADDR+0*4),
+        hostRead32(MTR_BASE_ADDR+1*4),
+        hostRead32(MTR_BASE_ADDR+2*4),
+        hostRead32(MTR_BASE_ADDR+3*4)
+      );
+      #8000;
+    end while (rdPtr == 0);
+  endtask
+
+  task c2fWriteChunk(Result expecting, bit doAssert = 1, output int successes);
     static int index = 0;  // index into the dvr_rng_pkg::SEQ64 array of precomputed pseudorandom numbers
     static C2FChunkIndex wrPtr = 0;
+    static int successCount = 0;
+    static Result lastResult = SUCCESS;
     const automatic C2FChunkIndex newWrPtr = wrPtr + 1;  // wraps appropriately
     const automatic C2FChunkIndex rdPtr = hostRead32(C2F_RDPTR_ADDR);  // FPGA DMAs its read-pointer here
     if (newWrPtr == rdPtr) begin
       // There's no room for more data; hopefully we're expecting that to be the case
-      if (expecting == SUCCESS) begin
-        $display(
-          "\nFAILURE [%0dns]: Expected success from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it failed!",
-          $time()/1000, wrPtr, rdPtr
-        );
-        $stop(1);
+      if (doAssert) begin
+        if (expecting == SUCCESS) begin
+          $display(
+            "\nFAILURE [%0dns]: Expected success from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it failed!",
+            $time()/1000, wrPtr, rdPtr
+          );
+          $stop(1);
+        end
+      end else begin
+        $display("INFO: %15d ns   c2fWriteChunk(wrPtr = %0d, rdPtr = %0d) detected queue-full", $time()/1000, wrPtr, rdPtr);
+        #128000;
+        lastResult = FAILURE;
       end
     end else begin
       // There is room for more data; hopefully we're expecting that to be the case
-      if (expecting == FAILURE) begin
-        $display(
-          "\nFAILURE [%0dns]: Expected failure from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it was successful!",
-          $time()/1000, wrPtr, rdPtr
-        );
-        $stop(1);
+      if (doAssert) begin
+        if (expecting == FAILURE) begin
+          $display(
+            "\nFAILURE [%0dns]: Expected failure from c2fWriteChunk(wrPtr = %0d, rdPtr = %0d), but it was successful!",
+            $time()/1000, wrPtr, rdPtr
+          );
+          $stop(1);
+        end
+      end else begin
+        $display("INFO: %15d ns   c2fWriteChunk(wrPtr = %0d, rdPtr = %0d) succeeded", $time()/1000, newWrPtr, rdPtr);
+        if (lastResult == FAILURE) begin
+          successCount = successCount + 1;
+          lastResult = SUCCESS;
+        end
       end
 
       // Write each line of this chunk...
@@ -120,7 +150,7 @@ module altpcietb_bfm_driver_chaining#(
         // First prepare one 64-byte line
         for (int j = 0; j < 64/8; j = j + 1) begin
           hostWrite64(TMP_BASE_ADDR + 8*j, dvr_rng_pkg::SEQ64[index]);
-          index = (index + 1) % $size(dvr_rng_pkg::SEQ64);
+          index = (index + 1) % $size(dvr_rng_pkg::SEQ64);  // index wraps when it reaches the end of the SEQ64 table
         end
 
         // Now write that line to the FPGA
@@ -131,6 +161,8 @@ module altpcietb_bfm_driver_chaining#(
       fpgaWrite(C2F_WRPTR, newWrPtr);
       wrPtr = newWrPtr;  // increment wrPtr
     end
+
+    successes = successCount;
   endtask
 
   // Main program
@@ -140,6 +172,7 @@ module altpcietb_bfm_driver_chaining#(
     bit retCode;
     automatic F2CChunkIndex rdPtr = 0;
     automatic Result result = SUCCESS;
+    int successes;
     //parameter int NUM_QWS = (C2F_NUMCHUNKS-1)*C2F_CHUNKSIZE/8;  // verify all C2F_NUMCHUNKS-1 chunks of CPU->FPGA data
     parameter int NUM_QWS = NUM_ITERATIONS*2;  // verify just a few QWs
 
@@ -156,21 +189,51 @@ module altpcietb_bfm_driver_chaining#(
     // Get BAR configs
     displayBarConfigs();
 
+    // Initialize FPGA
+    fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);       // set base address of FPGA->CPU buffer
+    fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);       // set base address of metrics buffer
+    fpgaWrite(DMA_ENABLE, 0);                   // reset everything
+    fpgaWrite(pcie_app_pkg::CONSUMER_RATE, 0);  // disable consumer
+
     // Do some burst-writes...
-    $display("\nINFO: %15d ns Burst-writing 4096 bytes (this'll take a while!)", $time()/1000);
-    for (int i = 0; i < C2F_NUMCHUNKS-1; i = i + 1)
-      c2fWriteChunk(.expecting(SUCCESS));
-    c2fWriteChunk(.expecting(FAILURE));
+    $display("\nINFO: %15d ns Burst-writing chunks to fill the CPU-FPGA queue...", $time()/1000);
+    for (int i = 0; i < C2F_NUMCHUNKS-1; i = i + 1) begin
+      c2fWriteChunk(.successes(successes), .expecting(SUCCESS), .doAssert(1));
+    end
+    c2fWriteChunk(.successes(successes), .expecting(FAILURE), .doAssert(1));
+    //pollRdPtr();
 
     // ...and verify readback
-    fpgaRead(pcie_app_pkg::C2FDATA_LSW, .into(u64[31:0]));
-    fpgaRead(pcie_app_pkg::C2FDATA_MSW, .into(u64[63:32]));
-    $display("INFO: %15d ns Got checksum: 0x%s", $time()/1000, himage16(u64));
+    $display("INFO: %15d ns   Enabling the consumer, in order to drain the queue (this'll take a while!)...", $time()/1000);
+    fpgaWrite(pcie_app_pkg::CONSUMER_RATE, 256);
+    fpgaRead(pcie_app_pkg::CHECKSUM_LSW, .into(u64[31:0]));
+    fpgaRead(pcie_app_pkg::CHECKSUM_MSW, .into(u64[63:32]));
 
-    // Initialize FPGA
-    fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);  // set base address of FPGA->CPU buffer
-    fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);  // set base address of metrics buffer
-    fpgaWrite(DMA_ENABLE, 0);              // reset everything
+    // Verify checksum
+    if (u64 != 64'h305B31B74AFB4CBE) begin
+      $display(
+        "\nFAILURE [%0dns]: Expected consumer checksum to be 0x305B31B74AFB4CBE, but got 0x%s!",
+        $time()/1000, himage16(u64)
+      );
+      $stop(1);
+    end
+    $display("INFO: %15d ns   Got checksum = 0x%s (Y)", $time()/1000, himage16(u64));
+
+    // Do some more burst-writes...
+    $display("\nINFO: %15d ns Burst-writing chunks to drive the CPU-FPGA queue near-full for a while", $time()/1000);
+    for (int i = 0; i < C2F_NUMCHUNKS*5; i = i + 1) begin
+      c2fWriteChunk(.successes(successes), .expecting(SUCCESS), .doAssert(0));
+    end
+
+    // Verify successes
+    if (successes < 4) begin
+      $display(
+        "\nFAILURE [%0dns]: Expected four or more failure-interleaved successful writes, but got only %0d!",
+        $time()/1000, successes
+      );
+      $stop(1);
+    end
+    $display("INFO: %15d ns   Got successes = %0d (Y)", $time()/1000, successes);
 
     // Write to registers...
     $display("\nINFO: %15d ns Writing %0d registers:", $time()/1000, NUM_ITERATIONS);
