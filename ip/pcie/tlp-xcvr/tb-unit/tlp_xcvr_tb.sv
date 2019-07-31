@@ -322,7 +322,7 @@ module tlp_xcvr_tb;
 
     // DMA write test
     $display("\nDMA write test:");
-    doWrite(DMA_ENABLE, 0, 2);
+    doWrite(DMA_ENABLE, 1, 2);
     if (uut.send.f2cEnabled !== 0) begin
       $display("\nFAILURE [%0dns]: Expected f2cEnabled to be deasserted", $time()/1000); tick(4); $stop(1);
     end
@@ -334,7 +334,7 @@ module tlp_xcvr_tb;
     if (uut.send.mtrBase !== MTRBASE_VALUE) begin
       $display("\nFAILURE [%0dns]: Expected MTR_BASE to be %H; actually got %H", $time()/1000, MTRBASE_VALUE, uut.send.mtrBase); tick(4); $stop(1);
     end
-    doWrite(DMA_ENABLE, 1, 2);
+    doWrite(DMA_ENABLE, 2, 2);
     if (uut.send.f2cEnabled !== 1) begin
       $display("\nFAILURE [%0dns]: Expected f2cEnabled to be asserted", $time()/1000); tick(4); $stop(1);
     end
