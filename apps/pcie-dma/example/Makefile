@@ -26,10 +26,13 @@ CFLAGS := \
 SRCS := $(wildcard *.c)
 OBJS := $(SRCS:%.c=build/%.o)
 
-all: build build/$(TARGET)
+all: defs.h build build/$(TARGET)
 
 build/$(TARGET): $(OBJS)
 	gcc $+ -o $@
+
+defs.h: ../../../ip/pcie/tlp-xcvr/defs.vh
+	cat $< | sed 's/localparam int/#define/g' | sed 's/=//g' | sed 's/;//g' | sed 's/1<</1U<</g;s/\((\d+)\)/\(\1U\)/g' > $@
 
 build/%.o: %.c
 	gcc $(CFLAGS) $(CDEFS) $< -o $@
@@ -38,6 +41,6 @@ build: FORCE
 	mkdir -p build
 
 clean: FORCE
-	rm -rf build
+	rm -rf build defs.h
 
 FORCE:

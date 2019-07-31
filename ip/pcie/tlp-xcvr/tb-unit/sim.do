@@ -16,18 +16,20 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+set IP_DIR "$env(MAKESTUFF)/ip"
 file delete -force modelsim.ini
 file delete -force work
 vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
 vlib work
 onbreak resume
 
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv                        -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv                            -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv                            -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv                            -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors $env(MAKESTUFF)/ip/block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv                               -L makestuff
+vlog -sv -hazards -lint -pedanticerrors $IP_DIR/dvr-rng/dvr_rng_pkg.sv -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors $IP_DIR/block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv             -work makestuff +define+SIMULATION +incdir+$IP_DIR/pcie/tlp-xcvr
+vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv                 -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv                 -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv                 -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv                    -L makestuff
 vsim -t ps -novopt +nowarn3116 -L work -L makestuff -L altera_mf_ver tlp_xcvr_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
@@ -74,9 +76,11 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -div "CPU->FPGA Burst Pipe"
   add wave      uut/c2fWriteEnable_out
   add wave      uut/c2fByteMask_out
-  add wave -hex uut/c2fChunkIndex_out
+  add wave -uns uut/c2fWrPtr_out
   add wave -hex uut/c2fChunkOffset_out
   add wave -hex uut/c2fData_out
+  add wave -hex uut/c2fRdPtr_out
+  add wave      uut/c2fDTAck_in
 
   add wave -div "Internals"
   add wave      uut/recv/state
@@ -94,10 +98,8 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave -uns uut/send/qwCount
   add wave -uns uut/send/tlpCount
   add wave -uns uut/send/f2cEnabled
-  add wave -uns uut/send/shortBurstCount
   add wave -uns uut/send/f2cWrPtr
   add wave -uns uut/send/f2cRdPtr
-  add wave -uns uut/send/c2fWrPtr
   add wave -uns uut/send/c2fRdPtr
   add wave -hex regArray
 

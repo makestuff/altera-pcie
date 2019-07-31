@@ -72,8 +72,8 @@ module pcie_app#(
   // Registers
   uint32 countInit = uint32'(128);
   uint32 countInit_next;
-  Data[0:2**CHAN_WIDTH-1] regArray = '0;
-  Data[0:2**CHAN_WIDTH-1] regArray_next;
+  Data[0:PRV_BASE-1] regArray = '0;
+  Data[0:PRV_BASE-1] regArray_next;
 
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(

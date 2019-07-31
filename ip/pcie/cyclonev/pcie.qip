@@ -3,3 +3,4 @@ set_global_assignment -name QIP_FILE           [file join $::quartus(qip_path) "
 set_global_assignment -name QIP_FILE           [file join $::quartus(qip_path) "../tlp-xcvr/tlp_xcvr.qip"]
 set_global_assignment -name QIP_FILE           [file join $::quartus(qip_path) "../consumer/consumer.qip"]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "pcie_cv.sv"]
+set_global_assignment -name SEARCH_PATH        $::quartus(qip_path)

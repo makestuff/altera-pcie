@@ -30,16 +30,25 @@
 
 // Defines for ioctls: user-space must include sys/ioctl.h before this
 #define FPGALINK_IOC_MAGIC 'F'
-#define FPGALINK_INIT _IOW(FPGALINK_IOC_MAGIC, 1, int)
+#define FPGALINK_CTRL _IOW(FPGALINK_IOC_MAGIC, 1, int)
 #define FPGALINK_IOC_MAXNR 1
 
-// Registers
-#define CTL_BASE 256
-#define F2C_BASE (CTL_BASE + 0)
-#define F2C_RDPTR (CTL_BASE + 1)
-#define C2F_BASE (CTL_BASE + 2)
-#define C2F_WRPTR (CTL_BASE + 3)
-#define DMA_ENABLE (CTL_BASE + 4)
-#define MTR_BASE (CTL_BASE + 5)
+// Offsets to differentiate the various mmap() regions
+enum RegionOffset {
+  RGN_REG = 0,
+  RGN_MTR,
+  RGN_C2F,
+  RGN_F2C
+};
+
+// Operations supported by the ioctl()
+enum DriverOp {
+  OP_RESET = 23,
+  OP_F2C_ENABLE,
+  OP_F2C_DISABLE
+};
+
+// Include the geometry of the PCIe interface
+#include "defs.h"
 
 #endif

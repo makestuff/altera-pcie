@@ -69,8 +69,8 @@ module tlp_xcvr_tb;
   logic c2fDTAck;
 
   // Register array
-  Data[0:2**CHAN_WIDTH-1] regArray = '0;
-  Data[0:2**CHAN_WIDTH-1] regArray_next;
+  Data[0:PRV_BASE-1] regArray = '0;
+  Data[0:PRV_BASE-1] regArray_next;
 
   // PCIe bus IDs
   localparam BusID CPU_ID = 13'h1CCC;
@@ -312,7 +312,7 @@ module tlp_xcvr_tb;
       end
       $display("  doRead(%0d) -> %H", i, readValue);
     end
-    for (int i = CTL_BASE; i < 2*CTL_BASE; i = i + 1) begin
+    for (int i = CTL_BASE; i < NUM_REGS; i = i + 1) begin
       doRead(i, readValue);
       if (readValue !== 32'hDEADBEEF) begin
         $display("\nFAILURE [%0dns]: Expected doRead(%0d) to return DEADBEEF; actually got %H", $time()/1000, i, readValue); tick(4); $stop(1);

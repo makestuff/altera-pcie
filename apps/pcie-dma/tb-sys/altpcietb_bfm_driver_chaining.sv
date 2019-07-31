@@ -147,7 +147,7 @@ module altpcietb_bfm_driver_chaining#(
 
       // Write each line of this chunk...
       for (int i = 0; i < C2F_CHUNKSIZE/64; i = i + 1) begin
-        // First prepare one 64-byte line
+        // First prepare one 64-byte line, one QW at a time
         for (int j = 0; j < 64/8; j = j + 1) begin
           hostWrite64(TMP_BASE_ADDR + 8*j, dvr_rng_pkg::SEQ64[index]);
           index = (index + 1) % $size(dvr_rng_pkg::SEQ64);  // index wraps when it reaches the end of the SEQ64 table
@@ -192,7 +192,7 @@ module altpcietb_bfm_driver_chaining#(
     // Initialize FPGA
     fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);       // set base address of FPGA->CPU buffer
     fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);       // set base address of metrics buffer
-    fpgaWrite(DMA_ENABLE, 0);                   // reset everything
+    fpgaWrite(DMA_ENABLE, 1);                   // reset everything
     fpgaWrite(pcie_app_pkg::CONSUMER_RATE, 0);  // disable consumer
 
     // Do some burst-writes...
@@ -256,7 +256,7 @@ module altpcietb_bfm_driver_chaining#(
 
     // Try DMA write
     $display("\nINFO: %15d ns Testing DMA write:", $time()/1000);
-    fpgaWrite(DMA_ENABLE, 1);  // enable DMA
+    fpgaWrite(DMA_ENABLE, 2);  // enable DMA
     for (int chunk = 0; chunk < NUM_ITERATIONS; chunk = chunk + 1) begin
       // Wait for a chunk to arrive
       while (rdPtr == hostRead32(F2C_WRPTR_ADDR))

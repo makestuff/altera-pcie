@@ -71,8 +71,7 @@ module tlp_send(
     S_DMA2,
     S_MTR0,
     S_MTR1,
-    S_MTR2  //,
-    //S_MTR3
+    S_MTR2
   } State;
   State state = S_IDLE;
   State state_next;
@@ -266,17 +265,9 @@ module tlp_send(
           txData_out = {uint32'(c2fRdPtr), uint32'(f2cWrPtr)};
           txValid_out = 1;
           txEOP_out = 1;
-          state_next = S_IDLE;  //S_MTR3;
+          state_next = S_IDLE;
         end
       end
-      //S_MTR3: begin
-      //  if (txReady_in) begin
-      //    txData_out = uint64'(shortBurstCount);
-      //    txValid_out = 1;
-      //    txEOP_out = 1;
-      //    state_next = S_IDLE;
-      //  end
-      //end
 
       // S_IDLE and others
       default: begin
@@ -348,15 +339,17 @@ module tlp_send(
       // CPU is giving us a new FPGA->CPU read pointer
       f2cRdPtr_next = F2CChunkIndex'(rw.data);
     end else if (rw.chan == DMA_ENABLE) begin
-      // CPU is enabling or disabling DMA writes
+      // CPU is writing to the control register
       if (rw.data[0]) begin
-        f2cEnabled_next = 1;
-      end else begin
+        // If bit 0 is set, reset everything
         f2cEnabled_next = 0;
-        f2cReset_out = 1;  // TODO: decide what to do about the following
+        f2cReset_out = 1;
         f2cWrPtr_next = 0;
         f2cRdPtr_next = 0;
         c2fRdPtr_next = 0;
+      end else begin
+        // Enable or disable FPGA->CPU DMA based on bit 1
+        f2cEnabled_next = rw.data[1];
       end
     end else if (rw.chan == MTR_BASE) begin
       // CPU is giving us the base bus-address of the metrics buffer

@@ -17,7 +17,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 package pcie_app_pkg;
-  localparam int CONSUMER_RATE = 253;
-  localparam int CHECKSUM_LSW = 254;
-  localparam int CHECKSUM_MSW = 255;
+  localparam int CONSUMER_RATE = tlp_xcvr_pkg::CTL_BASE - 3;
+  localparam int CHECKSUM_LSW = tlp_xcvr_pkg::CTL_BASE - 2;
+  localparam int CHECKSUM_MSW = tlp_xcvr_pkg::CTL_BASE - 1;
 endpackage

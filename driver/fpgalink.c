@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2014, 2017 Chris McClelland
+// Copyright (C) 2014, 2017, 2019 Chris McClelland
 // Copyright (C) 2008 Leon Woestenberg    <leon.woestenberg@axon.tv>
 // Copyright (C) 2008 Nickolas Heppermann <heppermannwdt@gmail.com>
 //
@@ -22,13 +22,13 @@
 #include <asm/uaccess.h>
 #include "fpgalink.h"
 
+#if PCIE_PAGESIZE_NBITS != PAGE_SHIFT
+  #error "This kernel's PAGE_SHIFT must match the FPGA's PCIE_PAGESIZE_NBITS"
+#endif
+
 // Read/write register macros
 #define REG_RD(r) (ioread32(ape.regVA + 2*(r) + 1))
 #define REG_WR(r, v) (iowrite32((v), ape.regVA + 2*(r) + 1))
-
-// The size of the DMA buffer, in bytes
-#define DMA_PAGE_ORD 1
-#define DMA_BUFSIZE (PAGE_SIZE*(1<<DMA_PAGE_ORD))
 
 // Driver name
 #define DRV_NAME "fpgalink"
@@ -82,8 +82,11 @@ static int cdevRelease(struct inode *inode, struct file *filp) {
 
 static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
   int rc;
-  if (vma->vm_pgoff == 0) {
-    // The FPGA register region (R/W, noncacheable): one 4KiB page mapped to BAR0 on the FPGA
+  if (vma->vm_pgoff == RGN_REG) {
+    // The read-write & noncacheable FPGA register region: one 4KiB page mapped to a BAR on the FPGA
+    if (vma->vm_end - vma->vm_start != PAGE_SIZE) {
+      return -EFAULT;
+    }
     vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
     rc = io_remap_pfn_range(
       vma,
@@ -92,8 +95,12 @@ static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
       vma->vm_end - vma->vm_start,
       vma->vm_page_prot
     );
-  } else if (vma->vm_pgoff == 1) {
-    // The metrics buffer (e.g f2cWrPtr, c2fRdPtr - read-only): one 4KiB page allocated by the kernel and DMA'd into by the FPGA
+  } else if (vma->vm_pgoff == RGN_MTR) {
+    // The read-only metrics buffer (e.g f2cWrPtr, c2fRdPtr): one 4KiB page allocated by the kernel
+    // and DMA'd into by the FPGA
+    if (vma->vm_end - vma->vm_start != PAGE_SIZE) {
+      return -EFAULT;
+    }
     rc = remap_pfn_range(
       vma,
       vma->vm_start,
@@ -101,8 +108,12 @@ static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
       vma->vm_end - vma->vm_start,
       vma->vm_page_prot
     );
-  } else if (vma->vm_pgoff == 2) {
-    // The CPU->FPGA region (write-only, write-combined): multiple 4KiB pages mapped to BAR2 on the FPGA
+  } else if (vma->vm_pgoff == RGN_C2F) {
+    // The write-only & write-combined CPU->FPGA region: multiple 4KiB pages mapped to a BAR on the
+    // FPGA
+    if (vma->vm_end - vma->vm_start != C2F_SIZE) {
+      return -EFAULT;
+    }
     vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
     rc = io_remap_pfn_range(
       vma,
@@ -111,8 +122,12 @@ static int cdevMMap(struct file *filp, struct vm_area_struct *vma) {
       vma->vm_end - vma->vm_start,
       vma->vm_page_prot
     );
-  } else if (vma->vm_pgoff == 3) {
-    // The FPGA->CPU buffer (read-only): multiple 4KiB pages allocated by the kernel and DMA'd into by the FPGA
+  } else if (vma->vm_pgoff == RGN_F2C) {
+    // The read-only FPGA->CPU buffer: multiple 4KiB pages allocated by the kernel and DMA'd into by
+    // the FPGA
+    if (vma->vm_end - vma->vm_start != F2C_SIZE) {
+      return -EFAULT;
+    }
     rc = remap_pfn_range(
       vma,
       vma->vm_start,
@@ -157,14 +172,20 @@ static long cdevIOCtl(struct file *filp, unsigned int cmd, unsigned long arg) {
     return -EFAULT;
   }
 
-  if (arg == 23) {
+  if (arg == OP_RESET) {
     printk(KERN_DEBUG "Resetting everything...\n");
-    REG_WR(DMA_ENABLE, 0);  // reset everything
-    REG_RD(DMA_ENABLE);  // wait for FPGA to finish any previous DMA writes
+    REG_WR(DMA_ENABLE, 1);  // reset everything
+    REG_RD(DMA_ENABLE);     // wait for FPGA to finish any previous DMA writes
     memset((void*)ape.mtrVA, 0, PAGE_SIZE);
     memset((void*)ape.f2cVA, 0, PAGE_SIZE);
     REG_WR(MTR_BASE, ape.mtrBA>>3);  // metrics base address as a QW offset
     REG_WR(F2C_BASE, ape.f2cBA>>3);  // FPGA->CPU buffer base address as a QW offset
+  } else if (arg == OP_F2C_ENABLE) {
+    printk(KERN_DEBUG "Enabling FPGA->CPU DMA...\n");
+    REG_WR(DMA_ENABLE, 2);  // enable DMA
+  } else if (arg == OP_F2C_DISABLE) {
+    printk(KERN_DEBUG "Disabling FPGA->CPU DMA...\n");
+    REG_WR(DMA_ENABLE, 0);  // disable DMA
   } else if (arg == 42) {
     size_t i, j;
     u64 *dst;
@@ -252,26 +273,26 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
   }
 
   // Get FPGA register BAR base address, and validate its size
-  ape.regBA = pci_resource_start(dev, 0);
-  if (!ape.regBA || pci_resource_len(dev, 0) != PAGE_SIZE) {
-    printk(KERN_DEBUG "BAR0 has bad configuration\n");
+  ape.regBA = pci_resource_start(dev, REG_BAR);
+  if (!ape.regBA || pci_resource_len(dev, REG_BAR) != 2*PAGE_SIZE) {
+    printk(KERN_DEBUG "REG_BAR has bad configuration\n");
     rc = -1; goto err_map0;
   }
-  printk(KERN_DEBUG "BAR0 @0x%08X\n", (u32)ape.regBA);
-  ape.regVA = pci_iomap(dev, 0, PAGE_SIZE);
+  printk(KERN_DEBUG "REG_BAR @0x%08X\n", (u32)ape.regBA);
+  ape.regVA = pci_iomap(dev, REG_BAR, 2*PAGE_SIZE);
   if (!ape.regVA) {
     printk(KERN_DEBUG "Could not map BAR0 into kernel address-space!\n");
     rc = -1; goto err_iomap0;
   }
 
   // Get CPU->FPGA BAR base address, and validate its size
-  ape.c2fBA = pci_resource_start(dev, 2);
-  if (!ape.c2fBA || pci_resource_len(dev, 2) != PAGE_SIZE) {
-    printk(KERN_DEBUG "BAR2 has bad configuration\n");
+  ape.c2fBA = pci_resource_start(dev, C2F_BAR);
+  if (!ape.c2fBA || pci_resource_len(dev, C2F_BAR) != C2F_SIZE) {
+    printk(KERN_DEBUG "C2F_BAR has bad configuration\n");
     rc = -1; goto err_map2;
   }
-  printk(KERN_DEBUG "BAR2 @0x%08X\n", (u32)ape.c2fBA);
-  ape.c2fVA = (u64 *)ioremap_wc(ape.c2fBA, PAGE_SIZE);
+  printk(KERN_DEBUG "C2F_BAR @0x%08X\n", (u32)ape.c2fBA);
+  ape.c2fVA = (u64 *)ioremap_wc(ape.c2fBA, C2F_SIZE);
   if (!ape.c2fVA) {
     printk(KERN_DEBUG "Could not map BAR2 into kernel address-space!\n");
     rc = -1; goto err_iomap2;
@@ -292,13 +313,13 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
     ape.mtrVA, (u32)ape.mtrBA
   );
 
-  ape.f2cVA = (volatile u32 *)__get_free_pages(GFP_USER | GFP_DMA32, DMA_PAGE_ORD);
+  ape.f2cVA = (volatile u32 *)__get_free_pages(GFP_USER | GFP_DMA32, F2C_SIZE_NBITS - PAGE_SHIFT);
   if ( !ape.f2cVA ) {
     printk(KERN_DEBUG "Could not allocate DMA buffer!\n");
     rc = -ENOMEM; goto err_buf_alloc;
   }
   ape.f2cBA = dma_map_single(
-    &dev->dev, (void*)ape.f2cVA, DMA_BUFSIZE, DMA_FROM_DEVICE);
+    &dev->dev, (void*)ape.f2cVA, F2C_SIZE, DMA_FROM_DEVICE);
   printk(
     KERN_DEBUG "Allocated DMA buffer (virt: %p; bus: 0x%08X).\n",
     ape.f2cVA, (u32)ape.f2cBA
@@ -329,8 +350,8 @@ static int pcieProbe(struct pci_dev *dev, const struct pci_device_id *id) {
 err_cdev_add:
   unregister_chrdev_region(ape.devNum, 1);
 err_cdev_alloc:
-  dma_unmap_single(&dev->dev, ape.f2cBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
-  free_pages((unsigned long)ape.f2cVA, DMA_PAGE_ORD);
+  dma_unmap_single(&dev->dev, ape.f2cBA, F2C_SIZE, DMA_FROM_DEVICE);
+  free_pages((unsigned long)ape.f2cVA, F2C_SIZE_NBITS - PAGE_SHIFT);
 err_buf_alloc:
   dma_unmap_single(&dev->dev, ape.mtrBA, PAGE_SIZE, DMA_FROM_DEVICE);
   free_pages((unsigned long)ape.mtrVA, 0);
@@ -364,8 +385,8 @@ static void pcieRemove(struct pci_dev *dev) {
   unregister_chrdev_region(ape.devNum, 1);
 
   // Free DMA buffer
-  dma_unmap_single(&dev->dev, ape.f2cBA, DMA_BUFSIZE, DMA_FROM_DEVICE);
-  free_pages((unsigned long)ape.f2cVA, DMA_PAGE_ORD);
+  dma_unmap_single(&dev->dev, ape.f2cBA, F2C_SIZE, DMA_FROM_DEVICE);
+  free_pages((unsigned long)ape.f2cVA, F2C_SIZE_NBITS - PAGE_SHIFT);
 
   // Free metrics buffer
   dma_unmap_single(&dev->dev, ape.mtrBA, PAGE_SIZE, DMA_FROM_DEVICE);
@@ -411,7 +432,7 @@ static struct pci_driver pciDriver = {
 //
 static int __init flInit(void) {
   int rc;
-  printk(KERN_DEBUG DRV_NAME " flInit(), built at " __DATE__ " " __TIME__ "\n");
+  //printk(KERN_DEBUG DRV_NAME " flInit(), built at " __DATE__ " " __TIME__ "\n");
 
   // register this driver with the PCI bus driver
   rc = pci_register_driver(&pciDriver);
@@ -424,7 +445,7 @@ static int __init flInit(void) {
 // Module cleanup, unregisters devices.
 //
 static void __exit flExit(void) {
-  printk(KERN_INFO DRV_NAME " flExit(), built at " __DATE__ " " __TIME__ "\n");
+  //printk(KERN_INFO DRV_NAME " flExit(), built at " __DATE__ " " __TIME__ "\n");
 
   // Unregister PCIe driver
   pci_unregister_driver(&pciDriver);

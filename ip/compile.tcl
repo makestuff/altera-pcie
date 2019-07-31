@@ -49,10 +49,11 @@ vcom -93   -novopt dvr-rng/dvr_rng64.vhdl                    -check_synthesis -w
 vcom -93   -novopt dvr-rng/rng_n3060_r96_t3_k32_s79e56.vhdl  -check_synthesis -work makestuff
 vcom -93   -novopt dvr-rng/dvr_rng96.vhdl                    -check_synthesis -work makestuff
 vlog -sv   -novopt dvr-rng/dvr_rng_pkg.sv                    -hazards -lint -pedanticerrors -work makestuff
+vlog -sv   -novopt block-ram/ram_sc_be.sv                    -hazards -lint -pedanticerrors -work makestuff +incdir+block-ram
 vlog -sv   -novopt buffer-fifo/buffer_fifo_impl.sv           -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt buffer-fifo/buffer_fifo.sv                -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt reg-mux/reg_mux.sv                        -hazards -lint -pedanticerrors -work makestuff
-vlog -sv   -novopt pcie/tlp-xcvr/tlp_xcvr_pkg.sv             -hazards -lint -pedanticerrors -work makestuff
+vlog -sv   -novopt pcie/tlp-xcvr/tlp_xcvr_pkg.sv             -hazards -lint -pedanticerrors -work makestuff +incdir+pcie/tlp-xcvr
 vlog -sv   -novopt pcie/tlp-xcvr/tlp_recv.sv                 -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/tlp-xcvr/tlp_send.sv                 -hazards -lint -pedanticerrors -work makestuff
 vlog -sv   -novopt pcie/tlp-xcvr/tlp_xcvr.sv                 -hazards -lint -pedanticerrors -work makestuff

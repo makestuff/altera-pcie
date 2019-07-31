@@ -18,42 +18,7 @@
 //
 package tlp_xcvr_pkg;
 
-  // FPGA registers
-  localparam int CHAN_WIDTH = 8;  // we have 2**CHAN_WIDTH == 256 application registers...
-  localparam int CTL_BASE = 2**CHAN_WIDTH;  // ...and another 256 control registers
-  localparam int F2C_BASE = CTL_BASE + 0;   // FPGA->CPU base address
-  localparam int F2C_RDPTR = CTL_BASE + 1;  // FPGA->CPU read pointer, updated by the CPU after it has read a chunk
-  localparam int C2F_WRPTR = CTL_BASE + 3;  // CPU->FPGA write pointer, updated by the CPU after it has written a chunk
-  localparam int DMA_ENABLE = CTL_BASE + 4;
-  localparam int MTR_BASE = CTL_BASE + 5;
-
-  // The FPGA register region (R/W, noncacheable): one 4KiB page mapped to BAR0 on the FPGA
-  localparam int REG_BAR = 0;
-  localparam int REG_SIZE_NBITS = 12;             // number of bits needed for a BAR0 index variable
-  localparam int REG_SIZE = (1<<REG_SIZE_NBITS);  // size of BAR0 in bytes
-
-  // The metrics buffer (e.g f2cWrPtr, c2fRdPtr - read-only): one 4KiB page allocated by the kernel and DMA'd into by the FPGA
-  localparam int MTR_SIZE_NBITS = 12;
-  localparam int MTR_SIZE = (1<<MTR_SIZE_NBITS);
-
-  // The CPU->FPGA region (write-only, write-combined): potentially multiple 4KiB pages mapped to BAR2 on the FPGA
-  localparam int C2F_BAR = 2;
-  localparam int C2F_SIZE_NBITS = 12;      // the CPU->FPGA buffer is one 4KiB page (2^12 = 4096)
-  localparam int C2F_CHUNKSIZE_NBITS = 8;  // each chunk is 256 bytes -> therefore there will be 4096/256 = 16 chunks
-  localparam int C2F_NUMCHUNKS_NBITS = C2F_SIZE_NBITS - C2F_CHUNKSIZE_NBITS;
-  localparam int C2F_SIZE =      (1<<C2F_SIZE_NBITS);
-  localparam int C2F_CHUNKSIZE = (1<<C2F_CHUNKSIZE_NBITS);
-  localparam int C2F_NUMCHUNKS = (1<<C2F_NUMCHUNKS_NBITS);
-
-  // The FPGA->CPU buffer (read-only): potentially multiple 4KiB pages allocated by the kernel and DMA'd into by the FPGA
-  localparam int F2C_TLPSIZE_NBITS = 7;                 // usually <=8, meaning F2C_TLPSIZE <=256 bytes
-  localparam int F2C_TLPSIZE = (1<<F2C_TLPSIZE_NBITS);
-  localparam int F2C_SIZE_NBITS = 12;                   // the FPGA->CPU buffer is one 4KiB page (2^12 = 4096)
-  localparam int F2C_CHUNKSIZE_NBITS = 9;               // each chunk is 512 bytes -> therefore there will be 4096/512 = 8 chunks
-  localparam int F2C_NUMCHUNKS_NBITS = F2C_SIZE_NBITS - F2C_CHUNKSIZE_NBITS;
-  localparam int F2C_SIZE =      (1<<F2C_SIZE_NBITS);
-  localparam int F2C_CHUNKSIZE = (1<<F2C_CHUNKSIZE_NBITS);
-  localparam int F2C_NUMCHUNKS = (1<<F2C_NUMCHUNKS_NBITS);
+  `include "defs.vh"
 
   // Types
   typedef enum logic[1:0] {
@@ -72,8 +37,8 @@ package tlp_xcvr_pkg;
     MEM_RW_REQ    = 5'b00000,  // this is a memory write or a memory read request
     COMPLETION    = 5'b01010   // this is a completion packet
   } Type;
-  typedef logic[CHAN_WIDTH-1:0] Channel;
-  typedef logic[CHAN_WIDTH:0] ExtChan;  // 512 registers, 256 user & 256 system
+  typedef logic[REGADDR_NBITS-2:0] Channel;
+  typedef logic[REGADDR_NBITS-1:0] ExtChan;  // 1024 registers, 512 user & 512 system (assuming 4KiB pages)
   typedef logic[15:0] BusID;
   typedef logic[7:0] Tag;
   typedef logic[31:0] Data;
