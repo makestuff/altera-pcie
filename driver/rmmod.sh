@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If
 # not, see <http://www.gnu.org/licenses/>.
 #
-MODULE="fpgalink"
+MODULE="fpgalink-driver"
 DEVICE="fpga0"
 
 # Invoke rmmod with all arguments we got

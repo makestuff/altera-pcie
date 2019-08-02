@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2019 Chris McClelland
+// Copyright (C) 2014, 2017, 2019 Chris McClelland
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 // and associated documentation files (the "Software"), to deal in the Software without
@@ -16,21 +16,19 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#ifndef FPGALINK_H
-#define FPGALINK_H
-
+#define _BSD_SOURCE
+#include <cstdio>
 #include <stdexcept>
+#include <cinttypes>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include "fpgalink-driver.h"
 
-template<typename S, typename R>
+#include "fpgalink.h"
+#include "../../../ip/dvr-rng/dvr_rng.h"
+
 class FPGA {
-  // Sanity-checks...
-  static_assert(sizeof(S) == C2F_CHUNKSIZE, "sizeof(S) must be the same as C2F_CHUNKSIZE");
-  static_assert(sizeof(R) == F2C_CHUNKSIZE, "sizeof(R) must be the same as F2C_CHUNKSIZE");
-
   // Template class representing a region of mmap()'able memory
   template<typename T> class Region {
     T* _ptr;
@@ -74,43 +72,34 @@ class FPGA {
       return _ptr;
     }
   };
-
-  // The metrics region, DMA'd into by the FPGA
-  using MetricsRegion = const volatile struct {
+public:
+  // Types for the various memory regions
+  using MetricsRegion = const volatile struct MetricsStruct {
     uint32_t f2cWrPtr;
     uint32_t c2fRdPtr;
   };
-
-public:
-  // Types for the various public regions
   using Register = volatile uint32_t;
-  using SendType = S;
-  using RecvType = const volatile R;  // read-only region for FPGA->CPU queue
+  using C2FRegion = uint64_t;                 // write-only region for CPU->FPGA queue
+  using F2CRegion = const volatile uint64_t;  // read-only region for FPGA->CPU queue
 
 private:
   uint32_t _f2cRdPtr;
   uint32_t _c2fWrPtr;
-  int _devNode;
+  const int _devNode;
   const Region<Register> _regBase;
   const Region<MetricsRegion> _mtrBase;
-  const Region<SendType> _c2fBase;
-  const Region<RecvType> _f2cBase;
+
+public:
+  const Region<C2FRegion> _c2fBase;
+  const Region<F2CRegion> _f2cBase;
   
-  int open(const std::string& devNode) {
+  // Connect to the fpgalink driver...
+  static int open(const std::string& devNode) {
     int dev = ::open(devNode.c_str(), O_RDWR|O_SYNC);
     if (dev < 0) {
-      _devNode = 0;
       throw std::runtime_error("Unable to open " + devNode + ". Did you forget to install the driver?");
     }
     return dev;
-  }
-
-  inline const Register& reg(uint16_t i) const noexcept {
-    return _regBase[2*i + 1];
-  }
-
-  inline Register& reg(uint16_t i) noexcept {
-    return _regBase[2*i + 1];
   }
 
 public:
@@ -126,18 +115,14 @@ public:
     reset();
   }
 
-  ~FPGA() {
-    close(_devNode);
-  }
-
-  inline const Register& operator[](uint16_t i) const noexcept {
-    return reg(i);
-  }
-
-  inline Register& operator[](uint16_t i) noexcept {
-    return reg(i);
+  inline const Register& reg(uint16_t x) const noexcept {
+    return _regBase[2*x + 1];
   }
   
+  inline Register& reg(uint16_t x) noexcept {
+    return _regBase[2*x + 1];
+  }
+
   inline uint32_t c2fRdPtr() const noexcept {
     return (*_mtrBase).c2fRdPtr;
   }
@@ -158,44 +143,116 @@ public:
     ioctl(_devNode, FPGALINK_CTRL, OP_RESET);
   }
 
-  void recvEnable() noexcept {
-    ioctl(_devNode, FPGALINK_CTRL, OP_F2C_ENABLE);
+  void f2cEnable(bool en) noexcept {
+    if (en) {
+      ioctl(_devNode, FPGALINK_CTRL, OP_F2C_ENABLE);
+    } else {
+      ioctl(_devNode, FPGALINK_CTRL, OP_F2C_DISABLE);
+    }
   }
 
-  void recvDisable() noexcept {
-    ioctl(_devNode, FPGALINK_CTRL, OP_F2C_DISABLE);
-  }
-
-  inline SendType& sendPrepare() noexcept {
+  inline C2FRegion* c2fPrepareSend() noexcept {
     uint32_t newWrPtr = _c2fWrPtr;
     ++newWrPtr;
     newWrPtr &= C2F_NUMCHUNKS - 1;
     while (newWrPtr == c2fRdPtr());  // if the queue is full, spin until FPGA has consumed a chunk
-    SendType* const p1 = (SendType*)_c2fBase;
-    uint8_t* p2 = (uint8_t*)p1;
-    p2 += _c2fWrPtr*C2F_CHUNKSIZE;
-    return *((SendType*)p2);
+    return _c2fBase + _c2fWrPtr*C2F_CHUNKSIZE/8;
   }
 
-  inline void sendCommit() noexcept {
+  inline void c2fCommitSend() noexcept {
     ++_c2fWrPtr;
     _c2fWrPtr &= C2F_NUMCHUNKS - 1;
     reg(C2F_WRPTR) = _c2fWrPtr;
   }
 
-  inline RecvType& recv() noexcept {
+  inline F2CRegion* f2cRecv() noexcept {
     while (f2cRdPtr() == f2cWrPtr());  // spin until the FPGA gives us some data
-    RecvType* const p1 = (RecvType*)_f2cBase;
-    const volatile uint8_t* p2 = (const volatile uint8_t*)p1;
-    p2 += f2cRdPtr()*F2C_CHUNKSIZE;
-    return *((RecvType*)p2);
+    return _f2cBase + f2cRdPtr()*C2F_CHUNKSIZE/8;
   }
 
-  inline void recvCommit() noexcept {
+  inline void f2cCommit() noexcept {
     ++_f2cRdPtr;
     _f2cRdPtr &= F2C_NUMCHUNKS - 1;
     reg(F2C_RDPTR) = _f2cRdPtr;
   }
 };
 
-#endif
+// Registers defined by this application
+static constexpr uint16_t CONSUMER_RATE = (CTL_BASE - 3);
+static constexpr uint16_t CHECKSUM_LSW  = (CTL_BASE - 2);
+static constexpr uint16_t CHECKSUM_MSW  = (CTL_BASE - 1);
+
+// Read the FPGA's running checksum of data consumed by the CPU->FPGA pipe
+uint64_t getChecksum(const FPGA& fpga) {
+  const uint32_t lsw = fpga.reg(CHECKSUM_LSW);
+  const uint32_t msw = fpga.reg(CHECKSUM_MSW);
+  uint64_t val = msw;
+  val <<= 32U;
+  val |= lsw;
+  return val;
+}
+
+int main(int, const char*[]) {
+  try {
+    FPGA fpga("/dev/fpga0");
+    size_t i = 0;
+
+    // Write four times the queue capacity
+    uint64_t cpuCkSum = 0, fpgaCkSum;
+    fpga.reg(CONSUMER_RATE) = 128;
+    std::printf("Writing chunks to the FPGA:\n");
+    for (size_t chunk = 0; chunk < 4*C2F_NUMCHUNKS; ++chunk) {
+      std::printf("  [%d]: ", fpga.c2fWrPtr());
+      FPGA::C2FRegion* const thisChunk = fpga.c2fPrepareSend();
+      for (size_t qw = 0; qw < C2F_CHUNKSIZE/8; ++qw) {
+        const uint64_t value = SEQ64[i++]; i &= C2F_SIZE/8 - 1;
+        thisChunk[qw] = value;
+        cpuCkSum += value;
+      }
+      fpga.c2fCommitSend();
+
+      size_t iterCount = 0;
+      while (fpga.c2fRdPtr() != fpga.c2fWrPtr()) {
+        ++iterCount;
+      }
+      fpgaCkSum = getChecksum(fpga);
+      std::printf(
+        "fpgaChecksum = %016" PRIX64 "; cpuChecksum = %016" PRIX64 "; iterations = %zu %s\n",
+        fpgaCkSum, cpuCkSum, iterCount, (fpgaCkSum == cpuCkSum) ? "(✓)" : "(✗)"
+      );
+    }
+
+    // Register readback: all registers below CONSUMER_RATE should readback the value previously written
+    std::printf("\nWriting FPGA registers & verifying readback:\n");
+    for (uint16_t r = 0; r < CONSUMER_RATE; ++r) {
+      fpga.reg(r) = SEQ32[r];
+    }
+    for (uint16_t r = 0; r < CONSUMER_RATE; ++r) {
+      const uint32_t value = fpga.reg(r);
+      std::printf("  %u: 0x%08X %s\n", r, value, (SEQ32[r] == value) ? "(✓)" : "(✗)");
+    }
+    std::printf("\n");
+
+    // Try DMA
+    std::printf("FPGA->CPU DMA Test:\n");
+    i = 0;
+    fpga.f2cEnable(true);
+    for (size_t chunk = 0; chunk < F2C_NUMCHUNKS; ++chunk) {
+      FPGA::F2CRegion* const thisChunk = fpga.f2cRecv();
+      std::printf("  TLP %zu (@%u):\n", chunk, fpga.f2cRdPtr());
+      for (size_t qw = 0; qw < F2C_CHUNKSIZE/8; ++qw) {
+        const uint64_t expected = SEQ64[i++]; i &= C2F_SIZE/8 - 1;
+        const uint64_t value = thisChunk[qw];
+        std::printf("    %016" PRIX64 " %s\n", value, (value == expected) ? "(✓)" : "(✗)");
+      }
+      fpga.f2cCommit();
+      std::printf("\n");
+    }
+    fpga.f2cEnable(false);
+  }
+  catch (const std::exception& ex) {
+    std::fprintf(stderr, "Caught exception: %s\n", ex.what());
+    return 1;
+  }
+  return 0;
+}

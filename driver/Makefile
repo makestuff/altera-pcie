@@ -12,7 +12,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If
 # not, see <http://www.gnu.org/licenses/>.
 #
-obj-m := fpgalink.o
+obj-m := fpgalink-driver.o
 
 CHECK_SPARSE ?= 1
 TARGET_KERNEL ?= $(shell uname -r)

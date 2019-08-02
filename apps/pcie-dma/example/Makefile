@@ -16,31 +16,28 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-COPT := -O2
-CDEFS :=
+CPPOPT := -O2
+CPPDEFS :=
 TARGET := $(notdir $(realpath .))
-CFLAGS := \
-	$(COPT) -c -Wall -Wextra -Wundef -Wconversion -Wenum-compare -pedantic-errors \
-	-std=c99 -Wstrict-prototypes -Wno-missing-field-initializers \
-	-Wstrict-aliasing=3 -fstrict-aliasing -Warray-bounds -I../../../driver
-SRCS := $(wildcard *.c)
-OBJS := $(SRCS:%.c=build/%.o)
+CPPFLAGS := \
+	$(CPPOPT) -c -Wall -Wextra -Wundef -Wconversion -Wenum-compare -pedantic-errors -std=c++11 \
+	-Wno-missing-field-initializers -Wstrict-aliasing=3 -fstrict-aliasing -Warray-bounds \
+	-I../../../driver
+SRCS := $(wildcard *.cpp)
+OBJS := $(SRCS:%.cpp=build/%.o)
 
-all: defs.h build build/$(TARGET)
+all: build build/$(TARGET)
 
 build/$(TARGET): $(OBJS)
-	gcc $+ -o $@
+	g++ $+ -o $@
 
-defs.h: ../../../ip/pcie/tlp-xcvr/defs.vh
-	cat $< | sed 's/localparam int/#define/g' | sed 's/=//g' | sed 's/;//g' | sed 's/1<</1U<</g;s/\((\d+)\)/\(\1U\)/g' > $@
-
-build/%.o: %.c
-	gcc $(CFLAGS) $(CDEFS) $< -o $@
+build/%.o: %.cpp
+	g++ $(CPPFLAGS) $(CPPDEFS) $< -o $@
 
 build: FORCE
 	mkdir -p build
 
 clean: FORCE
-	rm -rf build defs.h
+	rm -rf build
 
 FORCE:
