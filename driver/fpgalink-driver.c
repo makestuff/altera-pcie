@@ -20,7 +20,7 @@
 #include <linux/pci.h>
 
 #include <asm/uaccess.h>
-#include "fpgalink.h"
+#include "fpgalink-driver.h"
 
 #if PCIE_PAGESIZE_NBITS != PAGE_SHIFT
   #error "This kernel's PAGE_SHIFT must match the FPGA's PCIE_PAGESIZE_NBITS"

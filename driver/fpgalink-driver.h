@@ -18,8 +18,8 @@
 //
 // This is read by the driver code and by the userspace API, so it must work in both contexts.
 //
-#ifndef FPGALINK_H
-#define FPGALINK_H
+#ifndef FPGALINK_DRIVER_H
+#define FPGALINK_DRIVER_H
 
 // Get ioctl() macros: from linux/ioctl.h in kernel space, and from sys/ioctl.h in userspace
 #ifdef __KERNEL__
