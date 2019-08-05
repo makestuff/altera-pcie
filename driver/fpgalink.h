@@ -57,23 +57,35 @@ class FPGA {
       }
       _base = rgnBase;
     }
-    Region(Region&& from) noexcept:
-      _base{from._base}, _length{from._length}
-    {
-      from._base = nullptr;
-      from._length = 0;
-    }
-    Region& operator=(Region&&) const = delete;
-    Region(const Region&) = delete;
-    Region& operator=(const Region&) const = delete;
     ~Region() {
       if (_length) {
         munmap(_base - PCIE_PAGESIZE, _length);
       }
     }
+
+    // Move-construct and move-assign
+    Region(Region&& from) noexcept:
+      _base{from._base}, _length{from._length}
+    {
+      from._base = nullptr; from._length = 0;
+    }
+    Region& operator=(Region&& from) noexcept {
+      if (_length) {
+        munmap(_base - PCIE_PAGESIZE, _length);
+      }
+      _base = from._base; _length = from._length;
+      from._base = nullptr; from._length = 0;
+      return *this;
+    }
+
+    // Copy-construct and copy-assign not allowed
+    Region(const Region&) = delete;
+    Region& operator=(const Region&) = delete;
+
     const uint8_t* base() const noexcept {
       return _base;
     }
+
     uint8_t* base() noexcept {
       return _base;
     }
@@ -109,12 +121,12 @@ private:
     return dev;
   }
 
-  inline const Register& reg(uint16_t i) const noexcept {
+  const Register& reg(uint16_t i) const noexcept {
     const Register* const regBase = (const Register*)_regRegion.base();
     return regBase[2*i + 1];
   }
 
-  inline Register& reg(uint16_t i) noexcept {
+  Register& reg(uint16_t i) noexcept {
     Register* const regBase = (Register*)_regRegion.base();
     return regBase[2*i + 1];
   }
@@ -131,8 +143,12 @@ public:
   {
     reset();
   }
+  ~FPGA() {
+    close(_devNode);
+  }
 
-  inline FPGA(FPGA&& from) noexcept:
+  // Move-construct and move-assign
+  FPGA(FPGA&& from) noexcept:
     _f2cRdPtr{from._f2cRdPtr},
     _c2fWrPtr{from._c2fWrPtr},
     _devNode{from._devNode},
@@ -145,53 +161,64 @@ public:
     from._c2fWrPtr = 0;
     from._devNode = 0;
   }
-  FPGA& operator=(FPGA&&) const = delete;
-  FPGA(const FPGA&) = delete;
-  FPGA& operator=(const FPGA&) const = delete;
-
-  ~FPGA() {
+  FPGA& operator=(FPGA&& from) noexcept {
     close(_devNode);
+    _f2cRdPtr = from._f2cRdPtr;
+    _c2fWrPtr = from._c2fWrPtr;
+    _devNode = from._devNode;
+    _regRegion = std::move(from._regRegion);
+    _mtrRegion = std::move(from._mtrRegion);
+    _c2fRegion = std::move(from._c2fRegion);
+    _f2cRegion = std::move(from._f2cRegion);
+    from._f2cRdPtr = 0;
+    from._c2fWrPtr = 0;
+    from._devNode = 0;
+    return *this;
   }
 
-  inline const Register& operator[](uint16_t i) const noexcept {
+  // Copy-construct and copy-assign not allowed
+  FPGA(const FPGA&) = delete;
+  FPGA& operator=(const FPGA&) = delete;
+
+  const Register& operator[](uint16_t i) const noexcept {
     return reg(i);
   }
 
-  inline Register& operator[](uint16_t i) noexcept {
+  Register& operator[](uint16_t i) noexcept {
     return reg(i);
   }
   
-  inline uint32_t c2fRdPtr() const noexcept {
+  uint32_t c2fRdPtr() const noexcept {
     const MetricsRegion* mtrBase = (const MetricsRegion*)_mtrRegion.base();
     return mtrBase->c2fRdPtr;
   }
 
-  inline uint32_t c2fWrPtr() const noexcept {
+  uint32_t c2fWrPtr() const noexcept {
     return _c2fWrPtr;
   }
 
-  inline uint32_t f2cRdPtr() const noexcept {
+  uint32_t f2cRdPtr() const noexcept {
     return _f2cRdPtr;
   }
   
-  inline uint32_t f2cWrPtr() const noexcept {
+  uint32_t f2cWrPtr() const noexcept {
     const MetricsRegion* mtrBase = (const MetricsRegion*)_mtrRegion.base();
     return mtrBase->f2cWrPtr;
   }
   
-  inline void reset() noexcept {
+  void reset() noexcept {
     ioctl(_devNode, FPGALINK_CTRL, OP_RESET);
   }
 
-  inline void recvEnable() noexcept {
+  void recvEnable() noexcept {
     ioctl(_devNode, FPGALINK_CTRL, OP_F2C_ENABLE);
   }
 
-  inline void recvDisable() noexcept {
+  void recvDisable() noexcept {
     ioctl(_devNode, FPGALINK_CTRL, OP_F2C_DISABLE);
   }
 
-  inline SendType& sendPrepare() noexcept {
+  SendType& sendPrepare() noexcept {
     uint32_t newWrPtr = _c2fWrPtr;
     ++newWrPtr;
     newWrPtr &= C2F_NUMCHUNKS - 1;
@@ -199,18 +226,18 @@ public:
     return *((SendType*)(_c2fRegion.base() + _c2fWrPtr*C2F_CHUNKSIZE));
   }
 
-  inline void sendCommit() noexcept {
+  void sendCommit() noexcept {
     ++_c2fWrPtr;
     _c2fWrPtr &= C2F_NUMCHUNKS - 1;
     reg(C2F_WRPTR) = _c2fWrPtr;
   }
 
-  inline RecvType& recv() noexcept {
+  RecvType& recv() noexcept {
     while (f2cRdPtr() == f2cWrPtr());  // spin until the FPGA gives us some data
     return *((RecvType*)(_f2cRegion.base() + f2cRdPtr()*F2C_CHUNKSIZE));
   }
 
-  inline void recvCommit() noexcept {
+  void recvCommit() noexcept {
     ++_f2cRdPtr;
     _f2cRdPtr &= F2C_NUMCHUNKS - 1;
     reg(F2C_RDPTR) = _f2cRdPtr;
