@@ -31,19 +31,19 @@ class FPGA {
   static_assert(sizeof(S) == C2F_CHUNKSIZE, "sizeof(S) must be the same as C2F_CHUNKSIZE");
   static_assert(sizeof(R) == F2C_CHUNKSIZE, "sizeof(R) must be the same as F2C_CHUNKSIZE");
 
-  // Template class representing a region of mmap()'able memory
-  template<typename T> class Region {
-    T* _ptr;
+  // Janitor class for a region of mmap()'able memory
+  class Region {
+    uint8_t* _base;
     size_t _length;
   public:
     Region(int fd, RegionOffset offset, size_t length, int prot):
-      _ptr{nullptr}, _length{length + 2*PCIE_PAGESIZE}
+      _base{nullptr}, _length{length + 2*PCIE_PAGESIZE}
     {
       uint8_t* const guardRegion = (uint8_t*)mmap(nullptr, _length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
       if (guardRegion == MAP_FAILED) {
         throw std::runtime_error("Failed to mmap() guard pages!");
       }
-      T* const rgnBase = (T*)mmap(
+      uint8_t* const rgnBase = (uint8_t*)mmap(
         guardRegion + PCIE_PAGESIZE,
         length,
         prot,
@@ -52,26 +52,22 @@ class FPGA {
         offset * PCIE_PAGESIZE
       );
       if (rgnBase == MAP_FAILED) {
-        munmap(guardRegion, _length);
+        munmap(guardRegion, _length);  // cleanup
         throw std::runtime_error("Failed to mmap() region!");
       }
-      _ptr = rgnBase;
+      _base = rgnBase;
     }
-    Region<T>(Region<T>&& from) noexcept : _ptr(from._ptr), _length(from._length) {
-      from._ptr = nullptr;
-      from._length = 0;
-    }
-    Region<T>(const Region<T>&) = delete;
-    Region<T> operator=(const Region<T>&) const = delete;
+    Region(Region&& from) noexcept = delete;
+    Region(const Region&) = delete;
+    Region operator=(const Region&) const = delete;
+    Region operator=(Region&&) const = delete;
     ~Region() {
       if (_length) {
-        uint8_t* guardRegion = (uint8_t*)_ptr;
-        guardRegion -= PCIE_PAGESIZE;
-        munmap(guardRegion, _length);
+        munmap(_base - PCIE_PAGESIZE, _length);
       }
     }
-    operator T*() const {
-      return _ptr;
+    uint8_t* base() const {
+      return _base;
     }
   };
 
@@ -91,10 +87,10 @@ private:
   uint32_t _f2cRdPtr;
   uint32_t _c2fWrPtr;
   int _devNode;
-  const Region<Register> _regBase;
-  const Region<MetricsRegion> _mtrBase;
-  const Region<SendType> _c2fBase;
-  const Region<RecvType> _f2cBase;
+  const Region _regRegion;
+  const Region _mtrRegion;
+  const Region _c2fRegion;
+  const Region _f2cRegion;
   
   int open(const std::string& devNode) {
     int dev = ::open(devNode.c_str(), O_RDWR|O_SYNC);
@@ -106,11 +102,13 @@ private:
   }
 
   inline const Register& reg(uint16_t i) const noexcept {
-    return _regBase[2*i + 1];
+    const Register* const regBase = (const Register*)_regRegion.base();
+    return regBase[2*i + 1];
   }
 
   inline Register& reg(uint16_t i) noexcept {
-    return _regBase[2*i + 1];
+    Register* const regBase = (Register*)_regRegion.base();
+    return regBase[2*i + 1];
   }
 
 public:
@@ -118,10 +116,10 @@ public:
     _f2cRdPtr{0},
     _c2fWrPtr{0},
     _devNode{open(devNode)},
-    _regBase(_devNode, RGN_REG, PCIE_PAGESIZE, PROT_READ | PROT_WRITE),  // registers are read/write & noncacheable
-    _mtrBase(_devNode, RGN_MTR, PCIE_PAGESIZE, PROT_READ),               // metrics are read-only
-    _c2fBase(_devNode, RGN_C2F, C2F_SIZE,      PROT_WRITE),              // CPU->FPGA queue is write-only & write-combined
-    _f2cBase(_devNode, RGN_F2C, F2C_SIZE,      PROT_READ)                // FPGA->CPU queue is read-only
+    _regRegion(_devNode, RGN_REG, PCIE_PAGESIZE, PROT_READ | PROT_WRITE),  // registers are read/write & noncacheable
+    _mtrRegion(_devNode, RGN_MTR, PCIE_PAGESIZE, PROT_READ),               // metrics are read-only
+    _c2fRegion(_devNode, RGN_C2F, C2F_SIZE,      PROT_WRITE),              // CPU->FPGA queue is write-only & write-combined
+    _f2cRegion(_devNode, RGN_F2C, F2C_SIZE,      PROT_READ)                // FPGA->CPU queue is read-only
   {
     reset();
   }
@@ -139,7 +137,8 @@ public:
   }
   
   inline uint32_t c2fRdPtr() const noexcept {
-    return (*_mtrBase).c2fRdPtr;
+    const MetricsRegion* mtrBase = (const MetricsRegion*)_mtrRegion.base();
+    return mtrBase->c2fRdPtr;
   }
 
   inline uint32_t c2fWrPtr() const noexcept {
@@ -151,7 +150,8 @@ public:
   }
   
   inline uint32_t f2cWrPtr() const noexcept {
-    return (*_mtrBase).f2cWrPtr;
+    const MetricsRegion* mtrBase = (const MetricsRegion*)_mtrRegion.base();
+    return mtrBase->f2cWrPtr;
   }
   
   void reset() noexcept {
@@ -171,10 +171,7 @@ public:
     ++newWrPtr;
     newWrPtr &= C2F_NUMCHUNKS - 1;
     while (newWrPtr == c2fRdPtr());  // if the queue is full, spin until FPGA has consumed a chunk
-    SendType* const p1 = (SendType*)_c2fBase;
-    uint8_t* p2 = (uint8_t*)p1;
-    p2 += _c2fWrPtr*C2F_CHUNKSIZE;
-    return *((SendType*)p2);
+    return *((SendType*)(_c2fRegion.base() + _c2fWrPtr*C2F_CHUNKSIZE));
   }
 
   inline void sendCommit() noexcept {
@@ -185,10 +182,7 @@ public:
 
   inline RecvType& recv() noexcept {
     while (f2cRdPtr() == f2cWrPtr());  // spin until the FPGA gives us some data
-    RecvType* const p1 = (RecvType*)_f2cBase;
-    const volatile uint8_t* p2 = (const volatile uint8_t*)p1;
-    p2 += f2cRdPtr()*F2C_CHUNKSIZE;
-    return *((RecvType*)p2);
+    return *((RecvType*)(_f2cRegion.base() + f2cRdPtr()*F2C_CHUNKSIZE));
   }
 
   inline void recvCommit() noexcept {
