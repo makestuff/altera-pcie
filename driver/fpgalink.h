@@ -57,16 +57,24 @@ class FPGA {
       }
       _base = rgnBase;
     }
-    Region(Region&& from) noexcept = delete;
+    Region(Region&& from) noexcept:
+      _base{from._base}, _length{from._length}
+    {
+      from._base = nullptr;
+      from._length = 0;
+    }
+    Region& operator=(Region&&) const = delete;
     Region(const Region&) = delete;
-    Region operator=(const Region&) const = delete;
-    Region operator=(Region&&) const = delete;
+    Region& operator=(const Region&) const = delete;
     ~Region() {
       if (_length) {
         munmap(_base - PCIE_PAGESIZE, _length);
       }
     }
-    uint8_t* base() const {
+    const uint8_t* base() const noexcept {
+      return _base;
+    }
+    uint8_t* base() noexcept {
       return _base;
     }
   };
@@ -87,10 +95,10 @@ private:
   uint32_t _f2cRdPtr;
   uint32_t _c2fWrPtr;
   int _devNode;
-  const Region _regRegion;
-  const Region _mtrRegion;
-  const Region _c2fRegion;
-  const Region _f2cRegion;
+  Region _regRegion;
+  Region _mtrRegion;
+  Region _c2fRegion;
+  Region _f2cRegion;
   
   int open(const std::string& devNode) {
     int dev = ::open(devNode.c_str(), O_RDWR|O_SYNC);
@@ -124,6 +132,23 @@ public:
     reset();
   }
 
+  inline FPGA(FPGA&& from) noexcept:
+    _f2cRdPtr{from._f2cRdPtr},
+    _c2fWrPtr{from._c2fWrPtr},
+    _devNode{from._devNode},
+    _regRegion{std::move(from._regRegion)},
+    _mtrRegion{std::move(from._mtrRegion)},
+    _c2fRegion{std::move(from._c2fRegion)},
+    _f2cRegion{std::move(from._f2cRegion)}
+  {
+    from._f2cRdPtr = 0;
+    from._c2fWrPtr = 0;
+    from._devNode = 0;
+  }
+  FPGA& operator=(FPGA&&) const = delete;
+  FPGA(const FPGA&) = delete;
+  FPGA& operator=(const FPGA&) const = delete;
+
   ~FPGA() {
     close(_devNode);
   }
@@ -154,15 +179,15 @@ public:
     return mtrBase->f2cWrPtr;
   }
   
-  void reset() noexcept {
+  inline void reset() noexcept {
     ioctl(_devNode, FPGALINK_CTRL, OP_RESET);
   }
 
-  void recvEnable() noexcept {
+  inline void recvEnable() noexcept {
     ioctl(_devNode, FPGALINK_CTRL, OP_F2C_ENABLE);
   }
 
-  void recvDisable() noexcept {
+  inline void recvDisable() noexcept {
     ioctl(_devNode, FPGALINK_CTRL, OP_F2C_DISABLE);
   }
 
