@@ -23,11 +23,8 @@ PWD := $(shell pwd)
 CPPFLAGS += -include $(KERNELDIR)/include/generated/autoconf.h
 EXTRA_CFLAGS := -I$(src)/../include
 
-all: defs.h
+all:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) C=$(CHECK_SPARSE)
 
-defs.h: ../ip/pcie/tlp-xcvr/defs.vh
-	cat $< | sed 's/localparam int/#define/g' | sed 's/=//g' | sed 's/;//g' | sed 's/1<</1U<</g;s/\((\d+)\)/\(\1U\)/g' > $@
-
 clean:
-	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions *.symvers *.order defs.h
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions *.symvers *.order

@@ -9,7 +9,7 @@ FPGA         := svgx
 EN_SWAP      := 0
 
 # By default, just build a JTAG programming-file
-all: build/proj.sof
+all: build/proj.sof defs
 
 build/proj.sof: build/proj.qpf
 	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
@@ -45,6 +45,10 @@ flash: build/proj.pof build/proj.cdf
 # Create flash-programming file
 build/proj.pof: build/proj.sof build/proj.cof
 	quartus_cpf -c build/proj.cof
+
+# C/C++ version of the project-specific definitions
+defs: FORCE
+	cat defs.vh | sed 's/localparam int/#define/g' | sed 's/=//g' | sed 's/;//g' | sed 's/1<</1U<</g;s/\((\d+)\)/\(\1U\)/g' > ../../driver/defs.h
 
 # Clean up
 clean: FORCE

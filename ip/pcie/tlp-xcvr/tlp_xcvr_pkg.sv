@@ -18,6 +18,7 @@
 //
 package tlp_xcvr_pkg;
 
+  // Load application-specific definitions
   `include "defs.vh"
 
   // Types

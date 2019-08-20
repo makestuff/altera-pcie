@@ -25,7 +25,7 @@ onbreak resume
 
 vlog -sv -hazards -lint -pedanticerrors $IP_DIR/dvr-rng/dvr_rng_pkg.sv -work makestuff +define+SIMULATION
 vlog -sv -hazards -lint -pedanticerrors $IP_DIR/block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv             -work makestuff +define+SIMULATION +incdir+$IP_DIR/pcie/tlp-xcvr
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv             -work makestuff +define+SIMULATION +incdir+$env(MAKESTUFF)/apps/pcie-dma
 vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv                 -work makestuff +define+SIMULATION
 vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv                 -work makestuff +define+SIMULATION
 vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv                 -work makestuff +define+SIMULATION

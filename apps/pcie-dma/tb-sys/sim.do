@@ -41,7 +41,7 @@ vlog -sv $IP_DIR/block-ram/ram_sc_be.sv          -hazards -lint -pedanticerrors 
 vlog -sv $IP_DIR/dvr-rng/dvr_rng_pkg.sv          -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION +incdir+$IP_DIR/pcie/tlp-xcvr
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION +incdir+..
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
 vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
