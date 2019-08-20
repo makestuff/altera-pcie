@@ -18,7 +18,7 @@
 #
 file delete -force modelsim.ini
 file delete -force work
-vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
+vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
 vlib work
 
 set RNG rng_n1024_r32_t5_k32_s1c48

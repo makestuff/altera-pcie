@@ -18,7 +18,7 @@
 #
 file delete -force modelsim.ini
 file delete -force work
-vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
+vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
 vlib work
 
 vcom -93   -novopt ../rng_n3060_r96_t3_k32_s79e56.vhdl -check_synthesis -work makestuff

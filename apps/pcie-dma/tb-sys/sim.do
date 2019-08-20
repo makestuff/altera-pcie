@@ -16,7 +16,7 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-set IP_DIR "$env(MAKESTUFF)/ip"
+set IP_DIR "$env(PROJ_HOME)/ip"
 if {![info exists ::env(FPGA)]} {
   puts "\nYou need to set the FPGA environment variable!\n"
   quit

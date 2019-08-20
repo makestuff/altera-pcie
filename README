@@ -2,7 +2,7 @@ Minimal Altera PCI Express project, including Linux driver & userspace examples,
 Altera PCIe core and supporting logic, and a simple DMA controller. The Linux driver is licensed
 under the GPLv3, and everything else is under the MIT license.
 
-Note that to do any simulation, you'll need to set the MAKESTUFF environment variable to the
+Note that to do any simulation, you'll need to set the PROJ_HOME environment variable to the
 absolute path of the directory in which this README resides.
 
 ip:

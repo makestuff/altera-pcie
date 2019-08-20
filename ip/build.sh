@@ -79,7 +79,7 @@ if [ "$#" -eq "1" -a "$1" = "-c" ]; then
   # And clean up
   echo "Performing post-compilation fixups..."
   mv libraries sim-libs
-  sed -i 's# = \./libraries/# = $MAKESTUFF/ip/sim-libs/#g' modelsim.ini
+  sed -i 's# = \./libraries/# = $PROJ_HOME/ip/sim-libs/#g' modelsim.ini
   grep -Ev '^work' modelsim.ini > sim-libs/modelsim.ini
   rm -rf modelsim.ini sim-libs/work sim-libs/APPS
   echo

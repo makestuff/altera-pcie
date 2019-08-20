@@ -23,7 +23,7 @@ if {![info exists ::env(BLOCK_RAM)]} {
 
 file delete -force modelsim.ini
 file delete -force work
-vmap -modelsimini $env(MAKESTUFF)/ip/sim-libs/modelsim.ini -c
+vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
 vlib work
 
 vlog -sv -novopt -hazards -lint -pedanticerrors ../buffer_fifo_impl.sv -work makestuff
