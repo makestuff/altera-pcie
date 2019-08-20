@@ -21,16 +21,17 @@ file delete -force modelsim.ini
 file delete -force work
 vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
 vlib work
+vlib pcie
 onbreak resume
 
 vlog -sv -hazards -lint -pedanticerrors $IP_DIR/dvr-rng/dvr_rng_pkg.sv -work makestuff +define+SIMULATION
 vlog -sv -hazards -lint -pedanticerrors $IP_DIR/block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv             -work makestuff +define+SIMULATION +incdir+$env(PROJ_HOME)/apps/pcie-dma
-vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv                 -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv                 -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv                 -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv                    -L makestuff
-vsim -t ps -novopt +nowarn3116 -L work -L makestuff -L altera_mf_ver tlp_xcvr_tb
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr_pkg.sv             -work pcie      +define+SIMULATION +incdir+$env(PROJ_HOME)/apps/pcie-dma
+vlog -sv -hazards -lint -pedanticerrors ../tlp_send.sv                 -work pcie      +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_recv.sv                 -work pcie      +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../tlp_xcvr.sv                 -work pcie      +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors tlp_xcvr_tb.sv                    -L makestuff -L pcie
+vsim -t ps -novopt +nowarn3116 -L work -L makestuff -L pcie -L altera_mf_ver tlp_xcvr_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      dispClk

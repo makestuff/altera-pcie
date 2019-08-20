@@ -35,31 +35,32 @@ file delete -force work
 vmap -modelsimini $IP_DIR/sim-libs/modelsim.ini -c
 vlib work
 vmap work_lib work
+vlib pcie
 onbreak resume
 
-vlog -sv $IP_DIR/block-ram/ram_sc_be.sv          -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/dvr-rng/dvr_rng_pkg.sv          -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION +incdir+..
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv $IP_DIR/pcie/consumer/consumer.sv       -hazards -lint -pedanticerrors -work makestuff +define+SIMULATION
-vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
-vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff    +define+SIMULATION
+vlog -sv $IP_DIR/block-ram/ram_sc_be.sv          -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/dvr-rng/dvr_rng_pkg.sv          -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION +incdir+..
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv $IP_DIR/pcie/consumer/consumer.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff -L pcie +define+SIMULATION
+vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff -L pcie +define+SIMULATION
 
 if {[lsearch {svgx} $env(FPGA)] >= 0} {
   # Do a Stratix V simulation
   vlog -sv $IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules/altpcie_monitor_sv_dlhip_sim.sv -work pcie_sv
-  vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
-  vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/stratixv/pcie_sv.sv -work makestuff
-  vlog -sv -hazards -lint -pedanticerrors pcie_sv_tb.sv -L makestuff
+  vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/stratixv/pcie_sv/testbench/pcie_sv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff -L pcie
+  vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/stratixv/pcie_sv.sv -work pcie
+  vlog -sv -hazards -lint -pedanticerrors pcie_sv_tb.sv -L makestuff -L pcie
   if [ string match "*ModelSim ALTERA*" [ vsim -version ] ] {
     vsim -novopt -t ps \
       -gEN_SWAP=$env(EN_SWAP) \
       -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
-      -L work -L work_lib -L makestuff -L pcie_sv -L pcie_sv_tb \
+      -L work -L work_lib -L makestuff -L pcie -L pcie_sv -L pcie_sv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
       -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver \
@@ -68,7 +69,7 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
     vopt +acc pcie_sv_tb -o pcie_sv_tb_opt \
       -gEN_SWAP=$env(EN_SWAP) \
       -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
-      -L work -L work_lib -L makestuff -L pcie_sv -L pcie_sv_tb \
+      -L work -L work_lib -L makestuff -L pcie -L pcie_sv -L pcie_sv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
       -L stratixv_ver -L stratixv_hssi_ver -L stratixv_pcie_hip_ver
@@ -77,14 +78,14 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
 } elseif {[lsearch {cvgt} $env(FPGA)] >= 0} {
   # Do a Cyclone V simulation
   echo "Foobar"
-  vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff
-  vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work makestuff
-  vlog -sv -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff
+  vlog -sv -hazards -lint -pedanticerrors +incdir+$IP_DIR/pcie/cyclonev/pcie_cv/testbench/pcie_cv_tb/simulation/submodules altpcietb_bfm_driver_chaining.sv -L makestuff -L pcie
+  vlog -sv -hazards -lint -pedanticerrors $IP_DIR/pcie/cyclonev/pcie_cv.sv -work pcie
+  vlog -sv -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff -L pcie
   if [ string match "*ModelSim ALTERA*" [ vsim -version ] ] {
     vsim -novopt -t ps \
       -gEN_SWAP=$env(EN_SWAP) \
       -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
-      -L work -L work_lib -L makestuff -L pcie_cv -L pcie_cv_tb \
+      -L work -L work_lib -L makestuff -L pcie -L pcie_cv -L pcie_cv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
       -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver \
@@ -93,7 +94,7 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
     vopt +acc pcie_cv_tb -o pcie_cv_tb_opt \
       -gEN_SWAP=$env(EN_SWAP) \
       -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
-      -L work -L work_lib -L makestuff -L pcie_cv -L pcie_cv_tb \
+      -L work -L work_lib -L makestuff -L pcie -L pcie_cv -L pcie_cv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
       -L cyclonev_ver -L cyclonev_hssi_ver -L cyclonev_pcie_hip_ver
