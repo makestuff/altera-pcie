@@ -25,6 +25,12 @@
 #if PCIE_PAGESIZE_NBITS != PAGE_SHIFT
   #error "This kernel's PAGE_SHIFT must match the FPGA's PCIE_PAGESIZE_NBITS"
 #endif
+#if C2F_SIZE_NBITS < PCIE_PAGESIZE_NBITS
+  #error "You must set C2F_SIZE_NBITS >= PCIE_PAGESIZE_NBITS (i.e C2F_SIZE must be at least one page)"
+#endif
+#if F2C_SIZE_NBITS < PCIE_PAGESIZE_NBITS
+  #error "You must set F2C_SIZE_NBITS >= PCIE_PAGESIZE_NBITS (i.e F2C_SIZE must be at least one page)"
+#endif
 
 // Read/write register macros
 #define REG_RD(r) (ioread32(ape.regVA + 2*(r) + 1))
