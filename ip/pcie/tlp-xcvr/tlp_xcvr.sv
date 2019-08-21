@@ -53,12 +53,12 @@ module tlp_xcvr(
     output logic f2cReset_out,
 
     // Sink for the memory-mapped CPU->FPGA burst pipe
-    output logic c2fWriteEnable_out,
-    output tlp_xcvr_pkg::ByteMask64 c2fByteMask_out,
-    output tlp_xcvr_pkg::C2FChunkIndex c2fWrPtr_out,
-    output tlp_xcvr_pkg::C2FChunkOffset c2fChunkOffset_out,
-    output tlp_xcvr_pkg::uint64 c2fData_out,
-    output tlp_xcvr_pkg::C2FChunkIndex c2fRdPtr_out,
+    output logic c2fWrEnable_out,
+    output tlp_xcvr_pkg::ByteMask64 c2fWrByteMask_out,
+    output tlp_xcvr_pkg::C2FChunkPtr c2fWrPtr_out,
+    output tlp_xcvr_pkg::C2FChunkOffset c2fWrOffset_out,
+    output tlp_xcvr_pkg::uint64 c2fWrData_out,
+    output tlp_xcvr_pkg::C2FChunkPtr c2fRdPtr_out,
     input logic c2fDTAck_in
   );
 
@@ -110,11 +110,11 @@ module tlp_xcvr(
     .actValid_out       (fiValid),
 
     // Sink for CPU->FPGA DMA stream
-    .c2fWriteEnable_out (c2fWriteEnable_out),
-    .c2fByteMask_out    (c2fByteMask_out),
+    .c2fWrEnable_out    (c2fWrEnable_out),
+    .c2fWrByteMask_out  (c2fWrByteMask_out),
     .c2fWrPtr_out       (c2fWrPtr_out),
-    .c2fChunkOffset_out (c2fChunkOffset_out),
-    .c2fData_out        (c2fData_out),
+    .c2fWrOffset_out    (c2fWrOffset_out),
+    .c2fWrData_out      (c2fWrData_out),
     .c2fReset_in        (f2cReset_out)
   );
 

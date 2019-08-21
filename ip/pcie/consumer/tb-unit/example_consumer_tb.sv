@@ -18,7 +18,7 @@
 //
 `timescale 1ps / 1ps
 
-module consumer_tb;
+module example_consumer_tb;
 
   import tlp_xcvr_pkg::*;
 
@@ -30,7 +30,7 @@ module consumer_tb;
   localparam int COUNT_INIT = 128;
   logic wrEnable;
   ByteMask64 wrByteMask;
-  C2FChunkIndex wrIndex;
+  C2FChunkPtr wrPtr;
   C2FChunkOffset wrOffset;
   uint64 wrData;
   C2FChunkOffset rdOffset;
@@ -40,17 +40,17 @@ module consumer_tb;
   logic csValid, csReset;
   uint32 countInit;
 
-  C2FChunkIndex rdIndex = '0;
-  C2FChunkIndex rdIndex_next;
+  C2FChunkPtr rdPtr = '0;
+  C2FChunkPtr rdPtr_next;
 
-  // Instantiate consumer
-  consumer uut(sysClk, wrIndex, rdIndex, dtAck, rdOffset, rdData, csData, csValid, csReset, countInit);
+  // Instantiate example_consumer
+  example_consumer uut(sysClk, wrPtr, rdPtr, dtAck, rdOffset, rdData, csData, csValid, csReset, countInit);
 
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) ram(
     sysClk,
-    wrEnable, wrByteMask, {wrIndex, wrOffset}, wrData,
-    {rdIndex, rdOffset}, rdData
+    wrEnable, wrByteMask, {wrPtr, wrOffset}, wrData,
+    {rdPtr, rdOffset}, rdData
   );
 
   // Drive clocks
@@ -65,15 +65,15 @@ module consumer_tb;
     forever #(1000*CLK_PERIOD/2) dispClk = !dispClk;
   end
 
-  // Infer rdIndex register, and make it increment on dtAck
+  // Infer rdPtr register, and make it increment on dtAck
   always_ff @(posedge sysClk) begin: infer_regs
-    rdIndex <= rdIndex_next;
+    rdPtr <= rdPtr_next;
   end
   always_comb begin: next_state
     if (dtAck)
-      rdIndex_next = rdIndex + 1;
+      rdPtr_next = rdPtr + 1;
     else
-      rdIndex_next = rdIndex;
+      rdPtr_next = rdPtr;
   end
 
   task doWrite(C2FChunkOffset offset, uint64 data);
@@ -101,14 +101,14 @@ module consumer_tb;
     countInit = 128;
 
     // Write first chunk
-    wrIndex = 0;
+    wrPtr = 0;
     x = 0;
     for (int j = 0; j < 8; j = j + 1) begin
       for (int i = 0; i < C2F_CHUNKSIZE/8; i = i + 1) begin
         doWrite(i, dvr_rng_pkg::SEQ64[x]);
         x = x + 1;
       end
-      wrIndex = wrIndex + 1;
+      wrPtr = wrPtr + 1;
     end
     for (int i = 0; i < 200; i = i + 1) begin
       @(posedge sysClk);

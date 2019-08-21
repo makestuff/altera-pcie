@@ -21,22 +21,22 @@
 module ram_sc_be_tb;
   localparam int CLK_PERIOD = 10;
   localparam int ADDR_NBITS = 5;  // i.e 2^5 = 32 addressible rows
-  localparam int SPAN_NBITS = 8;  // if 8 then writeEnable_in are byte-enables
+  localparam int SPAN_NBITS = 8;  // if !=8 then wrByteMask_in is more of a "span-mask" rather than "byte-mask"
   typedef logic[ADDR_NBITS-1 : 0] Addr;  // ADDR_NBITS x 1-bit
   typedef logic[SPAN_NBITS-1 : 0] Byte;  // SPAN_NBITS x 1-bit
-  typedef logic[7:0] ByteEnables;
+  typedef logic[7:0] ByteMask;
   typedef Byte[7:0] Row;     // 8 * Byte
   localparam Row XXX = 'X;
 
-  logic sysClk, dispClk, writeEnable;
-  Row writeData, readData;
-  Addr writeAddr, readAddr;
-  ByteEnables byteEnables;
+  logic sysClk, dispClk, wrEnable;
+  Row wrData, rdData;
+  Addr wrAddr, rdAddr;
+  ByteMask wrByteMask;
 
   ram_sc_be#(ADDR_NBITS, SPAN_NBITS) uut(
     sysClk,
-    writeEnable, byteEnables, writeAddr, writeData,
-    readAddr, readData);
+    wrEnable, wrByteMask, wrAddr, wrData,
+    rdAddr, rdData);
 
   initial begin: sysClk_drv
     sysClk = 0;
@@ -50,7 +50,7 @@ module ram_sc_be_tb;
     forever #(1000*CLK_PERIOD/2) dispClk = ~dispClk;
   end
 
-  task doWrite(Addr addr, ByteEnables be, Row data = XXX);
+  task doWrite(Addr addr, ByteMask bm, Row data = XXX);
     if (data === XXX) begin
       typedef logic[31:0] uint32;
       localparam int NUM_DWS = SPAN_NBITS*8/32;
@@ -60,29 +60,29 @@ module ram_sc_be_tb;
       end
       data = randomData;
     end
-    writeEnable = 1;
-    byteEnables = be;
-    writeAddr = addr;
-    writeData = data;
+    wrEnable = 1;
+    wrByteMask = bm;
+    wrAddr = addr;
+    wrData = data;
     @(posedge sysClk);
-    writeEnable = 0;
-    byteEnables = 'X;
-    writeAddr = 'X;
-    writeData = 'X;
+    wrEnable = 0;
+    wrByteMask = 'X;
+    wrAddr = 'X;
+    wrData = 'X;
   endtask
 
   task doRead(Addr addr);
-    readAddr = addr;
+    rdAddr = addr;
     @(posedge sysClk);
-    readAddr = 'X;
+    rdAddr = 'X;
   endtask
 
   initial begin: input_drv
-    writeEnable = 0;
-    byteEnables = 'X;
-    writeAddr = 'X;
-    writeData = 'X;
-    readAddr = 'X;
+    wrEnable = 0;
+    wrByteMask = 'X;
+    wrAddr = 'X;
+    wrData = 'X;
+    rdAddr = 'X;
     @(posedge sysClk);
 
     for (int i = 0; i < 32; i = i + 1) begin

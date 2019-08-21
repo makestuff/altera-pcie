@@ -75,11 +75,11 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      uut/f2cReady_out
 
   add wave -div "CPU->FPGA Burst Pipe"
-  add wave      uut/c2fWriteEnable_out
-  add wave      uut/c2fByteMask_out
+  add wave      uut/c2fWrEnable_out
+  add wave      uut/c2fWrByteMask_out
   add wave -uns uut/c2fWrPtr_out
-  add wave -hex uut/c2fChunkOffset_out
-  add wave -hex uut/c2fData_out
+  add wave -hex uut/c2fWrOffset_out
+  add wave -hex uut/c2fWrData_out
   add wave -hex uut/c2fRdPtr_out
   add wave      uut/c2fDTAck_in
 

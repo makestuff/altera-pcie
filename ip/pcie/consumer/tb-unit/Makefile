@@ -7,6 +7,6 @@ gui: FORCE
 	GUI=1 vsim -do sim.do > /dev/null &
 
 clean: FORCE
-	rm -rf work transcript virtuals.do vsim.wlf modelsim.ini fontconfig wlf*
+	rm -rf work pcie transcript virtuals.do vsim.wlf modelsim.ini fontconfig wlf*
 
 FORCE:

@@ -38,17 +38,17 @@ vmap work_lib work
 vlib pcie
 onbreak resume
 
-vlog -sv $IP_DIR/block-ram/ram_sc_be.sv          -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
-vlog -sv $IP_DIR/dvr-rng/dvr_rng_pkg.sv          -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
-vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
-vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv      -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv   -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION +incdir+..
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
-vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
-vlog -sv $IP_DIR/pcie/consumer/consumer.sv       -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
-vlog -sv ../pcie_app_pkg.sv                      -hazards -lint -pedanticerrors -L makestuff -L pcie +define+SIMULATION
-vlog -sv ../pcie_app.sv                          -hazards -lint -pedanticerrors -L makestuff -L pcie +define+SIMULATION
+vlog -sv $IP_DIR/block-ram/ram_sc_be.sv            -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/dvr-rng/dvr_rng_pkg.sv            -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/buffer-fifo/buffer_fifo_impl.sv   -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/buffer-fifo/buffer_fifo.sv        -hazards -lint -pedanticerrors -work makestuff      +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr_pkg.sv     -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION +incdir+..
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_recv.sv         -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_send.sv         -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv $IP_DIR/pcie/tlp-xcvr/tlp_xcvr.sv         -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv $IP_DIR/pcie/consumer/example_consumer.sv -hazards -lint -pedanticerrors -work pcie           +define+SIMULATION
+vlog -sv ../pcie_app_pkg.sv                        -hazards -lint -pedanticerrors -L makestuff -L pcie +define+SIMULATION
+vlog -sv ../pcie_app.sv                            -hazards -lint -pedanticerrors -L makestuff -L pcie +define+SIMULATION
 
 if {[lsearch {svgx} $env(FPGA)] >= 0} {
   # Do a Stratix V simulation
@@ -149,26 +149,26 @@ add wave      pcie_app/tlp_inst/f2cReady_out
 add wave      pcie_app/tlp_inst/f2cReset_out
 
 add wave -div "CPU->FPGA Pipe"
-add wave      pcie_app/tlp_inst/c2fWriteEnable_out
-add wave      pcie_app/tlp_inst/c2fByteMask_out
+add wave      pcie_app/tlp_inst/c2fWrEnable_out
+add wave      pcie_app/tlp_inst/c2fWrByteMask_out
 add wave -radix unsigned pcie_app/tlp_inst/c2fWrPtr_out
-add wave -hex pcie_app/tlp_inst/c2fChunkOffset_out
-add wave -hex pcie_app/tlp_inst/c2fData_out
+add wave -hex pcie_app/tlp_inst/c2fWrOffset_out
+add wave -hex pcie_app/tlp_inst/c2fWrData_out
 add wave -radix unsigned pcie_app/tlp_inst/c2fRdPtr_out
 add wave      pcie_app/tlp_inst/c2fDTAck_in
 
 add wave -div "CPU->FPGA Memory"
-add wave -hex pcie_app/c2f_ram/writeEnable_in
-add wave -hex pcie_app/c2f_ram/spanEnables_in
-add wave -hex pcie_app/c2f_ram/writeAddr_in
-add wave -hex pcie_app/c2f_ram/writeData_in
-add wave -hex pcie_app/c2f_ram/readAddr_in
-add wave -hex pcie_app/c2f_ram/readData_out
+add wave -hex pcie_app/c2f_ram/wrEnable_in
+add wave -hex pcie_app/c2f_ram/wrByteMask_in
+add wave -hex pcie_app/c2f_ram/wrAddr_in
+add wave -hex pcie_app/c2f_ram/wrData_in
+add wave -hex pcie_app/c2f_ram/rdAddr_in
+add wave -hex pcie_app/c2f_ram/rdData_out
 add wave -hex pcie_app/c2f_ram/memArray
 
 add wave -div "CPU->FPGA Consumer"
-add wave -radix unsigned pcie_app/c2f_consumer/wrIndex_in
-add wave -radix unsigned pcie_app/c2f_consumer/rdIndex_in
+add wave -radix unsigned pcie_app/c2f_consumer/wrPtr_in
+add wave -radix unsigned pcie_app/c2f_consumer/rdPtr_in
 add wave                 pcie_app/c2f_consumer/dtAck_out
 add wave -radix unsigned pcie_app/c2f_consumer/rdOffset_out
 add wave -hex            pcie_app/c2f_consumer/rdData_in
@@ -201,8 +201,10 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   configure wave -valuecolwidth 132
   run -all
   view wave
-  bookmark add wave default {{56120ns} {56280ns}}
+  bookmark add wave default {{115350ns} {115658ns}}
   bookmark goto wave default
+  wave activecursor 1
+  wave cursortime -time "115449 ns"
   wave refresh
 } else {
   run -all

@@ -30,14 +30,14 @@ if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      dispClk
 
   add wave -div "Write Side"
-  add wave      uut/writeEnable_in
-  add wave -hex uut/spanEnable_in
-  add wave -hex uut/writeAddr_in
-  add wave -hex uut/writeData_in
+  add wave      uut/wrEnable_in
+  add wave -hex uut/wrByteMask_in
+  add wave -hex uut/wrAddr_in
+  add wave -hex uut/wrData_in
 
   add wave -div "Read Side"
-  add wave -hex uut/readAddr_in
-  add wave -hex uut/readData_out
+  add wave -hex uut/rdAddr_in
+  add wave -hex uut/rdData_out
 
   add wave -div "Internals"
   add wave -hex uut/memArray

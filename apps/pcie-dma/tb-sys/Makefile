@@ -20,6 +20,6 @@ gui: FORCE
 	FPGA=$(FPGA) EN_SWAP=$(EN_SWAP) NUM_ITERATIONS=$(NUM_ITERATIONS) GUI=1 vsim -do sim.do > /dev/null &
 
 clean: FORCE
-	rm -rf work transcript virtuals.do vsim.wlf altpcie_monitor*.log modelsim.ini fontconfig wlft*
+	rm -rf work pcie transcript virtuals.do vsim.wlf altpcie_monitor*.log modelsim.ini fontconfig wlft*
 
 FORCE:

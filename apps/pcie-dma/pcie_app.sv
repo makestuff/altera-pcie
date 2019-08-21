@@ -57,12 +57,12 @@ module pcie_app#(
   logic f2cReset;
 
   // CPU->FPGA data
-  logic c2fWriteEnable;
-  ByteMask64 c2fByteMask;
-  C2FChunkIndex c2fWrIndex;
+  logic c2fWrEnable;
+  ByteMask64 c2fWrByteMask;
+  C2FChunkPtr c2fWrPtr;
   C2FChunkOffset c2fWrOffset;
   uint64 c2fWrData;
-  C2FChunkIndex c2fRdIndex;
+  C2FChunkPtr c2fRdPtr;
   C2FChunkOffset c2fRdOffset;
   uint64 c2fRdData;
   logic c2fDTAck;
@@ -78,13 +78,13 @@ module pcie_app#(
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
     pcieClk_in,
-    c2fWriteEnable, c2fByteMask, {c2fWrIndex, c2fWrOffset}, c2fWrData,
-    {c2fRdIndex, c2fRdOffset}, c2fRdData
+    c2fWrEnable, c2fWrByteMask, {c2fWrPtr, c2fWrOffset}, c2fWrData,
+    {c2fRdPtr, c2fRdOffset}, c2fRdData
   );
 
   // Consumer unit
-  consumer c2f_consumer(
-    pcieClk_in, c2fWrIndex, c2fRdIndex, c2fDTAck, c2fRdOffset, c2fRdData,
+  example_consumer c2f_consumer(
+    pcieClk_in, c2fWrPtr, c2fRdPtr, c2fDTAck, c2fRdOffset, c2fRdData,
     csData, csValid, f2cReset, countInit
   );
 
@@ -123,12 +123,12 @@ module pcie_app#(
     .f2cReset_out   (f2cReset),
 
     // Sink for the memory-mapped CPU->FPGA burst pipe
-    .c2fWriteEnable_out (c2fWriteEnable),
-    .c2fByteMask_out    (c2fByteMask),
-    .c2fWrPtr_out       (c2fWrIndex),
-    .c2fChunkOffset_out (c2fWrOffset),
-    .c2fData_out        (c2fWrData),
-    .c2fRdPtr_out       (c2fRdIndex),
+    .c2fWrEnable_out    (c2fWrEnable),
+    .c2fWrByteMask_out  (c2fWrByteMask),
+    .c2fWrPtr_out       (c2fWrPtr),
+    .c2fWrOffset_out    (c2fWrOffset),
+    .c2fWrData_out      (c2fWrData),
+    .c2fRdPtr_out       (c2fRdPtr),
     .c2fDTAck_in        (c2fDTAck)
   );
 

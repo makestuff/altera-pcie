@@ -20,42 +20,50 @@ file delete -force modelsim.ini
 file delete -force work
 vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
 vlib work
+vlib pcie
 onbreak resume
 
-vlog -sv -hazards -lint -pedanticerrors ../consumer.sv                  -work makestuff +define+SIMULATION
+vlog -sv -hazards -lint -pedanticerrors ../../tlp-xcvr/tlp_xcvr_pkg.sv  -work pcie      +define+SIMULATION +incdir+$env(PROJ_HOME)/apps/pcie-dma
+vlog -sv -hazards -lint -pedanticerrors ../example_consumer.sv          -work pcie      +define+SIMULATION
 vlog -sv -hazards -lint -pedanticerrors ../../../block-ram/ram_sc_be.sv -work makestuff +define+SIMULATION
-vlog -sv -hazards -lint -pedanticerrors consumer_tb.sv                     -L makestuff
-vsim -t ps -novopt +nowarn3116 -L work -L makestuff consumer_tb
+vlog -sv -hazards -lint -pedanticerrors example_consumer_tb.sv -L makestuff -L pcie
+vsim -t ps -novopt +nowarn3116 -L work -L makestuff -L pcie example_consumer_tb
 
 if {[info exists ::env(GUI)] && $env(GUI)} {
   add wave      dispClk
 
   add wave -div "Write Side"
-  add wave      wrEnable
-  add wave      wrByteMask
-  add wave -uns wrIndex
-  add wave -uns wrOffset
-  add wave -hex wrData
+  add wave      ram/wrEnable_in
+  add wave      ram/wrByteMask_in
+  add wave -uns ram/wrAddr_in
+  add wave -hex ram/wrData_in
   add wave -div "Read Side"
-  add wave      dtAck
-  add wave -uns rdIndex
-  add wave -uns rdOffset
-  add wave -hex rdData
+  add wave -uns uut/wrPtr_in
+  add wave -uns uut/rdPtr_in
+  add wave      uut/dtAck_out
+  add wave -uns uut/rdOffset_out
+  add wave -hex uut/rdData_in
+  add wave -div "Status/Control"
+  add wave -hex uut/csData_out
+  add wave      uut/csValid_out
+  add wave      uut/csReset_in
+  add wave -uns uut/countInit_in
   add wave -div "Internals"
   add wave      uut/state
   add wave -hex uut/ckSum
+  add wave -uns uut/count
   add wave -div ""
 
-  configure wave -namecolwidth 265
+  configure wave -namecolwidth 245
   configure wave -valuecolwidth 105
   configure wave -gridoffset 0ns
   configure wave -gridperiod 10ns
   run -all
   view wave
-  bookmark add wave default {{67920ns} {68220ns}}
+  bookmark add wave default {{1580ns} {2000ns}}
   bookmark goto wave default
   wave activecursor 1
-  wave cursortime -time "67940 ns"
+  wave cursortime -time "4170 ns"
   wave refresh
 } else {
   run -all

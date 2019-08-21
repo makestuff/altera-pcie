@@ -16,10 +16,10 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-module consumer(
+module example_consumer(
     input logic sysClk_in,
-    input tlp_xcvr_pkg::C2FChunkIndex wrIndex_in,
-    input tlp_xcvr_pkg::C2FChunkIndex rdIndex_in,
+    input tlp_xcvr_pkg::C2FChunkPtr wrPtr_in,
+    input tlp_xcvr_pkg::C2FChunkPtr rdPtr_in,
     output logic dtAck_out,
     output tlp_xcvr_pkg::C2FChunkOffset rdOffset_out,
     input tlp_xcvr_pkg::uint64 rdData_in,
@@ -66,7 +66,7 @@ module consumer(
     dtAck_out = 0;
     rdOffset_out = offset;
     csData_out = ckSum;
-    csValid_out = (wrIndex_in == rdIndex_in) ? 1'b1 : 1'b0;
+    csValid_out = (wrPtr_in == rdPtr_in) ? 1'b1 : 1'b0;
 
     // Next state logic
     case (state)
@@ -107,7 +107,7 @@ module consumer(
 
       // Wait for a chunk to be ready
       S_IDLE: begin
-        if (countInit_in != 0 && wrIndex_in != rdIndex_in) begin
+        if (countInit_in != 0 && wrPtr_in != rdPtr_in) begin
           state_next = S_READ0;
           rdOffset_out = '0;  // read address zero
         end

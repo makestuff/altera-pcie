@@ -20,37 +20,37 @@
 // parameterized, but Quartus 16.1 refuses to infer altsyncram blocks if so.
 //
 module ram_sc_be#(
-    parameter int ADDR_NBITS = 5,
-    parameter int SPAN_NBITS = 8  // if 8 then the spanEnable_in are really byte-enables
+    parameter int ADDR_NBITS = 5,  // default 32 rows
+    parameter int SPAN_NBITS = 8   // if !=8 then wrByteMask_in is more of a "span-mask" rather than "byte-mask"
   )(
     input  logic                        clk_in,
 
-    input  logic                        writeEnable_in,
-    input  logic[7:0]                   spanEnables_in,
-    input  logic[ADDR_NBITS-1 : 0]      writeAddr_in,
-    input  logic[SPAN_NBITS-1 : 0][7:0] writeData_in,
+    input  logic                        wrEnable_in,
+    input  logic[7:0]                   wrByteMask_in,
+    input  logic[ADDR_NBITS-1 : 0]      wrAddr_in,
+    input  logic[SPAN_NBITS-1 : 0][7:0] wrData_in,
 
-    input  logic[ADDR_NBITS-1 : 0]      readAddr_in,
-    output logic[SPAN_NBITS-1 : 0][7:0] readData_out
+    input  logic[ADDR_NBITS-1 : 0]      rdAddr_in,
+    output logic[SPAN_NBITS-1 : 0][7:0] rdData_out
   );
   typedef logic[SPAN_NBITS-1 : 0] Data;  // SPAN_NBITS x 1-bit
   typedef Data[7:0] Row;                 // Eight Data spans
   Row memArray[0 : 2**ADDR_NBITS-1];
 
   always_ff @(posedge clk_in) begin: infer_regs
-    if (writeEnable_in) begin
-      if (spanEnables_in[0]) memArray[writeAddr_in][0] <= writeData_in[0];
-      if (spanEnables_in[1]) memArray[writeAddr_in][1] <= writeData_in[1];
-      if (spanEnables_in[2]) memArray[writeAddr_in][2] <= writeData_in[2];
-      if (spanEnables_in[3]) memArray[writeAddr_in][3] <= writeData_in[3];
-      if (spanEnables_in[4]) memArray[writeAddr_in][4] <= writeData_in[4];
-      if (spanEnables_in[5]) memArray[writeAddr_in][5] <= writeData_in[5];
-      if (spanEnables_in[6]) memArray[writeAddr_in][6] <= writeData_in[6];
-      if (spanEnables_in[7]) memArray[writeAddr_in][7] <= writeData_in[7];
+    if (wrEnable_in) begin
+      if (wrByteMask_in[0]) memArray[wrAddr_in][0] <= wrData_in[0];
+      if (wrByteMask_in[1]) memArray[wrAddr_in][1] <= wrData_in[1];
+      if (wrByteMask_in[2]) memArray[wrAddr_in][2] <= wrData_in[2];
+      if (wrByteMask_in[3]) memArray[wrAddr_in][3] <= wrData_in[3];
+      if (wrByteMask_in[4]) memArray[wrAddr_in][4] <= wrData_in[4];
+      if (wrByteMask_in[5]) memArray[wrAddr_in][5] <= wrData_in[5];
+      if (wrByteMask_in[6]) memArray[wrAddr_in][6] <= wrData_in[6];
+      if (wrByteMask_in[7]) memArray[wrAddr_in][7] <= wrData_in[7];
     end
-    if (^readAddr_in === 1'bX)
-      readData_out <= 'X;
+    if (^rdAddr_in === 1'bX)
+      rdData_out <= 'X;
     else
-      readData_out <= memArray[readAddr_in];
+      rdData_out <= memArray[rdAddr_in];
   end
 endmodule

@@ -29,6 +29,7 @@ set_global_assignment -name MESSAGE_DISABLE 332189
 set_global_assignment -name SEARCH_PATH        ".."
 set_global_assignment -name SDC_FILE           "../top_level.sdc"
 set_global_assignment -name QIP_FILE           "../../../ip/pcie/stratixv/pcie.qip"
+set_global_assignment -name QIP_FILE           "../../../ip/pcie/consumer/example_consumer.qip"
 set_global_assignment -name QIP_FILE           "../../../ip/dvr-rng/dvr_rng64.qip"
 set_global_assignment -name QIP_FILE           "../../../ip/block-ram/ram_sc_be.qip"
 set_global_assignment -name SYSTEMVERILOG_FILE "../pcie_app_pkg.sv"

@@ -107,11 +107,11 @@ module altpcietb_bfm_driver_chaining#(
 
   task c2fWriteChunk(Result expecting, bit doAssert = 1, output int successes);
     static int index = 0;  // index into the dvr_rng_pkg::SEQ64 array of precomputed pseudorandom numbers
-    static C2FChunkIndex wrPtr = 0;
+    static C2FChunkPtr wrPtr = 0;
     static int successCount = 0;
     static Result lastResult = SUCCESS;
-    const automatic C2FChunkIndex newWrPtr = wrPtr + 1;  // wraps appropriately
-    const automatic C2FChunkIndex rdPtr = hostRead32(C2F_RDPTR_ADDR);  // FPGA DMAs its read-pointer here
+    const automatic C2FChunkPtr newWrPtr = wrPtr + 1;  // wraps appropriately
+    const automatic C2FChunkPtr rdPtr = hostRead32(C2F_RDPTR_ADDR);  // FPGA DMAs its read-pointer here
     if (newWrPtr == rdPtr) begin
       // There's no room for more data; hopefully we're expecting that to be the case
       if (doAssert) begin
@@ -170,7 +170,7 @@ module altpcietb_bfm_driver_chaining#(
     Data u32;
     uint64 u64;
     bit retCode;
-    automatic F2CChunkIndex rdPtr = 0;
+    automatic F2CChunkPtr rdPtr = 0;
     automatic Result result = SUCCESS;
     int successes;
     //parameter int NUM_QWS = (C2F_NUMCHUNKS-1)*C2F_CHUNKSIZE/8;  // verify all C2F_NUMCHUNKS-1 chunks of CPU->FPGA data
