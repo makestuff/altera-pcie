@@ -9,7 +9,7 @@ FPGA         := svgx
 EN_SWAP      := 0
 
 # By default, just build a JTAG programming-file
-all: build/proj.sof defs
+all: defs build/proj.sof
 
 build/proj.sof: build/proj.qpf
 	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
