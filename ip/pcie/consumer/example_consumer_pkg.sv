@@ -16,8 +16,7 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-package pcie_app_pkg;
-  localparam int CHECKSUM_MSW  = tlp_xcvr_pkg::CTL_BASE - 1;
-  localparam int CHECKSUM_LSW  = tlp_xcvr_pkg::CTL_BASE - 2;
-  localparam int CONSUMER_RATE = tlp_xcvr_pkg::CTL_BASE - 3;
+package example_consumer_pkg;
+  localparam int DISABLED = 0;  // no consumption at all
+  localparam int GOBBLE   = 1;  // maximum possible consumption rate
 endpackage

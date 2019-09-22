@@ -21,12 +21,8 @@ if {![info exists ::env(FPGA)]} {
   puts "\nYou need to set the FPGA environment variable!\n"
   quit
 }
-if {![info exists ::env(EN_SWAP)]} {
-  puts "\nYou need to set the EN_SWAP environment variable!\n"
-  quit
-}
-if {![info exists ::env(NUM_ITERATIONS)]} {
-  puts "\nYou need to set the NUM_ITERATIONS environment variable!\n"
+if {![info exists ::env(MODE)]} {
+  puts "\nYou need to set the MODE environment variable!\n"
   quit
 }
 
@@ -59,8 +55,8 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
   vlog -sv -hazards -lint -pedanticerrors pcie_sv_tb.sv -L makestuff -L pcie
   if [ string match "*ModelSim ALTERA*" [ vsim -version ] ] {
     vsim -novopt -t ps \
-      -gEN_SWAP=$env(EN_SWAP) \
-      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
+      -gMODE=$env(MODE) \
+      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/MODE=$env(MODE) \
       -L work -L work_lib -L makestuff -L pcie -L pcie_sv -L pcie_sv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
@@ -68,8 +64,8 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
       pcie_sv_tb
   } else {
     vopt +acc pcie_sv_tb -o pcie_sv_tb_opt \
-      -gEN_SWAP=$env(EN_SWAP) \
-      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
+      -gMODE=$env(MODE) \
+      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/MODE=$env(MODE) \
       -L work -L work_lib -L makestuff -L pcie -L pcie_sv -L pcie_sv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
@@ -84,8 +80,8 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
   vlog -sv -hazards -lint -pedanticerrors pcie_cv_tb.sv -L makestuff -L pcie
   if [ string match "*ModelSim ALTERA*" [ vsim -version ] ] {
     vsim -novopt -t ps \
-      -gEN_SWAP=$env(EN_SWAP) \
-      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
+      -gMODE=$env(MODE) \
+      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/MODE=$env(MODE) \
       -L work -L work_lib -L makestuff -L pcie -L pcie_cv -L pcie_cv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
@@ -93,8 +89,8 @@ if {[lsearch {svgx} $env(FPGA)] >= 0} {
       pcie_cv_tb
   } else {
     vopt +acc pcie_cv_tb -o pcie_cv_tb_opt \
-      -gEN_SWAP=$env(EN_SWAP) \
-      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/NUM_ITERATIONS=$env(NUM_ITERATIONS) \
+      -gMODE=$env(MODE) \
+      -gdut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/MODE=$env(MODE) \
       -L work -L work_lib -L makestuff -L pcie -L pcie_cv -L pcie_cv_tb \
       -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_mf -L altera_lnsim_ver \
       -L stratixiv_hssi_ver -L stratixiv_pcie_hip_ver -L stratixiv_ver \
@@ -196,6 +192,13 @@ add wave -hex pcie_app/tlp_inst/send/tag
 add wave -hex pcie_app/tlp_inst/send/lowAddr
 add wave -hex pcie_app/tlp_inst/send/qwCount
 add wave      pcie_app/tlp_inst/send/f2cEnabled
+
+add wave -div "App Internals"
+add wave      pcie_app/state
+add wave -radix unsigned pcie_app/timer
+add wave -radix unsigned pcie_app/qwCount
+add wave -radix unsigned pcie_app/dwCount
+add wave      pcie_app/singleReg
 add wave -div ""
 
 if {[info exists ::env(GUI)] && $env(GUI)} {

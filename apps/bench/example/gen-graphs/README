@@ -1,0 +1,6 @@
+Scripts to plot latency graphs:
+
+  plot-dist.sh: Plot a histogram of latency against likelihood for a single run
+  plot-trends.py: Plot lines for message-size vs latency, with error bars
+
+The error bars show one standard deviation.

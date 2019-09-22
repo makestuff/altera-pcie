@@ -190,10 +190,10 @@ module altpcietb_bfm_driver_chaining#(
     displayBarConfigs();
 
     // Initialize FPGA
-    fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);       // set base address of FPGA->CPU buffer
-    fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);       // set base address of metrics buffer
-    fpgaWrite(DMA_ENABLE, 1);                   // reset everything
-    fpgaWrite(pcie_app_pkg::CONSUMER_RATE, 0);  // disable consumer
+    fpgaWrite(F2C_BASE, F2C_BASE_ADDR/8);                                    // set base address of FPGA->CPU buffer
+    fpgaWrite(MTR_BASE, MTR_BASE_ADDR/8);                                    // set base address of metrics buffer
+    fpgaWrite(DMA_ENABLE, 1);                                                // reset everything
+    fpgaWrite(pcie_app_pkg::CONSUMER_RATE, example_consumer_pkg::DISABLED);  // disable consumer
 
     // Do some burst-writes...
     $display("\nINFO: %15d ns Burst-writing chunks to fill the CPU-FPGA queue...", $time()/1000);

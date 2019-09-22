@@ -26,7 +26,7 @@ module example_consumer(
     output tlp_xcvr_pkg::uint64 csData_out,
     output logic csValid_out,
     input logic csReset_in,
-    input tlp_xcvr_pkg::uint32 countInit_in
+    input tlp_xcvr_pkg::uint32 countInit_in  // either a number or example_consumer_pkg::DISABLE or example_consumer_pkg::GOBBLE.
   );
 
   import tlp_xcvr_pkg::*;
@@ -73,9 +73,13 @@ module example_consumer(
       // We've got QW[0]
       S_READ0: begin
         ckSum_next = uint64'(ckSum + rdData_in);  // add QW[0] to the checksum
-        state_next = S_READ1;
         rdOffset_out = 1;  // read address 1
-        offset_next = 2;  // next will be 2
+        if (tlp_xcvr_pkg::C2F_CHUNKSIZE_NBITS == 4) begin
+          state_next = S_READ2;
+        end else begin
+          state_next = S_READ1;
+          offset_next = 2;  // next will be 2
+        end
       end
 
       // We've got QW[1] up to the penultimate
@@ -91,8 +95,14 @@ module example_consumer(
       // We've got the last QW
       S_READ2: begin
         ckSum_next = uint64'(ckSum + rdData_in);  // add QW[N..1] to the checksum
-        state_next = S_WAIT;
-        count_next = uint32'(countInit_in - C2F_CHUNKSIZE/8 - 2);
+        if (countInit_in == example_consumer_pkg::GOBBLE || countInit_in <= C2F_CHUNKSIZE/8 - 2) begin
+          state_next = S_IDLE;
+          count_next = 'X;
+          dtAck_out = 1;
+        end else begin
+          state_next = S_WAIT;
+          count_next = uint32'(countInit_in - C2F_CHUNKSIZE/8 - 2);
+        end
       end
 
       // We're counting down
@@ -107,9 +117,12 @@ module example_consumer(
 
       // Wait for a chunk to be ready
       S_IDLE: begin
-        if (countInit_in != 0 && wrPtr_in != rdPtr_in) begin
-          state_next = S_READ0;
+        if (countInit_in != example_consumer_pkg::DISABLED && wrPtr_in != rdPtr_in) begin
           rdOffset_out = '0;  // read address zero
+          if (tlp_xcvr_pkg::C2F_CHUNKSIZE_NBITS == 3)
+            state_next = S_READ2;
+          else
+            state_next = S_READ0;
         end
       end
     endcase

@@ -1,4 +1,4 @@
-Fullchip simulation of the demo example.
+Fullchip simulation of the benchmark example.
 
 The altpcietb_bfm_driver_chaining.v testbench is modified from the Altera-generated file, and
 implements the behaviour of the CPU side. Similarly the pcie_tb.vhdl file is also based on the

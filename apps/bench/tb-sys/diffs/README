@@ -1,0 +1,4 @@
+The testbenches are only slightly different from the testbenches generated for
+the example designs. These scripts show these differences by generating the
+example design testbench, and comparing. This makes porting to new FPGA families
+easier, because it's clear what has changed with respect to the example design.

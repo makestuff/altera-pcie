@@ -203,7 +203,7 @@ module tlp_send(
       // Send first QW of DmaWrite packet
       S_DMA0: begin
         if (txReady_in) begin
-          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(32));
+          txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(F2C_TLPSIZE/4));
           txValid_out = 1;
           txSOP_out = 1;
           qwCount_next = 'X;
@@ -361,7 +361,7 @@ module tlp_send(
   function State doDmaWrite();
     // The PCIe bus is ready to accept data, we have data to send, there's space in the
     // FPGA->CPU circular buffer, and DMA send has been enabled
-    txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(32));
+    txData_out = genDmaWrite0(.reqID(cfgBusDev_in), .dwCount(F2C_TLPSIZE/4));
     txValid_out = 1;
     txSOP_out = 1;
     tlpCount_next = '1;

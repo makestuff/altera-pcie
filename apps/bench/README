@@ -1,5 +1,6 @@
-This is a simple demo, demonstrating register reads and writes, and use of the
-FPGA->CPU and CPU->FPGA message queues.
+This is a latency benchmark. It measures the round-trip time from just before
+a message is sent to the CPU, to just after the CPU's response has been
+received.
 
 Building:
   make FPGA=cvgt  # or

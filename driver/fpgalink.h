@@ -30,6 +30,7 @@ class FPGA {
   // Sanity-checks...
   static_assert(sizeof(S) == C2F_CHUNKSIZE, "sizeof(S) must be the same as C2F_CHUNKSIZE");
   static_assert(sizeof(R) == F2C_CHUNKSIZE, "sizeof(R) must be the same as F2C_CHUNKSIZE");
+  static_assert(F2C_CHUNKSIZE >= F2C_TLPSIZE, "F2C_CHUNKSIZE cannot be smaller than F2C_TLPSIZE");
 
   // Janitor class for a region of mmap()'able memory
   class Region {
