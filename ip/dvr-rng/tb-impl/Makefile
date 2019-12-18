@@ -16,10 +16,15 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-TESTBENCH := buffer_fifo_tb
-LIBS := makestuff altera_mf_ver
-DEFS := BLOCK_RAM=0
+GEN_LIST := $(shell cat ../gen-list.txt)
+TESTBENCH := $(GEN_LIST:%=test_%)
 
 include $(PROJ_HOME)/tools/common.mk
 
-$(COMPILE): $(TESTBENCH:%=%.sv)
+$(COMPILE): $(TESTBENCH:%=%.vhdl)
+
+# Note:
+#
+#   You can run in the ModelSim GUI like this:
+#
+#   make TESTBENCH=test_rng_n1024_r32_t5_k32_s1c48 testgui

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2019 Chris McClelland
+# Copyright (C) 2014, 2017 Chris McClelland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 # and associated documentation files (the "Software"), to deal in the Software without
@@ -16,10 +16,23 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-TESTBENCH := buffer_fifo_tb
-LIBS := makestuff altera_mf_ver
-DEFS := BLOCK_RAM=0
+ifeq ($(OS),Windows_NT)
+  CPP := cl -EHsc -Fe
+  EXT := .exe
+else
+  CPP := g++ -g -std=c++11 -o
+endif
 
-include $(PROJ_HOME)/tools/common.mk
+TARGETS := write_vhdl$(EXT) get_seq32$(EXT) get_seq64$(EXT) get_seq96$(EXT)
 
-$(COMPILE): $(TESTBENCH:%=%.sv)
+.PHONY: gen compile test clean
+
+gen: $(TARGETS)
+compile: gen
+test: gen
+
+%$(EXT): %.cpp
+	$(CPP)$@ $<
+
+clean:
+	rm -f $(TARGETS) *.obj

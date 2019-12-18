@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014, 2017 Chris McClelland
+# Copyright (C) 2019 Chris McClelland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 # and associated documentation files (the "Software"), to deal in the Software without
@@ -16,45 +16,29 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-file delete -force modelsim.ini
-file delete -force work
-vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
-vlib work
-onbreak resume
+source "$::env(PROJ_HOME)/tools/common.do"
 
-vlog -sv -novopt -hazards -lint -pedanticerrors ../ram_sc_be.sv +incdir+.. -work makestuff
-vlog -sv -novopt -hazards -lint -pedanticerrors ram_sc_be_tb.sv
-vsim -t ps -novopt -L work -L makestuff -L altera_mf_ver ram_sc_be_tb
+proc do_test {gui} {
+    if {$gui} {
+        vsim_run $::env(TESTBENCH)
 
-if {[info exists ::env(GUI)] && $env(GUI)} {
-  add wave      dispClk
+        add wave      dispClk
 
-  add wave -div "Write Side"
-  add wave      uut/wrEnable_in
-  add wave -hex uut/wrByteMask_in
-  add wave -hex uut/wrAddr_in
-  add wave -hex uut/wrData_in
+        add wave -div "Write Side"
+        add wave      uut/wrEnable_in
+        add wave -hex uut/wrByteMask_in
+        add wave -hex uut/wrAddr_in
+        add wave -hex uut/wrData_in
 
-  add wave -div "Read Side"
-  add wave -hex uut/rdAddr_in
-  add wave -hex uut/rdData_out
+        add wave -div "Read Side"
+        add wave -hex uut/rdAddr_in
+        add wave -hex uut/rdData_out
 
-  add wave -div "Internals"
-  add wave -hex uut/memArray
-  add wave -div ""
+        add wave -div "Internals"
+        add wave -hex uut/memArray
 
-  configure wave -namecolwidth 216
-  configure wave -valuecolwidth 130
-  configure wave -gridoffset 0ns
-  configure wave -gridperiod 10ns
-  run -all
-  view wave
-  bookmark add wave default {{0ns} {300ns}}
-  bookmark goto wave default
-  wave activecursor 1
-  wave cursortime -time "70 ns"
-  wave refresh
-} else {
-  run -all
-  quit
+        gui_run 216 130 0 10 0 32 70
+    } else {
+        cli_run
+    }
 }

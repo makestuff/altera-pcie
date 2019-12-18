@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014, 2017 Chris McClelland
+# Copyright (C) 2019 Chris McClelland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 # and associated documentation files (the "Software"), to deal in the Software without
@@ -16,33 +16,26 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-file delete -force modelsim.ini
-file delete -force work
-vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
-vlib work
+source "$::env(PROJ_HOME)/tools/common.do"
 
-vcom -93   -novopt ../rng_n1024_r32_t5_k32_s1c48.vhdl -check_synthesis -work makestuff
-vcom -93   -novopt ../dvr_rng32.vhdl                  -check_synthesis -work makestuff
-vcom -2008 -novopt dvr_rng_tb.vhdl
-vsim -t ps -novopt dvr_rng_tb
+proc do_test {gui} {
+    if {$gui} {
+        vsim_run $::env(TESTBENCH)
 
-add wave -div "Ports"
-add wave      uut/clk_in
-add wave -hex uut/data_out
-add wave      uut/valid_out
-add wave      uut/ready_in
+        add wave -div "Ports"
+        add wave      uut/clk_in
+        add wave -hex uut/data_out
+        add wave      uut/valid_out
+        add wave      uut/ready_in
 
-add wave -div "Internals"
-add wave -hex uut/count
-add wave      uut/seedMode
-add wave      uut/seedBit
-add wave      uut/state
+        add wave -div "Internals"
+        add wave -hex uut/count
+        add wave      uut/seedMode
+        add wave      uut/seedBit
+        add wave      uut/state
 
-configure wave -namecolwidth 180
-configure wave -valuecolwidth 55
-onbreak resume
-run -all
-view wave
-bookmark add wave default {{10230ns} {10550ns}}
-bookmark goto wave default
-wave refresh
+        gui_run 210 70 9 10 10230 32 10269
+    } else {
+        cli_run
+    }
+}

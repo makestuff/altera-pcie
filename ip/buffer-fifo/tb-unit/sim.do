@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014, 2017 Chris McClelland
+# Copyright (C) 2019 Chris McClelland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 # and associated documentation files (the "Software"), to deal in the Software without
@@ -16,51 +16,29 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-if {![info exists ::env(BLOCK_RAM)]} {
-  puts "\nYou need to set the BLOCK_RAM environment variable!\n"
-  quit
-}
+source "$::env(PROJ_HOME)/tools/common.do"
 
-file delete -force modelsim.ini
-file delete -force work
-vmap -modelsimini $env(PROJ_HOME)/ip/sim-libs/modelsim.ini -c
-vlib work
+proc do_test {gui} {
+    if {$gui} {
+        vsim_run $::env(TESTBENCH)
 
-vlog -sv -novopt -hazards -lint -pedanticerrors ../buffer_fifo_impl.sv -work makestuff
-vlog -sv -novopt -hazards -lint -pedanticerrors ../buffer_fifo.sv      -work makestuff
-vlog -sv -novopt -hazards -lint -pedanticerrors buffer_fifo_tb.sv
-vsim -t ps -novopt -gBLOCK_RAM=$env(BLOCK_RAM) -L work -L makestuff -L altera_mf_ver buffer_fifo_tb
+        add wave      dispClk
+        add wave -uns uut/depth_out
 
-if {[info exists ::env(GUI)] && $env(GUI)} {
-  add wave      dispClk
-  add wave -uns uut/depth_out
+        add wave -div "Input Pipe"
+        add wave -hex uut/iData_in
+        add wave      uut/iValid_in
+        add wave      uut/iReady_out
+        add wave      uut/iReadyChunk_out
 
-  add wave -div "Input Pipe"
-  add wave -hex uut/iData_in
-  add wave      uut/iValid_in
-  add wave      uut/iReady_out
-  add wave      uut/iReadyChunk_out
+        add wave -div "Output Pipe"
+        add wave -hex uut/oData_out
+        add wave      uut/oValid_out
+        add wave      uut/oValidChunk_out
+        add wave      uut/oReady_in
 
-  add wave -div "Output Pipe"
-  add wave -hex uut/oData_out
-  add wave      uut/oValid_out
-  add wave      uut/oValidChunk_out
-  add wave      uut/oReady_in
-  add wave -div ""
-
-  configure wave -namecolwidth 265
-  configure wave -valuecolwidth 25
-  configure wave -gridoffset 0ns
-  configure wave -gridperiod 10ns
-  onbreak resume
-  run -all
-  view wave
-  bookmark add wave default {{0ns} {300ns}}
-  bookmark goto wave default
-  wave activecursor 1
-  wave cursortime -time "70 ns"
-  wave refresh
-} else {
-  run -all
-  quit
+        gui_run 265 25 0 10 0 32 70
+    } else {
+        cli_run
+    }
 }

@@ -119,7 +119,6 @@ module example_consumer_tb;
     @(posedge sysClk);
     @(posedge sysClk);
     @(posedge sysClk);
-    $display("\nSUCCESS: Simulation stopped due to successful completion!");
     $stop(0);
   end
 endmodule

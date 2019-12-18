@@ -1,6 +1,5 @@
-#!/bin/sh
 #
-# Copyright (C) 2014, 2017 Chris McClelland
+# Copyright (C) 2019 Chris McClelland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 # and associated documentation files (the "Software"), to deal in the Software without
@@ -17,16 +16,6 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-if [ "$OS" = "Windows_NT" ]; then
-  CPP="cl -EHsc -Fe"
-else
-  CPP="g++ -g -std=c++11 -o"
-fi
+SUBDIRS := cyclonev stratixv tlp-xcvr consumer
 
-for i in write_vhdl get_seq32 get_seq64 get_seq96; do
-  echo "--------------------------------------------------------------------------------"
-  echo "${CPP}${i} ${i}.cpp"
-  ${CPP}${i} ${i}.cpp
-  echo
-  echo
-done
+include $(PROJ_HOME)/tools/common.mk

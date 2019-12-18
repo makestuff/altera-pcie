@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2014, 2017, 2019 Chris McClelland
+// Copyright (C) 2019 Chris McClelland
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software
 // and associated documentation files (the "Software"), to deal in the Software without
@@ -85,7 +85,7 @@ module ram_sc_be_tb;
     rdAddr = 'X;
     @(posedge sysClk);
 
-    for (int i = 0; i < 32; i = i + 1) begin
+    for (int i = 0; i < 2**ADDR_NBITS; i = i + 1) begin
       doWrite(i, 8'b01010101);
       doWrite(i, 8'b10101010);
     end
@@ -93,13 +93,12 @@ module ram_sc_be_tb;
     @(posedge sysClk);
     @(posedge sysClk);
 
-    for (int i = 0; i < 32; i = i + 1) begin
+    for (int i = 0; i < 2**ADDR_NBITS; i = i + 1) begin
       doRead(i);
     end
 
     @(posedge sysClk);
     @(posedge sysClk);
-    $display("\nSUCCESS: Simulation stopped due to successful completion!");
     $stop(0);
   end
 endmodule

@@ -16,10 +16,9 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-TESTBENCH := buffer_fifo_tb
-LIBS := makestuff altera_mf_ver
-DEFS := BLOCK_RAM=0
+SUBDIRS := block-ram buffer-fifo dvr-rng pcie
 
 include $(PROJ_HOME)/tools/common.mk
 
-$(COMPILE): $(TESTBENCH:%=%.sv)
+clean::
+	rm -rf sim-libs
