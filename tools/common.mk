@@ -82,17 +82,17 @@ else ifdef WORK
 
   sub_gen:
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"rtl\" work=\"$(WORK)\" subdirs=\"$(SUBDIRS)\">"
-	@for DIR in $(SUBDIRS); do make -C $$DIR gen; done
+	@(for DIR in $(SUBDIRS); do make -C $$DIR gen || exit; done)
 	@$(ECHO) "EXEC: </$@>"
 
   compile: gen $(MODELSIM) $(WORKINFO) $(COMPILE)
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"rtl\" work=\"$(WORK)\" subdirs=\"$(SUBDIRS)\">"
-	@for DIR in $(SUBDIRS); do make -C $$DIR compile; done
+	@(for DIR in $(SUBDIRS); do make -C $$DIR compile || exit; done)
 	@$(ECHO) "EXEC: </$@>"
 
   test: compile
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"rtl\" work=\"$(WORK)\" subdirs=\"$(SUBDIRS)\">"
-	@for DIR in $(SUBDIRS); do make -C $$DIR test; done
+	@(for DIR in $(SUBDIRS); do make -C $$DIR test || exit; done)
 	@$(ECHO) "EXEC: </$@>"
 
   clean::
@@ -121,17 +121,17 @@ else
 
   gen::
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"hierarchy\" subdirs=\"$(SUBDIRS)\">"
-	@for DIR in $(SUBDIRS); do make -C $$DIR gen; done
+	@(for DIR in $(SUBDIRS); do make -C $$DIR gen || exit; done)
 	@$(ECHO) "EXEC: </$@>"
 
   compile:
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"hierarchy\" subdirs=\"$(SUBDIRS)\">"
-	@for DIR in $(SUBDIRS); do make -C $$DIR compile; done
+	@(for DIR in $(SUBDIRS); do make -C $$DIR compile || exit; done)
 	@$(ECHO) "EXEC: </$@>"
 
   test:
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"hierarchy\" subdirs=\"$(SUBDIRS)\">"
-	@for DIR in $(SUBDIRS); do make -C $$DIR test; done
+	@(for DIR in $(SUBDIRS); do make -C $$DIR test || exit; done)
 	@$(ECHO) "EXEC: </$@>"
 endif
 
