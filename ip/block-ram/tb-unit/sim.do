@@ -19,26 +19,27 @@
 source "$::env(PROJ_HOME)/tools/common.do"
 
 proc do_test {gui} {
-    if {$gui} {
-        vsim_run $::env(TESTBENCH)
+  if {$gui} {
+    vsim_run $::env(TESTBENCH)
 
-        add wave      dispClk
+    add wave      dispClk
 
-        add wave -div "Write Side"
-        add wave      uut/wrEnable_in
-        add wave -hex uut/wrByteMask_in
-        add wave -hex uut/wrAddr_in
-        add wave -hex uut/wrData_in
+    add wave -div "Write Side"
+    add wave      uut/wrEnable_in
+    add wave -hex uut/wrByteMask_in
+    add wave -hex uut/wrAddr_in
+    add wave -hex uut/wrData_in
 
-        add wave -div "Read Side"
-        add wave -hex uut/rdAddr_in
-        add wave -hex uut/rdData_out
+    add wave -div "Read Side"
+    add wave -hex uut/rdAddr_in
+    add wave -hex uut/rdData_out
 
-        add wave -div "Internals"
-        add wave -hex uut/memArray
+    add wave -div "Internals"
+    add wave -hex uut/memArray
 
-        gui_run 216 130 0 10 0 32 70
-    } else {
-        cli_run
-    }
+    gui_run 216 130 0 10 0 32 70
+  } else {
+    cli_run
+    finish
+  }
 }

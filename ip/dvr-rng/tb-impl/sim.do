@@ -19,18 +19,19 @@
 source "$::env(PROJ_HOME)/tools/common.do"
 
 proc do_test {gui} {
-    if {$gui} {
-        vsim_run $::env(TESTBENCH)
+  if {$gui} {
+    vsim_run $::env(TESTBENCH)
 
-        add wave      uut/clk
-        add wave      uut/ce
-        add wave      uut/mode
-        add wave      uut/s_in
-        add wave      uut/s_out
-        add wave -hex uut/rng
+    add wave      uut/clk
+    add wave      uut/ce
+    add wave      uut/mode
+    add wave      uut/s_in
+    add wave      uut/s_out
+    add wave -hex uut/rng
 
-        gui_run 330 70 9 10 10230 32 10249
-    } else {
-        cli_run
-    }
+    gui_run 330 70 9 10 10230 32 10249
+  } else {
+    cli_run
+    finish
+  }
 }

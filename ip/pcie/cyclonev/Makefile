@@ -48,7 +48,7 @@ $(GENERATE): pcie_cv.qsys
 
 $(COMPILE): pcie_cv.sv
 	@echo "$(BOLD)Compiling Cyclone V hard-IP in $(DIRNAME)$(NORM)"
-	@vsim -c -do 'set QSYS_SIMDIR "pcie_cv/testbench"; source $$QSYS_SIMDIR/mentor/msim_setup.tcl; dev_com; com; exit'
+	@vsim -c -do 'set QSYS_SIMDIR "pcie_cv/testbench"; source $$QSYS_SIMDIR/mentor/msim_setup.tcl; com; exit'
 	@$(VLOG) pcie_cv/testbench/pcie_cv_tb/simulation/submodules/altpcierd_tl_cfg_sample.v
 	@$(CHECK_MODELSIM)
 	@touch $@

@@ -19,23 +19,24 @@
 source "$::env(PROJ_HOME)/tools/common.do"
 
 proc do_test {gui} {
-    if {$gui} {
-        vsim_run $::env(TESTBENCH)
+  if {$gui} {
+    vsim_run $::env(TESTBENCH)
 
-        add wave -div "Ports"
-        add wave      uut/clk_in
-        add wave -hex uut/data_out
-        add wave      uut/valid_out
-        add wave      uut/ready_in
+    add wave -div "Ports"
+    add wave      uut/clk_in
+    add wave -hex uut/data_out
+    add wave      uut/valid_out
+    add wave      uut/ready_in
 
-        add wave -div "Internals"
-        add wave -hex uut/count
-        add wave      uut/seedMode
-        add wave      uut/seedBit
-        add wave      uut/state
+    add wave -div "Internals"
+    add wave -hex uut/count
+    add wave      uut/seedMode
+    add wave      uut/seedBit
+    add wave      uut/state
 
-        gui_run 210 70 9 10 10230 32 10269
-    } else {
-        cli_run
-    }
+    gui_run 210 70 9 10 10230 32 10269
+  } else {
+    cli_run
+    finish
+  }
 }

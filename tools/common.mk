@@ -1,4 +1,4 @@
-BOLD := $(shell tput bold; tput setaf 1)
+BOLD := $(shell tput bold; tput setaf 4)
 NORM := $(shell tput sgr0)
 REALPATH := $(realpath .)
 LIBNAME := $(notdir $(REALPATH))
@@ -28,10 +28,11 @@ ifeq ($(LIBNAME:tb-%=tb-),tb-)
     $(error $(BOLD)A test directory may not set WORK$(NORM))
   endif
   WORKINFO := work/_info
-  VLOG := vlog -nologo -sv -novopt -hazards -lint -pedanticerrors +define+SIMULATION $(VLOPTS) $(LIB_LIST) $(INC_LIST)
+  VLOG := vlog -nologo -sv -novopt -hazards -lint -pedanticerrors +define+SIMULATION $(VLOPTS) $(LIB_LIST) $(INC_LIST) +incdir+$(PROJ_HOME)/tools +incdir+$(PROJ_HOME)/tools/svunit
   VCOM := vcom -nologo -2008 -novopt $(VHOPTS)
-  RUNTEST := source $$::env(PROJ_HOME)/tools/common.do; vsim -novopt -t ps -L work_lib $(DEF_LIST) $(LIB_LIST) $(TESTBENCH)
   export TESTBENCH
+  export CONTINUE_ON_FAILURE
+  export COVERAGE
 
   gen:: $(GENERATE)
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"test\"/>"
@@ -52,13 +53,14 @@ ifeq ($(LIBNAME:tb-%=tb-),tb-)
     test: compile
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"test\"/>"
 	@echo "$(BOLD)Autorunning tests in $(DIRNAME)$(NORM)"
-	@vsim -c -do '$(RUNTEST); run -all; exit -force -code [coverage attribute -name TESTSTATUS -concise]'
+	@vsim -c -do 'source $(PROJ_HOME)/tools/common.do; cli_run; finish'
 	@echo
   endif
 
   clean::
-	rm -rf .tgt work modelsim.ini transcript fontconfig vsim.wlf
+	rm -rf .tgt work modelsim.ini transcript fontconfig vsim.wlf coverage.txt
 
+  $(COMPILE): $(PROJ_HOME)/tools/svunit/svunit_pkg.sv
   $(WORKINFO):
 	@echo "$(BOLD)Preparing local work library for test directory $(DIRNAME)$(NORM)"
 	vlib work
@@ -72,6 +74,9 @@ ifeq ($(LIBNAME:tb-%=tb-),tb-)
 
 # -- RTL -------------------------------------------------------------------------------------------
 else ifdef WORK
+  ifeq ($(COVERAGE),1)
+    VLOPTS += +cover
+  endif
   export MODELSIM := $(LIBDIR)/modelsim.ini
   WORKINFO := $(LIBDIR)/$(WORK)/_info
   VLOG := vlog -nologo -sv -novopt -hazards -lint -pedanticerrors +define+SIMULATION $(VLOPTS) $(LIB_LIST) $(INC_LIST) -work $(WORK)

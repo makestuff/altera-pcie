@@ -19,40 +19,56 @@
 
 # Launch ModelSim in GUI mode, with appropriate window layout
 proc gui_run {ncw vcw go gp start width cursor} {
-    add wave -div ""
-    configure wave -namecolwidth $ncw
-    configure wave -valuecolwidth $vcw
-    configure wave -gridoffset "${go}ns"
-    configure wave -gridperiod "${gp}ns"
-    onbreak resume
+  add wave -div ""
+  configure wave -namecolwidth $ncw
+  configure wave -valuecolwidth $vcw
+  configure wave -gridoffset "${go}ns"
+  configure wave -gridperiod "${gp}ns"
+  onbreak resume
+  run -all
+  view wave
+  set end [expr ${start}+${gp}*${width}]
+  bookmark add wave default "${start}ns ${end}ns"
+  bookmark goto wave default
+  wave activecursor 1
+  wave cursortime -time "${cursor}ns"
+  wave refresh
+}
+
+proc vsim_run {tb {opts ""}} {
+  set cov ""
+  if {$::env(COVERAGE) == 1} {
+    set cov "-coverage"
+  }
+  if {$::env(VOPT) == "0"} {
+    echo "Running without vopt by default: put VOPT := 1 in your Makefile to enable it"
+    eval "vsim -novopt -t ps ${cov} ${opts} $::env(DEF_LIST) -L work_lib $::env(LIB_LIST) ${tb}"
+  } elseif {[string match "*ModelSim ALTERA*" [vsim -version]]} {
+    echo "Running without vopt because ModelSim Altera does not support it"
+    eval "vsim -novopt -t ps ${cov} ${opts} $::env(DEF_LIST) -L work_lib $::env(LIB_LIST) ${tb}"
+  } else {
+    echo "Running with vopt..."
+    eval "vopt +acc ${tb} -o ${tb}_opt ${opts} $::env(DEF_LIST) -L work_lib $::env(LIB_LIST)"
+    eval "vsim -t ps ${cov} ${tb}_opt"
+  }
+}
+
+proc cli_run {{opts ""}} {
+  foreach tb [split $::env(TESTBENCH) " "] {
+    vsim_run ${tb} ${opts}
     run -all
-    view wave
-    set end [expr ${start}+${gp}*${width}]
-    bookmark add wave default "${start}ns ${end}ns"
-    bookmark goto wave default
-    wave activecursor 1
-    wave cursortime -time "${cursor}ns"
-    wave refresh
+    if {$::env(COVERAGE) == 1} {
+      echo
+      coverage report -file coverage.txt
+      cat coverage.txt
+    }
+  }
 }
 
-proc vsim_run {tb} {
-    if {$::env(VOPT) == "0"} {
-        echo "Running without vopt by default: put VOPT := 1 in your Makefile to enable it"
-        eval "vsim -novopt -t ps $::env(DEF_LIST) -L work_lib $::env(LIB_LIST) ${tb}"
-    } elseif {[string match "*ModelSim ALTERA*" [vsim -version]]} {
-        echo "Running without vopt because ModelSim Altera does not support it"
-        eval "vsim -novopt -t ps $::env(DEF_LIST) -L work_lib $::env(LIB_LIST) ${tb}"
-    } else {
-        echo "Running with vopt..."
-        eval "vopt +acc ${tb} -o ${tb}_opt $::env(DEF_LIST) -L work_lib $::env(LIB_LIST)"
-        eval "vsim -t ps ${tb}_opt"
-    }
-}
-
-proc cli_run {} {
-    foreach tb [split $::env(TESTBENCH) " "] {
-        vsim_run ${tb}
-        run -all
-    }
+proc finish {} {
+  if {$::env(CONTINUE_ON_FAILURE) == 1} {
+    exit -force -code 0
+  } else {
     exit -force -code [coverage attribute -name TESTSTATUS -concise]
+  }
 }

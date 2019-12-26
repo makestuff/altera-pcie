@@ -19,37 +19,38 @@
 source "$::env(PROJ_HOME)/tools/common.do"
 
 proc do_test {gui} {
-    if {$gui} {
-        vsim_run $::env(TESTBENCH)
+  if {$gui} {
+    vsim_run $::env(TESTBENCH)
 
-        add wave      dispClk
+    add wave      dispClk
 
-        add wave -div "Write Side"
-        add wave      ram/wrEnable_in
-        add wave      ram/wrByteMask_in
-        add wave -uns ram/wrAddr_in
-        add wave -hex ram/wrData_in
+    add wave -div "Write Side"
+    add wave      ram/wrEnable_in
+    add wave      ram/wrByteMask_in
+    add wave -uns ram/wrAddr_in
+    add wave -hex ram/wrData_in
 
-        add wave -div "Read Side"
-        add wave -uns uut/wrPtr_in
-        add wave -uns uut/rdPtr_in
-        add wave      uut/dtAck_out
-        add wave -uns uut/rdOffset_out
-        add wave -hex uut/rdData_in
+    add wave -div "Read Side"
+    add wave -uns uut/wrPtr_in
+    add wave -uns uut/rdPtr_in
+    add wave      uut/dtAck_out
+    add wave -uns uut/rdOffset_out
+    add wave -hex uut/rdData_in
 
-        add wave -div "Status/Control"
-        add wave -hex uut/csData_out
-        add wave      uut/csValid_out
-        add wave      uut/csReset_in
-        add wave -uns uut/countInit_in
+    add wave -div "Status/Control"
+    add wave -hex uut/csData_out
+    add wave      uut/csValid_out
+    add wave      uut/csReset_in
+    add wave -uns uut/countInit_in
 
-        add wave -div "Internals"
-        add wave      uut/state
-        add wave -hex uut/ckSum
-        add wave -uns uut/count
+    add wave -div "Internals"
+    add wave      uut/state
+    add wave -hex uut/ckSum
+    add wave -uns uut/count
 
-        gui_run 310 160 0 10 1570 133 1600
-    } else {
-        cli_run
-    }
+    gui_run 310 160 0 10 1570 133 1600
+  } else {
+    cli_run
+    finish
+  }
 }

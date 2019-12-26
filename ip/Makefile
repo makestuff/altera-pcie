@@ -16,7 +16,7 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-SUBDIRS := block-ram buffer-fifo dvr-rng pcie
+SUBDIRS := altera-libs block-ram buffer-fifo dvr-rng pcie
 
 include $(PROJ_HOME)/tools/common.mk
 
