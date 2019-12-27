@@ -27,6 +27,9 @@ ifeq ($(LIBNAME:tb-%=tb-),tb-)
   else ifneq ($(WORK),)
     $(error $(BOLD)A test directory may not set WORK$(NORM))
   endif
+  ifeq ($(COVERAGE),1)
+    VLOPTS += +cover
+  endif
   WORKINFO := work/_info
   VLOG := vlog -nologo -sv -novopt -hazards -lint -pedanticerrors +define+SIMULATION $(VLOPTS) $(LIB_LIST) $(INC_LIST) +incdir+$(PROJ_HOME)/tools +incdir+$(PROJ_HOME)/tools/svunit
   VCOM := vcom -nologo -2008 -novopt $(VHOPTS)
