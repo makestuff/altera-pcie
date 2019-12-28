@@ -5,14 +5,17 @@
 # FPGA device
 FPGA         := svgx
 
+# Location of preloadable library to fool Quartus tools into thinking a pipe to tee is just a regular TTY
+ISATTY       := $(PROJ_HOME)/tools/isatty/isatty_hack.so
+
 # By default, just build a JTAG programming-file
 all: defs build/proj.sof
 
 build/proj.sof: build/proj.qpf
-	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
+	LD_PRELOAD=$(ISATTY) quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
 
 syn: build/proj.qpf
-	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_map --read_settings_files=off --write_settings_files=off build/proj.qpf -c proj | tee -a build/build.log
+	LD_PRELOAD=$(ISATTY) quartus_map --read_settings_files=off --write_settings_files=off build/proj.qpf -c proj | tee -a build/build.log
 
 # Launch the Quartus GUI
 gui: build/proj.qpf
@@ -25,9 +28,9 @@ build: build/proj.qpf FORCE
 build/proj.qpf:
 	@mkdir build
 	@cp -rp $(FPGA)/* build/
-	@echo "Config {"                    | tee    build/build.log
-	@echo "  FPGA      = $(FPGA)"       | tee -a build/build.log
-	@echo "}"                           | tee -a build/build.log
+	@echo "Config {"                         | tee    build/build.log
+	@echo "  FPGA         = $(FPGA)"         | tee -a build/build.log
+	@echo "}"                                | tee -a build/build.log
 
 # Program the FPGA over JTAG
 prog: build/proj.sof

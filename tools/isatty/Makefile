@@ -1,4 +1,13 @@
-all: isatty_hack.so test
+.PHONY: gen compile test clean
+
+ifeq ($(OS),Windows_NT)
+  gen:
+	@echo "TTY hack not needed on Windows"
+else
+  gen: isatty_hack.so test
+endif
+
+compile:
 
 isatty_hack.so: isatty_hack.c
 	gcc -Wall -O2 -fPIC -shared -ldl -o $@ $<
@@ -13,7 +22,5 @@ test: isatty_test
 	@cat temp.txt
 	@rm -f temp.txt
 
-clean: FORCE
+clean:
 	rm -f isatty_hack.so isatty_test temp.txt
-
-FORCE:

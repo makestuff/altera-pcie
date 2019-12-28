@@ -8,14 +8,17 @@ FPGA         := svgx
 # Enable/disable register word-swapping
 EN_SWAP      := 0
 
+# Location of preloadable library to fool Quartus tools into thinking a pipe to tee is just a regular TTY
+ISATTY       := $(PROJ_HOME)/tools/isatty/isatty_hack.so
+
 # By default, just build a JTAG programming-file
 all: defs build/proj.sof
 
 build/proj.sof: build/proj.qpf
-	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
+	LD_PRELOAD=$(ISATTY) quartus_sh --flow compile build/proj.qpf -c proj | tee -a build/build.log
 
 syn: build/proj.qpf
-	LD_PRELOAD=$(realpath ../..)/ip/tools/isatty_hack.so quartus_map --read_settings_files=off --write_settings_files=off build/proj.qpf -c proj | tee -a build/build.log
+	LD_PRELOAD=$(ISATTY) quartus_map --read_settings_files=off --write_settings_files=off build/proj.qpf -c proj | tee -a build/build.log
 
 # Launch the Quartus GUI
 gui: build/proj.qpf
