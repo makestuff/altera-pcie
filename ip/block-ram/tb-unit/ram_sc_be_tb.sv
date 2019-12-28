@@ -19,7 +19,11 @@
 `timescale 1ps / 1ps
 
 module ram_sc_be_tb;
+
   localparam int CLK_PERIOD = 10;
+  `include "clocking-util.svh"
+
+  // Defs
   localparam int ADDR_NBITS = 5;  // i.e 2^5 = 32 addressible rows
   localparam int SPAN_NBITS = 8;  // if !=8 then wrByteMask_in is more of a "span-mask" rather than "byte-mask"
   typedef logic[ADDR_NBITS-1 : 0] Addr;  // ADDR_NBITS x 1-bit
@@ -28,7 +32,7 @@ module ram_sc_be_tb;
   typedef Byte[7:0] Row;     // 8 * Byte
   localparam Row XXX = 'X;
 
-  logic sysClk, dispClk, wrEnable;
+  logic wrEnable;
   Row wrData, rdData;
   Addr wrAddr, rdAddr;
   ByteMask wrByteMask;
@@ -37,18 +41,6 @@ module ram_sc_be_tb;
     sysClk,
     wrEnable, wrByteMask, wrAddr, wrData,
     rdAddr, rdData);
-
-  initial begin: sysClk_drv
-    sysClk = 0;
-    #(5000*CLK_PERIOD/8)
-    forever #(1000*CLK_PERIOD/2) sysClk = ~sysClk;
-  end
-
-  initial begin: dispClk_drv
-    dispClk = 0;
-    #(1000*CLK_PERIOD/2)
-    forever #(1000*CLK_PERIOD/2) dispClk = ~dispClk;
-  end
 
   task doWrite(Addr addr, ByteMask bm, Row data = XXX);
     if (data === XXX) begin

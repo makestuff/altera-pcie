@@ -23,6 +23,8 @@ module buffer_fifo_tb#(
   );
 
   localparam int CLK_PERIOD = 10;
+  `include "clocking-util.svh"
+
   localparam int WIDTH = 8;
   localparam int DEPTH = 4;
   localparam int CHUNK = 2**DEPTH/4;
@@ -30,7 +32,7 @@ module buffer_fifo_tb#(
   typedef logic[DEPTH-1:0] Depth;
   localparam Data XXX = 'X;
 
-  logic sysClk, dispClk, reset;
+  logic reset;
   Data iData, oData;
   logic iValid, iReady, oValid, oReady;
   logic iReadyChunk, oValidChunk;
@@ -40,19 +42,6 @@ module buffer_fifo_tb#(
     sysClk, reset, depth,
     iData, iValid, iReady, iReadyChunk,
     oData, oValid, oValidChunk, oReady);
-
-  initial begin: sysClk_drv
-    reset = 0;
-    sysClk = 0;
-    #(5000*CLK_PERIOD/8)
-    forever #(1000*CLK_PERIOD/2) sysClk = ~sysClk;
-  end
-
-  initial begin: dispClk_drv
-    dispClk = 0;
-    #(1000*CLK_PERIOD/2)
-    forever #(1000*CLK_PERIOD/2) dispClk = ~dispClk;
-  end
 
   task execTest(Data d, logic r, Depth expDepth, Data expData, logic expReady, logic expRC, logic expVC);
     const automatic logic expValid = (expData === XXX) ? 0 : 1;
@@ -96,6 +85,7 @@ module buffer_fifo_tb#(
 
   initial begin: inPipe_drv
     localparam Data EXP = BLOCK_RAM ? XXX : 8'h94;
+    reset = 0;
     iData = XXX;
     iValid = 0;
     oReady = 0;

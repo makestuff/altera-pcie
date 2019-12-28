@@ -23,7 +23,8 @@ module tlp_xcvr_tb;
   import tlp_xcvr_pkg::*;
 
   localparam int CLK_PERIOD = 10;
-  logic sysClk, dispClk;
+  `include "clocking-util.svh"
+
   BusID cfgBusDev;
 
   // Incoming messages from the CPU
@@ -106,18 +107,6 @@ module tlp_xcvr_tb;
     .valid_out (f2cValid),
     .ready_in  (f2cReady)
   );
-
-  initial begin: sysClk_drv
-    sysClk = 0;
-    #(5000*CLK_PERIOD/8)
-    forever #(1000*CLK_PERIOD/2) sysClk = ~sysClk;
-  end
-
-  initial begin: dispClk_drv
-    dispClk = 0;
-    #(1000*CLK_PERIOD/2)
-    forever #(1000*CLK_PERIOD/2) dispClk = ~dispClk;
-  end
 
   task tick(int n);
     for (int i = 0; i < n; i = i + 1)

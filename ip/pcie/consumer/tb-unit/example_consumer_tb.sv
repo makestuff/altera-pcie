@@ -24,7 +24,7 @@ module example_consumer_tb;
 
   // Clocks
   localparam int CLK_PERIOD = 10;
-  logic sysClk, dispClk;
+  `include "clocking-util.svh"
 
   // Connector signals
   localparam int COUNT_INIT = 128;
@@ -52,18 +52,6 @@ module example_consumer_tb;
     wrEnable, wrByteMask, {wrPtr, wrOffset}, wrData,
     {rdPtr, rdOffset}, rdData
   );
-
-  // Drive clocks
-  initial begin: sysClk_drv
-    sysClk = 0;
-    #(5000*CLK_PERIOD/8)
-    forever #(1000*CLK_PERIOD/2) sysClk = !sysClk;
-  end
-  initial begin: dispClk_drv
-    dispClk = 0;
-    #(1000*CLK_PERIOD/2)
-    forever #(1000*CLK_PERIOD/2) dispClk = !dispClk;
-  end
 
   // Infer rdPtr register, and make it increment on dtAck
   always_ff @(posedge sysClk) begin: infer_regs
