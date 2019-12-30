@@ -18,12 +18,17 @@
 //
 `timescale 1ps / 1ps
 
+`include "svunit_defines.svh"
+
 module tlp_xcvr_tb;
 
   import tlp_xcvr_pkg::*;
 
   localparam int CLK_PERIOD = 10;
   `include "clocking-util.svh"
+
+  localparam string NAME = $sformatf("tlp_xcvr_tb");
+  `include "svunit-util.svh"
 
   BusID cfgBusDev;
 
@@ -108,11 +113,13 @@ module tlp_xcvr_tb;
     .ready_in  (f2cReady)
   );
 
+  // Wait for the specified number of clocks
   task tick(int n);
     for (int i = 0; i < n; i = i + 1)
       @(posedge sysClk);
   endtask
 
+  // Write to the specified register
   task doWrite(ExtChan chan, Data val, int ticks = 3);
     rxData = genRegWrite0(.reqID(CPU_ID));
     rxValid = 1;
@@ -128,6 +135,7 @@ module tlp_xcvr_tb;
     tick(ticks);
   endtask
 
+  // Do a burst-write
   task doBurstWrite(int index, int dstAddr, int dwCount, ByteMask32 firstBE = 4'b1111, ByteMask32 lastBE = 4'b1111);
     rxData = genDmaWrite0(.reqID(CPU_ID), .dwCount(dwCount), .firstBE(firstBE), .lastBE(lastBE));
     rxValid = 1;
@@ -160,26 +168,16 @@ module tlp_xcvr_tb;
     tick(5);
   endtask
 
-  function string assertString(logic b);
-    return b ? "asserted" : "deasserted";
-  endfunction
-
+  // Assert the state of the TX pipe
   task expectTX(uint64 data, uint64 mask, logic valid, logic sop, logic eop);
     @(posedge dispClk);
-    if (txValid != valid) begin
-      $display("\nFAILURE [%0dns]: Expected txValid to be %s", $time()/1000, assertString(valid)); tick(4); $stop(1);
-    end
-    if (txSOP != sop) begin
-      $display("\nFAILURE [%0dns]: Expected txSOP to be ", $time()/1000, assertString(sop)); tick(4); $stop(1);
-    end
-    if (txEOP != eop) begin
-      $display("\nFAILURE [%0dns]: Expected txEOP to be ", $time()/1000, assertString(eop)); tick(4); $stop(1);
-    end
-    if ((txData & mask) != data) begin
-      $display("\nFAILURE [%0dns]: Expected txData to be %H, actually got %H", $time()/1000, data, txData & mask); tick(4); $stop(1);
-    end
+    `FAIL_IF(txValid != valid);
+    `FAIL_IF(txSOP != sop);
+    `FAIL_IF(txEOP != eop);
+    `FAIL_IF((txData & mask) != data);
   endtask
 
+  // Read the specified register and leave the result in readData
   task doRead(ExtChan chan, output Data readData);
     rxData = genRegRdReq0(.reqID(CPU_ID));
     rxValid = 1;
@@ -201,9 +199,8 @@ module tlp_xcvr_tb;
     tick(3);
   endtask
 
-  // Task to verify each chunk as it's DMA'd into host memory. Each chunk consists of one or more
-  // TLPs, back-to-back, followed by a write to the metrics area (mostly to update the write
-  // pointer).
+  // Verify each chunk as it's DMA'd into host memory. Each chunk consists of one or more TLPs,
+  // back-to-back, followed by a write to the metrics area (mostly to update the write pointer).
   task verifyChunk(int chunk);
     int qw;
     for (int tlp = 0; tlp < F2C_CHUNKSIZE/F2C_TLPSIZE; tlp = tlp + 1) begin
@@ -222,7 +219,6 @@ module tlp_xcvr_tb;
     expectTX({FPGA_ID, 48'h00FF40000002}, '1, 1, 1, 0);
     expectTX(8*MTRBASE_VALUE, '1, 1, 0, 0);
     expectTX((chunk + 1) % F2C_NUMCHUNKS, '1, 1, 0, 1);
-    $display("  Verified chunk %0d", chunk);
   endtask
 
   // Infer registers
@@ -240,118 +236,91 @@ module tlp_xcvr_tb;
       regArray_next[cpuChan] = cpuWrData;
   end
 
-  // Main test
-  initial begin: main
-    Data readValue;
-    int tlp, qw;
+  task setup();
+    svunit_ut.setup();
     rxData = 'X;
     rxValid = 0;
     rxSOP = SOP_NONE;
     rxEOP = 0;
     txReady = 1;
     cfgBusDev = FPGA_ID;
+  endtask
 
-    // The TLP message-types must all be 64-bits wide
-    if ($bits(Header) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Header has an illegal width (%0d)", $bits(Header)); $stop(1);
-    end
+  task teardown();
+    svunit_ut.teardown();
+  endtask
 
-    if ($bits(Write0) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Write0 has an illegal width (%0d)", $bits(Write0)); $stop(1);
-    end
-    if ($bits(Write1) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Write1 has an illegal width (%0d)", $bits(Write1)); $stop(1);
-    end
+  `SVUNIT_TESTS_BEGIN
+    `SVTEST(verify_widths)
+      // The TLP message-types must all be 64-bits wide
+      `FAIL_UNLESS_EQUAL($bits(Header),      64);
+      `FAIL_UNLESS_EQUAL($bits(Write0),      64);
+      `FAIL_UNLESS_EQUAL($bits(Write1),      64);
+      `FAIL_UNLESS_EQUAL($bits(RdReq0),      64);
+      `FAIL_UNLESS_EQUAL($bits(RdReq1),      64);
+      `FAIL_UNLESS_EQUAL($bits(Completion0), 64);
+      `FAIL_UNLESS_EQUAL($bits(Completion1), 64);
 
-    if ($bits(RdReq0) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RdReq0 has an illegal width (%0d)", $bits(RdReq0)); $stop(1);
-    end
-    if ($bits(RdReq1) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RdReq1 has an illegal width (%0d)", $bits(RdReq1)); $stop(1);
-    end
+      // The Action message-types must all be ACTION_BITS wide
+      `FAIL_UNLESS_EQUAL($bits(RegRead), ACTION_BITS);
+      `FAIL_UNLESS_EQUAL($bits(RegWrite), ACTION_BITS);
 
-    if ($bits(Completion0) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Completion0 has an illegal width (%0d)", $bits(Completion0)); $stop(1);
-    end
-    if ($bits(Completion1) != 64) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::Completion1 has an illegal width (%0d)", $bits(Completion1)); $stop(1);
-    end
-
-    // The Action message-types must all be ACTION_BITS wide
-    if ($bits(RegRead) != ACTION_BITS) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RegRead has an illegal width (%0d)", $bits(RegRead)); $stop(1);
-    end
-    if ($bits(RegWrite) != ACTION_BITS) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::RegWrite has an illegal width (%0d)", $bits(RegWrite)); $stop(1);
-    end
-
-    // Verify FPGA->CPU queue geometry
-    if (F2C_CHUNKSIZE_NBITS < F2C_TLPSIZE_NBITS) begin
-      $display("\nFAILURE: tlp_xcvr_pkg::F2C_CHUNKSIZE_NBITS must be greater than or equal to tlp_xcvr_pkg::F2C_TLPSIZE_NBITS. In other words, a chunk must be at least one TLP"); $stop(1);
-    end
+      // Verify FPGA->CPU queue geometry: tlp_xcvr_pkg::F2C_CHUNKSIZE_NBITS must be greater than or
+      // equal to tlp_xcvr_pkg::F2C_TLPSIZE_NBITS; in other words, a chunk must be at least one TLP
+      `FAIL_IF(F2C_CHUNKSIZE_NBITS < F2C_TLPSIZE_NBITS);
+    `SVTEST_END
 
     // Register readback test
-    $display("\nRegister readback test:");
-    for (int i = 0; i < CTL_BASE; i = i + 1)
-      doWrite(i, dvr_rng_pkg::SEQ32[i]);
-    for (int i = 0; i < CTL_BASE; i = i + 1) begin
-      doRead(i, readValue);
-      if (readValue !== dvr_rng_pkg::SEQ32[i]) begin
-        $display("\nFAILURE [%0dns]: Expected doRead(%0d) to return %H; actually got %H", $time()/1000, i, dvr_rng_pkg::SEQ32[i], readValue); tick(4); $stop(1);
+    `SVTEST(register_readback)
+      Data readValue;
+      for (int i = 0; i < CTL_BASE; i = i + 1)
+        doWrite(i, dvr_rng_pkg::SEQ32[i]);
+      for (int i = 0; i < CTL_BASE; i = i + 1) begin
+        doRead(i, readValue);
+        `FAIL_IF(readValue !== dvr_rng_pkg::SEQ32[i]);
       end
-      $display("  doRead(%0d) -> %H", i, readValue);
-    end
-    for (int i = CTL_BASE; i < NUM_REGS; i = i + 1) begin
-      doRead(i, readValue);
-      if (readValue !== 32'hDEADBEEF) begin
-        $display("\nFAILURE [%0dns]: Expected doRead(%0d) to return DEADBEEF; actually got %H", $time()/1000, i, readValue); tick(4); $stop(1);
+      for (int i = CTL_BASE; i < NUM_REGS; i = i + 1) begin
+        doRead(i, readValue);
+        `FAIL_IF(readValue !== 32'hDEADBEEF);
       end
-      $display("  doRead(%0d) -> %H", i, readValue);
-    end
+    `SVTEST_END
 
     // DMA write test
-    $display("\nDMA write test:");
-    doWrite(DMA_ENABLE, 1, 2);
-    if (uut.send.f2cEnabled !== 0) begin
-      $display("\nFAILURE [%0dns]: Expected f2cEnabled to be deasserted", $time()/1000); tick(4); $stop(1);
-    end
-    doWrite(F2C_BASE, F2CBASE_VALUE, 2);
-    if (uut.send.f2cBase !== F2CBASE_VALUE) begin
-      $display("\nFAILURE [%0dns]: Expected F2C_BASE to be %H; actually got %H", $time()/1000, F2CBASE_VALUE, uut.send.f2cBase); tick(4); $stop(1);
-    end
-    doWrite(MTR_BASE, MTRBASE_VALUE, 2);
-    if (uut.send.mtrBase !== MTRBASE_VALUE) begin
-      $display("\nFAILURE [%0dns]: Expected MTR_BASE to be %H; actually got %H", $time()/1000, MTRBASE_VALUE, uut.send.mtrBase); tick(4); $stop(1);
-    end
-    doWrite(DMA_ENABLE, 2, 2);
-    if (uut.send.f2cEnabled !== 1) begin
-      $display("\nFAILURE [%0dns]: Expected f2cEnabled to be asserted", $time()/1000); tick(4); $stop(1);
-    end
+    `SVTEST(dma_write)
+      doWrite(DMA_ENABLE, 1, 2);
+      `FAIL_IF(uut.send.f2cEnabled !== 0);
+      doWrite(F2C_BASE, F2CBASE_VALUE, 2);
+      `FAIL_IF(uut.send.f2cBase !== F2CBASE_VALUE);
+      doWrite(MTR_BASE, MTRBASE_VALUE, 2);
+      `FAIL_IF(uut.send.mtrBase !== MTRBASE_VALUE);
+      doWrite(DMA_ENABLE, 2, 2);
+      `FAIL_IF(uut.send.f2cEnabled !== 1);
 
-    // Wait for DMA writes to start
-    @(posedge uut.f2cValid_in);
+      // Wait for DMA writes to start
+      @(posedge uut.f2cValid_in);
 
-    // We should get F2C_NUMCHUNKS-1 chunks in quick succession
-    for (int chunk = 0; chunk < F2C_NUMCHUNKS-1; chunk = chunk + 1) begin
-      verifyChunk(chunk);
-    end
+      // We should get F2C_NUMCHUNKS-1 chunks in quick succession
+      for (int chunk = 0; chunk < F2C_NUMCHUNKS-1; chunk = chunk + 1) begin
+        verifyChunk(chunk);
+      end
 
-    // Acknowledge consumption of first TLP, which frees the FPGA to write more data
-    tick(4);
-    doWrite(F2C_RDPTR, 1, 1);
+      // Acknowledge consumption of first TLP, which frees the FPGA to write more data
+      tick(4);
+      doWrite(F2C_RDPTR, 1, 1);
 
-    verifyChunk(F2C_NUMCHUNKS-1);
-    tick(8);
-    doWrite(C2F_WRPTR, 1);
+      verifyChunk(F2C_NUMCHUNKS-1);
+      tick(8);
+      doWrite(C2F_WRPTR, 1);
+      tick(20);
+    `SVTEST_END
 
-    tick(20);
-    for (int i = 1; i <= 16; i = i + 1)
-      doBurstWrite(0, 0, i, 4'b1110, 4'b0111);
-    for (int i = 1; i <= 16; i = i + 1)
-      doBurstWrite(0, 1, i, 4'b1110, 4'b0111);
-
-    tick(300);
-    $display("\nSUCCESS: Simulation stopped due to successful completion!");
-    $stop(0);
-  end
+    // Burst-write test; sadly this does no asserts yet; you have to verify it visually
+    `SVTEST(burst_write)
+      for (int i = 1; i <= 16; i = i + 1)
+        doBurstWrite(0, 0, i, 4'b1110, 4'b0111);
+      for (int i = 1; i <= 16; i = i + 1)
+        doBurstWrite(0, 1, i, 4'b1110, 4'b0111);
+      tick(300);
+    `SVTEST_END
+  `SVUNIT_TESTS_END
 endmodule
