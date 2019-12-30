@@ -1,3 +1,5 @@
+  `include "svunit_defines.svh"
+
   svunit_pkg::svunit_testcase svunit_ut;
   localparam string name = NAME;
 

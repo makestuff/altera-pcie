@@ -18,8 +18,6 @@
 //
 `timescale 1ps / 1ps
 
-`include "svunit_defines.svh"
-
 module tlp_xcvr_tb;
 
   import tlp_xcvr_pkg::*;

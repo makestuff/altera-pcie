@@ -23,7 +23,9 @@ module ram_sc_be_tb;
   localparam int CLK_PERIOD = 10;
   `include "clocking-util.svh"
 
-  // Defs
+  localparam string NAME = $sformatf("ram_sc_be_tb");
+  `include "svunit-util.svh"
+
   localparam int ADDR_NBITS = 5;  // i.e 2^5 = 32 addressible rows
   localparam int SPAN_NBITS = 8;  // if !=8 then wrByteMask_in is more of a "span-mask" rather than "byte-mask"
   typedef logic[ADDR_NBITS-1 : 0] Addr;  // ADDR_NBITS x 1-bit
@@ -69,28 +71,38 @@ module ram_sc_be_tb;
     rdAddr = 'X;
   endtask
 
-  initial begin: input_drv
-    wrEnable = 0;
-    wrByteMask = 'X;
-    wrAddr = 'X;
-    wrData = 'X;
-    rdAddr = 'X;
-    @(posedge sysClk);
+  task setup();
+    svunit_ut.setup();
+  endtask
 
-    for (int i = 0; i < 2**ADDR_NBITS; i = i + 1) begin
-      doWrite(i, 8'b01010101);
-      doWrite(i, 8'b10101010);
-    end
+  task teardown();
+    svunit_ut.teardown();
+  endtask
 
-    @(posedge sysClk);
-    @(posedge sysClk);
+  // RAM readback test; sadly this does no asserts yet; you have to verify it visually
+  `SVUNIT_TESTS_BEGIN
+    `SVTEST(readback)
+      wrEnable = 0;
+      wrByteMask = 'X;
+      wrAddr = 'X;
+      wrData = 'X;
+      rdAddr = 'X;
+      @(posedge sysClk);
 
-    for (int i = 0; i < 2**ADDR_NBITS; i = i + 1) begin
-      doRead(i);
-    end
+      for (int i = 0; i < 2**ADDR_NBITS; i = i + 1) begin
+        doWrite(i, 8'b01010101);
+        doWrite(i, 8'b10101010);
+      end
 
-    @(posedge sysClk);
-    @(posedge sysClk);
-    $stop(0);
-  end
+      @(posedge sysClk);
+      @(posedge sysClk);
+
+      for (int i = 0; i < 2**ADDR_NBITS; i = i + 1) begin
+        doRead(i);
+      end
+
+      @(posedge sysClk);
+      @(posedge sysClk);
+    `SVTEST_END
+  `SVUNIT_TESTS_END
 endmodule

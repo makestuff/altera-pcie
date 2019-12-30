@@ -18,7 +18,6 @@
 #
 TESTBENCH := buffer_fifo_tb
 LIBS := makestuff altera_mf_ver
-DEFS := BLOCK_RAM=0
 
 include $(PROJ_HOME)/tools/common.mk
 

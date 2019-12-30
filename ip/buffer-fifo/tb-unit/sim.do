@@ -20,7 +20,7 @@ source "$::env(PROJ_HOME)/tools/common.do"
 
 proc do_test {gui} {
   if {$gui} {
-    vsim_run $::env(TESTBENCH)
+    vsim_run $::env(TESTBENCH) "-gBLOCK_RAM=0"
 
     add wave      dispClk
     add wave -uns uut/depth_out
@@ -39,7 +39,8 @@ proc do_test {gui} {
 
     gui_run 265 25 0 10 0 32 70
   } else {
-    cli_run
+    cli_run "-gBLOCK_RAM=0"
+    cli_run "-gBLOCK_RAM=1"
     finish
   }
 }

@@ -22,11 +22,12 @@ module example_consumer_tb;
 
   import tlp_xcvr_pkg::*;
 
-  // Clocks
   localparam int CLK_PERIOD = 10;
   `include "clocking-util.svh"
 
-  // Connector signals
+  localparam string NAME = $sformatf("example_consumer_tb");
+  `include "svunit-util.svh"
+
   localparam int COUNT_INIT = 128;
   logic wrEnable;
   ByteMask64 wrByteMask;
@@ -76,37 +77,44 @@ module example_consumer_tb;
     wrData = 'X;
   endtask
 
-  // Main test
-  initial begin: main
-    int x;
+  task setup();
+    svunit_ut.setup();
+  endtask
 
-    // Initialise signals
-    wrEnable = 0;
-    wrByteMask = 'X;
-    wrOffset = 'X;
-    wrData = 'X;
-    csReset = 0;
-    countInit = 128;
+  task teardown();
+    svunit_ut.teardown();
+  endtask
 
-    // Write first chunk
-    wrPtr = 0;
-    x = 0;
-    for (int j = 0; j < 8; j = j + 1) begin
-      for (int i = 0; i < C2F_CHUNKSIZE/8; i = i + 1) begin
-        doWrite(i, dvr_rng_pkg::SEQ64[x]);
-        x = x + 1;
+  // Consumer test; sadly this does no asserts yet; you have to verify it visually
+  `SVUNIT_TESTS_BEGIN
+    `SVTEST(consumer)
+      int x;
+
+      wrEnable = 0;
+      wrByteMask = 'X;
+      wrOffset = 'X;
+      wrData = 'X;
+      csReset = 0;
+      countInit = 128;
+
+      wrPtr = 0;
+      x = 0;
+      for (int j = 0; j < 8; j = j + 1) begin
+        for (int i = 0; i < C2F_CHUNKSIZE/8; i = i + 1) begin
+          doWrite(i, dvr_rng_pkg::SEQ64[x]);
+          x = x + 1;
+        end
+        wrPtr = wrPtr + 1;
       end
-      wrPtr = wrPtr + 1;
-    end
-    for (int i = 0; i < 200; i = i + 1) begin
-      @(posedge sysClk);
-    end
+      for (int i = 0; i < 200; i = i + 1) begin
+        @(posedge sysClk);
+      end
 
-    // Finish
-    @(posedge sysClk);
-    @(posedge sysClk);
-    @(posedge sysClk);
-    @(posedge sysClk);
-    $stop(0);
-  end
+      // Finish
+      @(posedge sysClk);
+      @(posedge sysClk);
+      @(posedge sysClk);
+      @(posedge sysClk);
+    `SVTEST_END
+  `SVUNIT_TESTS_END
 endmodule
