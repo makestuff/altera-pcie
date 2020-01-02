@@ -51,7 +51,7 @@ $(COMPILE): pcie_cv.sv
 	@echo 'set QSYS_SIMDIR "pcie_cv/testbench"'   > compile.do
 	@echo 'onerror {exit -force -code 1}'        >> compile.do
 	@cat pcie_cv/testbench/mentor/msim_setup.tcl >> compile.do
-	@echo 'dev'                                  >> compile.do
+	@echo 'com'                                  >> compile.do
 	@echo 'exit'                                 >> compile.do
 	@vsim -c -do 'compile.do'
 	@$(VLOG) pcie_cv/testbench/pcie_cv_tb/simulation/submodules/altpcierd_tl_cfg_sample.v
