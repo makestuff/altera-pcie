@@ -1,4 +1,5 @@
 set QUARTUS_INSTALL_DIR "$::env(ALTERA)/quartus"
+onerror {exit -force -code 1}
 
 # Prepare shared libraries
 proc ensure_lib {lib} {
@@ -64,3 +65,5 @@ if {![string match "*ModelSim ALTERA*" [vsim -version]]} {
   vlog     "$QUARTUS_INSTALL_DIR/eda/sim_lib/mentor/cyclonev_pcie_hip_atoms_ncrypt.v" -work cyclonev_pcie_hip_ver
   vlog     "$QUARTUS_INSTALL_DIR/eda/sim_lib/cyclonev_pcie_hip_atoms.v"               -work cyclonev_pcie_hip_ver
 }
+
+exit

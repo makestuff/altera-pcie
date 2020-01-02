@@ -48,11 +48,15 @@ $(GENERATE): pcie_sv.qsys
 
 $(COMPILE): pcie_sv.sv
 	@echo "$(BOLD)Compiling Stratix V hard-IP in $(DIRNAME)$(NORM)"
-	@vsim -c -do 'set QSYS_SIMDIR "pcie_sv/testbench"; source $$QSYS_SIMDIR/mentor/msim_setup.tcl; com; exit'
+	@echo 'set QSYS_SIMDIR "pcie_sv/testbench"'   > compile.do
+	@echo 'onerror {exit -force -code 1}'        >> compile.do
+	@cat pcie_sv/testbench/mentor/msim_setup.tcl >> compile.do
+	@echo 'dev'                                  >> compile.do
+	@echo 'exit'                                 >> compile.do
+	@vsim -c -do 'compile.do'
 	@$(VLOG) pcie_sv/testbench/pcie_sv_tb/simulation/submodules/altpcierd_tl_cfg_sample.v
-	@$(CHECK_MODELSIM)
 	@touch $@
 	@echo
 
 clean::
-	rm -rf pcie_sv.sopcinfo pcie_sv pcie_sv_tb.csv pcie_sv_tb.spd transcript
+	rm -rf pcie_sv.sopcinfo pcie_sv pcie_sv_tb.csv pcie_sv_tb.spd transcript compile.do

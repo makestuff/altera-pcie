@@ -22,7 +22,7 @@ include $(PROJ_HOME)/tools/common.mk
 
 $(COMPILE):
 	@echo "$(BOLD)Compiling Altera foundation libraries$(NORM)"
-	@vsim -c -do 'source compile.do; exit'
+	@vsim -c -do 'compile.do'
 	@touch $@
 	@echo
 

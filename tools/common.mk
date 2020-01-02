@@ -188,6 +188,3 @@ $(COMPILE): $(GENERATE)
 	  fi \
 	done)
 	@touch $@
-
-# TODO: Figure out how to fail a QuestaSim build (Questa doesn't generate the "Errors: 0" summaries)
-#CHECK_MODELSIM := test "$$(cat transcript | perl -ane 'if(m/^\# Errors: (\d+),/g){print"$$1\n";}' | sort | uniq)" = "0"
