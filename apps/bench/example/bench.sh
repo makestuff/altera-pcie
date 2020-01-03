@@ -8,7 +8,7 @@ C2F_CHUNKSIZE_NBITS=$1
 F2C_CHUNKSIZE_NBITS=$2
 MODE=$3
 FPGA=sv
-cd ../../../driver
+cd ../../../pcie-driver
 sudo ./rmmod.sh
 sudo ./rmdev.sh
 echo "Programming FPGA with /home/chris/altera-pcie-clone/apps/bench/sv-${C2F_CHUNKSIZE_NBITS}-${F2C_CHUNKSIZE_NBITS}.svf"
@@ -18,7 +18,7 @@ sleep 5
 sudo ./rescan.sh
 sudo ./insmod.sh
 cd ../apps/bench/example
-sed -i 's%^#define C2F_CHUNKSIZE_NBITS%//#define C2F_CHUNKSIZE_NBITS%g;s%^#define F2C_CHUNKSIZE_NBITS%//#define F2C_CHUNKSIZE_NBITS%g' ../../../driver/defs.h
+sed -i 's%^#define C2F_CHUNKSIZE_NBITS%//#define C2F_CHUNKSIZE_NBITS%g;s%^#define F2C_CHUNKSIZE_NBITS%//#define F2C_CHUNKSIZE_NBITS%g' ../../../pcie-driver/defs.h
 make clean; make MODE=${MODE} C2F_CHUNKSIZE_NBITS=${C2F_CHUNKSIZE_NBITS} F2C_CHUNKSIZE_NBITS=${F2C_CHUNKSIZE_NBITS}
 if [ -e "${FPGA}-${C2F_CHUNKSIZE_NBITS}-${F2C_CHUNKSIZE_NBITS}-${MODE}.txt" ]; then
   OLDLATENCY=$(cat ${FPGA}-${C2F_CHUNKSIZE_NBITS}-${F2C_CHUNKSIZE_NBITS}-${MODE}.txt | grep Latency | awk '{print $2}')

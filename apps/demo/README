@@ -20,13 +20,13 @@ On the dev machine:
   make FPGA=...
 
 And on the test machine, in the example directory:
-  sudo ../../../driver/rmmod.sh
-  sudo ../../../driver/rmdev.sh
+  sudo ../../../pcie-driver/rmmod.sh
+  sudo ../../../pcie-driver/rmdev.sh
   #
   # FPGA is now safe to reprogram
   #
-  sudo ../../../driver/rescan.sh
-  sudo ../../../driver/insmod.sh
+  sudo ../../../pcie-driver/rescan.sh
+  sudo ../../../pcie-driver/insmod.sh
   build/example
 
 
@@ -36,13 +36,13 @@ Config-via-PCIe (TODO: Revisit)
 On the dev machine, create a gt-out/gt.core.rbf file:
   quartus_cpf -c gt.cof
 
-Now, on the test machine, in the driver directory:
+Now, on the test machine, in the pcie-driver directory:
   ./rmmod.sh                                  # remove our driver
   cd -                                        # back to altera_cvp driver directory
   /bin/sh altera_cvp_load                     # load altera_cvp driver
   cp $FOO/gt-out/gt.core.rbf /dev/altera_cvp  # program the core
   rmmod altera_cvp; rm -f /dev/altera_cvp     # remove altera_cvp driver
-  cd -                                        # back to our driver directory
+  cd -                                        # back to our pcie-driver directory
   ./insmod.sh                                 # insert our driver
   ../apps/pcie-regs/example/build/example     # test it
 

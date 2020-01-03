@@ -51,7 +51,7 @@ build/proj.pof: build/proj.sof build/proj.cof
 
 # C/C++ version of the project-specific definitions
 defs: FORCE
-	cat defs.vh | sed 's/localparam int/#define/g' | sed 's/=//g' | sed 's/;//g' | sed 's/1<</1U<</g;s/\((\d+)\)/\(\1U\)/g' > ../../driver/defs.h
+	cat defs.vh | sed 's/localparam int/#define/g' | sed 's/=//g' | sed 's/;//g' | sed 's/1<</1U<</g;s/\((\d+)\)/\(\1U\)/g' > ../../pcie-driver/defs.h
 
 # Clean up
 clean: FORCE

@@ -36,7 +36,7 @@ fpga:
 
 sw:
 	@make -C apps/demo defs  # generate driver/defs.h appropriate for the design
-	@make -C driver
+	@make -C pcie-driver
 	@make -C apps/demo/example
 
 clean:
@@ -48,4 +48,4 @@ clean:
 	@make -C apps/bench         clean
 	@make -C apps/bench/tb-sys  clean
 	@make -C apps/bench/example clean
-	@make -C driver             clean
+	@make -C pcie-driver        clean

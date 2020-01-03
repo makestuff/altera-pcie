@@ -23,7 +23,7 @@ CPPFLAGS := \
 	$(CPPOPT) -DMODE="'$(MODE)'" -DC2F_CHUNKSIZE_NBITS=$(C2F_CHUNKSIZE_NBITS) -DF2C_CHUNKSIZE_NBITS=$(F2C_CHUNKSIZE_NBITS) \
 	-c -Wall -Wextra -Wundef -Wconversion -Wenum-compare -pedantic-errors -std=c++11 \
 	-Wno-missing-field-initializers -Wstrict-aliasing=3 -fstrict-aliasing -Warray-bounds -Wfatal-errors \
-	-I../../../driver
+	-I../../../pcie-driver
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:%.cpp=build/%.o)
 

@@ -22,7 +22,7 @@ TARGET := $(notdir $(realpath .))
 CPPFLAGS := \
 	$(CPPOPT) -c -Wall -Wextra -Wundef -Wconversion -Wenum-compare -pedantic-errors -std=c++11 \
 	-Wno-missing-field-initializers -Wstrict-aliasing=3 -fstrict-aliasing -Warray-bounds \
-	-I../../../driver
+	-I../../../pcie-driver
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:%.cpp=build/%.o)
 
