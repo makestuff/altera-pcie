@@ -18,7 +18,7 @@
 #
 SUBDIRS := altera-libs block-ram buffer-fifo dvr-rng pcie
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 clean::
 	rm -rf sim-libs

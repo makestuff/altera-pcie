@@ -19,7 +19,7 @@
 GEN_LIST := $(shell cat ../gen-list.txt)
 TESTBENCH := $(GEN_LIST:%=test_%)
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): $(TESTBENCH:%=%.vhdl)
 

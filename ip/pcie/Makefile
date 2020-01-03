@@ -18,4 +18,4 @@
 #
 SUBDIRS := cyclonev stratixv tlp-xcvr consumer
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk

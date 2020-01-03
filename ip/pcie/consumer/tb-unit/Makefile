@@ -20,6 +20,6 @@ TESTBENCH := example_consumer_tb
 LIBS := makestuff
 INCS := ../../example-defs
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): ../../tlp-xcvr/tlp_xcvr_pkg.sv ../example_consumer_pkg.sv ../example_consumer.sv $(TESTBENCH:%=%.sv)

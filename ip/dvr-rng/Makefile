@@ -24,7 +24,7 @@ ifeq ($(OS),Windows_NT)
   EXT := .exe
 endif
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 gen:: $(VHDL_LIST)
 

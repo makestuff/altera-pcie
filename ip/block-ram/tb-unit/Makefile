@@ -19,6 +19,6 @@
 TESTBENCH := ram_sc_be_tb
 LIBS := makestuff altera_mf_ver
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): $(TESTBENCH:%=%.sv)

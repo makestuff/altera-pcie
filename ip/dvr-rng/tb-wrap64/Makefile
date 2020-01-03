@@ -18,6 +18,6 @@
 #
 TESTBENCH := dvr_rng_tb
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): $(TESTBENCH:%=%.vhdl)

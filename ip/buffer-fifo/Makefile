@@ -19,6 +19,6 @@
 WORK := makestuff
 SUBDIRS := tb-unit
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): buffer_fifo_impl.sv buffer_fifo.sv

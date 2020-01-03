@@ -49,7 +49,7 @@ IP_FILES := tlp-xcvr/tlp_xcvr_pkg.sv tlp-xcvr/tlp_recv.sv tlp-xcvr/tlp_send.sv t
 INCS := .. $(IP_DIR)/$(DVL)/pcie_$(DVS)/testbench/pcie_$(DVS)_tb/simulation/submodules
 VOPT := 1
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): $(IP_FILES:%=$(IP_DIR)/%) ../pcie_app_pkg.sv ../pcie_app.sv altpcietb_bfm_driver_chaining.sv $(TESTBENCH:%=%.sv)
 

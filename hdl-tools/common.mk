@@ -49,7 +49,7 @@ ifeq ($(LIBNAME:tb-%=tb-),tb-)
     VLOPTS += +cover
   endif
   WORKINFO := work/_info
-  VLOG := vlog -nologo -sv -novopt -hazards -lint -pedanticerrors +define+SIMULATION $(VLOPTS) $(LIB_LIST) $(INC_LIST) +incdir+$(PROJ_HOME)/tools +incdir+$(PROJ_HOME)/tools/svunit
+  VLOG := vlog -nologo -sv -novopt -hazards -lint -pedanticerrors +define+SIMULATION $(VLOPTS) $(LIB_LIST) $(INC_LIST) +incdir+$(PROJ_HOME)/hdl-tools +incdir+$(PROJ_HOME)/hdl-tools/svunit
   VCOM := vcom -nologo -2008 -novopt $(VHOPTS)
   export TESTBENCH
   export CONTINUE_ON_FAILURE
@@ -74,14 +74,14 @@ ifeq ($(LIBNAME:tb-%=tb-),tb-)
     test: compile
 	@$(ECHO) "EXEC: <$@ loc=\"$(DIRNAME)\" type=\"test\"/>"
 	@echo "$(BOLD)Autorunning tests in $(DIRNAME)$(NORM)"
-	@vsim -c -do 'source $(PROJ_HOME)/tools/common.do; cli_run; finish'
+	@vsim -c -do 'source $(PROJ_HOME)/hdl-tools/common.do; cli_run; finish'
 	@echo
   endif
 
   clean::
 	rm -rf .tgt work modelsim.ini transcript fontconfig vsim.wlf coverage.txt
 
-  $(COMPILE): $(PROJ_HOME)/tools/svunit/svunit_pkg.sv
+  $(COMPILE): $(PROJ_HOME)/hdl-tools/svunit/svunit_pkg.sv
   $(WORKINFO):
 	@echo "$(BOLD)Preparing local work library for test directory $(DIRNAME)$(NORM)"
 	vlib work

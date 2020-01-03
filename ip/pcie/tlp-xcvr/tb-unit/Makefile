@@ -20,6 +20,6 @@ TESTBENCH := tlp_xcvr_tb
 LIBS := makestuff altera_mf_ver
 INCS := ../../example-defs
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE): ../tlp_xcvr_pkg.sv ../tlp_send.sv ../tlp_recv.sv ../tlp_xcvr.sv $(TESTBENCH:%=%.sv)

@@ -18,7 +18,7 @@
 #
 WORK := altera_ver
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 $(COMPILE):
 	@echo "$(BOLD)Compiling Altera foundation libraries$(NORM)"

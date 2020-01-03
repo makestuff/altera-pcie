@@ -21,7 +21,7 @@
 # You can run your tests, then do this to generate a GTest-compatible XML output:
 #   cd $PROJ_HOME
 #   cat $(find . -name "transcript" | sort) > transcripts.txt
-#   TRANSCRIPT=transcripts.txt tools/ersatz-gtest.py --gtest_output=xml:/w/public_html/svunit.xml
+#   TRANSCRIPT=transcripts.txt hdl-tools/ersatz-gtest.py --gtest_output=xml:/w/public_html/svunit.xml
 #
 # Your browser will render the XML if it's placed alongside a suitable XSLT file like this:
 #   https://github.com/adarmalik/gtest2html/blob/master/gtest2html.xslt

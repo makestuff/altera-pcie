@@ -18,7 +18,7 @@
 #
 WORK := pcie_sv
 
-include $(PROJ_HOME)/tools/common.mk
+include $(PROJ_HOME)/hdl-tools/common.mk
 
 TRANSFORM_TCL := s|ensure_lib\s+\./libraries/|ensure_lib \$$::env(PROJ_HOME)/$(LIBDIR_REL)/|g;
 TRANSFORM_TCL += s|vmap\s+(.*?)\s+\./libraries/(.*?)$$|vmap $$1 \\\$$PROJ_HOME/$(LIBDIR_REL)/$$2|g;

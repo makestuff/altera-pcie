@@ -30,7 +30,7 @@ test:
 	@make -C apps/bench/tb-sys  test
 
 fpga:
-	@make -C tools
+	@make -C hdl-tools
 	@make -C ip gen
 	@make -C apps/demo
 
@@ -40,7 +40,7 @@ sw:
 	@make -C apps/demo/example
 
 clean:
-	@make -C tools              clean
+	@make -C hdl-tools          clean
 	@make -C ip                 clean
 	@make -C apps/demo          clean
 	@make -C apps/demo/tb-sys   clean
