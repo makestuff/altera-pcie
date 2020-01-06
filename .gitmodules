@@ -1,28 +1,28 @@
 [submodule "hdl-tools"]
 	path = hdl-tools
-	url = git@github.com:makestuff/hdl-tools.git
+	url = http://github.com/makestuff/hdl-tools.git
 	branch = master
 [submodule "pcie-driver"]
 	path = pcie-driver
-	url = git@github.com:makestuff/pcie-driver.git
+	url = http://github.com/makestuff/pcie-driver.git
 	branch = master
 [submodule "ip/altera-libs"]
 	path = ip/altera-libs
-	url = git@github.com:makestuff/altera-libs.git
+	url = http://github.com/makestuff/altera-libs.git
 	branch = master
 [submodule "ip/block-ram"]
 	path = ip/block-ram
-	url = git@github.com:makestuff/block-ram.git
+	url = http://github.com/makestuff/block-ram.git
 	branch = master
 [submodule "ip/buffer-fifo"]
 	path = ip/buffer-fifo
-	url = git@github.com:makestuff/buffer-fifo.git
+	url = http://github.com/makestuff/buffer-fifo.git
 	branch = master
 [submodule "ip/dvr-rng"]
 	path = ip/dvr-rng
-	url = git@github.com:makestuff/dvr-rng.git
+	url = http://github.com/makestuff/dvr-rng.git
 	branch = master
 [submodule "ip/pcie-hip"]
 	path = ip/pcie-hip
-	url = git@github.com:makestuff/pcie-hip.git
+	url = http://github.com/makestuff/pcie-hip.git
 	branch = master
