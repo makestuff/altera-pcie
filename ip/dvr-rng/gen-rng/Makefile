@@ -23,7 +23,7 @@ else
   CPP := g++ -g -std=c++11 -o
 endif
 
-TARGETS := write_vhdl$(EXT) get_seq32$(EXT) get_seq64$(EXT) get_seq96$(EXT)
+TARGETS := write_vhdl$(EXT) get_seq$(EXT)
 
 .PHONY: gen compile test clean
 

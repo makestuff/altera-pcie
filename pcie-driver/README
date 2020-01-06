@@ -1,5 +1,0 @@
-The Linux driver implements a couple of ioctl()s to initialize and control things, but the bulk of
-the real work happens in userspace, so the driver just implements mmap(). Note that it receives
-definitions of the queue sizes, etc from a defs.h file which is generated from a defs.vh file
-located in the application directory (i.e under "apps"). So before you can build the driver, you
-must go there and (at the very least) run "make defs".
