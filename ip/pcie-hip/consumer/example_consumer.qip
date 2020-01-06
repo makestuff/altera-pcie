@@ -1,2 +1,0 @@
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "example_consumer_pkg.sv"]
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "example_consumer.sv"]

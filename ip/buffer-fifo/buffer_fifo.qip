@@ -1,2 +1,0 @@
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "buffer_fifo_impl.sv"]
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "buffer_fifo.sv"]
