@@ -116,6 +116,5 @@ proc do_test {gui} {
     gui_run 340 132 1 8 115350 32 115369
   } else {
     cli_run
-    finish
   }
 }
