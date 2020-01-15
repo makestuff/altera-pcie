@@ -55,8 +55,7 @@ module pcie_app(
   logic f2cReset;
 
   // CPU->FPGA data
-  logic c2fWrEnable;
-  ByteMask64 c2fWrByteMask;
+  ByteMask64 c2fWrMask;
   C2FChunkPtr c2fWrPtr;
   C2FChunkOffset c2fWrOffset;
   uint64 c2fWrData;
@@ -95,7 +94,7 @@ module pcie_app(
   // RAM block to receive CPU->FPGA burst-writes
   ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
     pcieClk_in,
-    c2fWrEnable, c2fWrByteMask, {c2fWrPtr, c2fWrOffset}, c2fWrData,
+    c2fWrMask, {c2fWrPtr, c2fWrOffset}, c2fWrData,
     {c2fRdPtr, c2fRdOffset}, c2fRdData
   );
 
@@ -141,13 +140,12 @@ module pcie_app(
     .f2cReset_out   (f2cReset),
 
     // Sink for the memory-mapped CPU->FPGA burst pipe
-    .c2fWrEnable_out    (c2fWrEnable),
-    .c2fWrByteMask_out  (c2fWrByteMask),
-    .c2fWrPtr_out       (c2fWrPtr),
-    .c2fWrOffset_out    (c2fWrOffset),
-    .c2fWrData_out      (c2fWrData),
-    .c2fRdPtr_out       (c2fRdPtr),
-    .c2fDTAck_in        (c2fDTAck)
+    .c2fWrMask_out   (c2fWrMask),
+    .c2fWrPtr_out    (c2fWrPtr),
+    .c2fWrOffset_out (c2fWrOffset),
+    .c2fWrData_out   (c2fWrData),
+    .c2fRdPtr_out    (c2fRdPtr),
+    .c2fDTAck_in     (c2fDTAck)
   );
 
   // Instantiate 64-bit random-number generator, as DMA data source

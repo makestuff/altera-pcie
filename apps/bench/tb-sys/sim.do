@@ -66,8 +66,7 @@ proc do_test {gui} {
     add wave      pcie_app/tlp_inst/f2cReset_out
 
     add wave -div "CPU->FPGA Pipe"
-    add wave      pcie_app/tlp_inst/c2fWrEnable_out
-    add wave      pcie_app/tlp_inst/c2fWrByteMask_out
+    add wave      pcie_app/tlp_inst/c2fWrMask_out
     add wave -uns pcie_app/tlp_inst/c2fWrPtr_out
     add wave -hex pcie_app/tlp_inst/c2fWrOffset_out
     add wave -hex pcie_app/tlp_inst/c2fWrData_out
@@ -75,8 +74,7 @@ proc do_test {gui} {
     add wave      pcie_app/tlp_inst/c2fDTAck_in
 
     add wave -div "CPU->FPGA Memory"
-    add wave -hex pcie_app/c2f_ram/wrEnable_in
-    add wave -hex pcie_app/c2f_ram/wrByteMask_in
+    add wave -hex pcie_app/c2f_ram/wrMask_in
     add wave -hex pcie_app/c2f_ram/wrAddr_in
     add wave -hex pcie_app/c2f_ram/wrData_in
     add wave -hex pcie_app/c2f_ram/rdAddr_in
