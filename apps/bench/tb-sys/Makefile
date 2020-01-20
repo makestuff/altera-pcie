@@ -44,7 +44,7 @@ COMMON_LIBS := altera lpm sgate altera_mf altera_lnsim stratixiv_hssi stratixiv_
 DEV_SUFFIXES := ver hssi_ver pcie_hip_ver
 LIBS := makestuff pcie_$(DVS) pcie_$(DVS)_tb $(COMMON_LIBS:%=%_ver) $(DEV_SUFFIXES:%=$(DVL)_%)
 DEFS := MODE=$(MODE) dut_pcie_tb/g_bfm_top_rp/altpcietb_bfm_top_rp/genblk1/drvr/MODE=$(MODE)
-IP_DIR := $(PROJ_HOME)/ip/pcie-hip
+IP_DIR := $(PROJ_HOME)/ip/makestuff/pcie-hip
 IP_FILES := tlp-xcvr/tlp_xcvr_pkg.sv tlp-xcvr/tlp_recv.sv tlp-xcvr/tlp_send.sv tlp-xcvr/tlp_xcvr.sv $(DVL)/pcie_$(DVS).sv consumer/example_consumer_pkg.sv consumer/example_consumer.sv
 INCS := .. $(IP_DIR)/$(DVL)/pcie_$(DVS)/testbench/pcie_$(DVS)_tb/simulation/submodules
 VOPT := 1

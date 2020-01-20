@@ -21,7 +21,7 @@
 #include <cinttypes>
 
 #include "fpgalink.h"
-#include "../../../ip/dvr-rng/dvr_rng.h"
+#include "../../../ip/makestuff/dvr-rng/dvr_rng.h"
 
 #ifndef MODE
   #error "You must set MODE to q, r or s"

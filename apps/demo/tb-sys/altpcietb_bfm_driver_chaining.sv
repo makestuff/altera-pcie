@@ -44,7 +44,7 @@ module altpcietb_bfm_driver_chaining#(
   `include "altpcietb_bfm_configure.v"
 
   // Import types, etc
-  import tlp_xcvr_pkg::*;
+  import makestuff_tlp_xcvr_pkg::*;
 
   // Regions of host memory
   localparam int F2C_BASE_ADDR = 0;                         // this is used for the FPGA->CPU DMA buffer
@@ -106,7 +106,7 @@ module altpcietb_bfm_driver_chaining#(
   endtask
 
   task c2fWriteChunk(Result expecting, bit doAssert = 1, output int successes);
-    static int index = 0;  // index into the dvr_rng_pkg::SEQ64 array of precomputed pseudorandom numbers
+    static int index = 0;  // index into the makestuff_dvr_rng_pkg::SEQ64 array of precomputed pseudorandom numbers
     static C2FChunkPtr wrPtr = 0;
     static int successCount = 0;
     static Result lastResult = SUCCESS;
@@ -149,8 +149,8 @@ module altpcietb_bfm_driver_chaining#(
       for (int i = 0; i < C2F_CHUNKSIZE/64; i = i + 1) begin
         // First prepare one 64-byte line, one QW at a time
         for (int j = 0; j < 64/8; j = j + 1) begin
-          hostWrite64(TMP_BASE_ADDR + 8*j, dvr_rng_pkg::SEQ64[index]);
-          index = (index + 1) % $size(dvr_rng_pkg::SEQ64);  // index wraps when it reaches the end of the SEQ64 table
+          hostWrite64(TMP_BASE_ADDR + 8*j, makestuff_dvr_rng_pkg::SEQ64[index]);
+          index = (index + 1) % $size(makestuff_dvr_rng_pkg::SEQ64);  // index wraps when it reaches the end of the SEQ64 table
         end
 
         // Now write that line to the FPGA
@@ -238,15 +238,15 @@ module altpcietb_bfm_driver_chaining#(
     // Write to registers...
     $display("\nINFO: %15d ns Writing %0d registers:", $time()/1000, NUM_ITERATIONS);
     for (int i = 0; i < NUM_ITERATIONS; i = i + 1) begin
-      $display("INFO: %15d ns   Write[%0d, 0x%s]", $time()/1000, i, himage8(dvr_rng_pkg::SEQ32[i]));
-      fpgaWrite(i, dvr_rng_pkg::SEQ32[i]);
+      $display("INFO: %15d ns   Write[%0d, 0x%s]", $time()/1000, i, himage8(makestuff_dvr_rng_pkg::SEQ32[i]));
+      fpgaWrite(i, makestuff_dvr_rng_pkg::SEQ32[i]);
     end
 
     // Read it all back
     $display("\nINFO: %15d ns Reading %0d registers:", $time()/1000, NUM_ITERATIONS);
     for (int i = 0; i < NUM_ITERATIONS; i = i + 1) begin
       fpgaRead(i, .into(u32));
-      if (u32 == dvr_rng_pkg::SEQ32[i]) begin
+      if (u32 == makestuff_dvr_rng_pkg::SEQ32[i]) begin
         $display("INFO: %15d ns   Read[%0d] = 0x%s (Y)", $time()/1000, i, himage8(u32));
       end else begin
         $display("INFO: %15d ns   Read[%0d] = 0x%s (N)", $time()/1000, i, himage8(u32));
@@ -265,8 +265,8 @@ module altpcietb_bfm_driver_chaining#(
       for (int tlp = 0; tlp < F2C_CHUNKSIZE/F2C_TLPSIZE; tlp = tlp + 1) begin
         for (int qw = 0; qw < F2C_TLPSIZE/8-1; qw = qw + 1) begin
           u64 = hostRead64(rdPtr*F2C_CHUNKSIZE + tlp*F2C_TLPSIZE + qw*8);
-          if (chunk*F2C_CHUNKSIZE/8 < $size(dvr_rng_pkg::SEQ64)) begin
-            if (u64 === dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8 + tlp*F2C_TLPSIZE/8 + qw]) begin
+          if (chunk*F2C_CHUNKSIZE/8 < $size(makestuff_dvr_rng_pkg::SEQ64)) begin
+            if (u64 === makestuff_dvr_rng_pkg::SEQ64[chunk*F2C_CHUNKSIZE/8 + tlp*F2C_TLPSIZE/8 + qw]) begin
               $display("INFO: %15d ns     %s (Y)", $time()/1000, himage16(u64));
             end else begin
               $display("INFO: %15d ns     %s (N)", $time()/1000, himage16(u64));

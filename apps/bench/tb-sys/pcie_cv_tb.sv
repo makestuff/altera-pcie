@@ -96,7 +96,7 @@ module pcie_cv_tb#(
   wire         dut_pcie_tb_hip_pipe_rxdatak3;            // DUT_pcie_tb:rxdatak3 -> pcie_cv_inst:dut_hip_pipe_rxdatak3
 
   // Import types, etc
-  import tlp_xcvr_pkg::*;
+  import makestuff_tlp_xcvr_pkg::*;
 
   // External signals
   logic  pcieRefClk;

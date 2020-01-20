@@ -17,6 +17,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 package pcie_app_pkg;
-  localparam int BENCHMARK_TIMER     = tlp_xcvr_pkg::CTL_BASE - 1;
-  localparam int SINGLE_REG_RESPONSE = tlp_xcvr_pkg::CTL_BASE - 2;
+  localparam int BENCHMARK_TIMER     = makestuff_tlp_xcvr_pkg::CTL_BASE - 1;
+  localparam int SINGLE_REG_RESPONSE = makestuff_tlp_xcvr_pkg::CTL_BASE - 2;
 endpackage

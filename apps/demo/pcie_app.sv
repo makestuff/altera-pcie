@@ -20,17 +20,17 @@ module pcie_app#(
     parameter bit EN_SWAP
   )(
     input logic pcieClk_in,                  // 125MHz clock from PCIe PLL
-    input tlp_xcvr_pkg::BusID cfgBusDev_in,  // the device ID assigned to the FPGA on enumeration
+    input makestuff_tlp_xcvr_pkg::BusID cfgBusDev_in,  // the device ID assigned to the FPGA on enumeration
 
     // Incoming requests from the CPU
-    input tlp_xcvr_pkg::uint64 rxData_in,
+    input makestuff_tlp_xcvr_pkg::uint64 rxData_in,
     input logic rxValid_in,
     output logic rxReady_out,
-    input tlp_xcvr_pkg::SopBar rxSOP_in,
+    input makestuff_tlp_xcvr_pkg::SopBar rxSOP_in,
     input logic rxEOP_in,
 
     // Outgoing responses from the FPGA
-    output tlp_xcvr_pkg::uint64 txData_out,
+    output makestuff_tlp_xcvr_pkg::uint64 txData_out,
     output logic txValid_out,
     input logic txReady_in,
     output logic txSOP_out,
@@ -38,7 +38,7 @@ module pcie_app#(
   );
 
   // Import types and constants
-  import tlp_xcvr_pkg::*;
+  import makestuff_tlp_xcvr_pkg::*;
 
   // Register interface
   Channel cpuChan;
@@ -75,20 +75,20 @@ module pcie_app#(
   Data[0:PRV_BASE-1] regArray_next;
 
   // RAM block to receive CPU->FPGA burst-writes
-  ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
+  makestuff_ram_sc_be#(C2F_SIZE_NBITS-3, 8) c2f_ram(
     pcieClk_in,
     c2fWrMask, {c2fWrPtr, c2fWrOffset}, c2fWrData,
     {c2fRdPtr, c2fRdOffset}, c2fRdData
   );
 
   // Consumer unit
-  example_consumer c2f_consumer(
+  makestuff_example_consumer c2f_consumer(
     pcieClk_in, c2fWrPtr, c2fRdPtr, c2fDTAck, c2fRdOffset, c2fRdData,
     csData, csValid, f2cReset, countInit
   );
 
   // TLP-level interface
-  tlp_xcvr tlp_inst(
+  makestuff_tlp_xcvr tlp_inst(
     .pcieClk_in     (pcieClk_in),
     .cfgBusDev_in   (cfgBusDev_in),
 
@@ -131,7 +131,7 @@ module pcie_app#(
   );
 
   // Instantiate 64-bit random-number generator, as DMA data source
-  dvr_rng64 rng(
+  makestuff_dvr_rng64 rng(
     .clk_in    (pcieClk_in),
     .reset_in  (f2cReset),
     .data_out  (f2cData),

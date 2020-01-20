@@ -44,7 +44,7 @@ module altpcietb_bfm_driver_chaining#(
   `include "altpcietb_bfm_configure.v"
 
   // Import types, etc
-  import tlp_xcvr_pkg::*;
+  import makestuff_tlp_xcvr_pkg::*;
 
   // Regions of host memory
   localparam int F2C_BASE_ADDR = 0;                         // this is used for the FPGA->CPU DMA buffer

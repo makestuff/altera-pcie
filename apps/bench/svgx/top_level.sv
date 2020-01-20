@@ -24,13 +24,13 @@ module top_level(
   );
 
   logic pcieClk;
-  tlp_xcvr_pkg::BusID cfgBusDev;
-  tlp_xcvr_pkg::uint64 rxData;
-  tlp_xcvr_pkg::SopBar rxSOP;
+  makestuff_tlp_xcvr_pkg::BusID cfgBusDev;
+  makestuff_tlp_xcvr_pkg::uint64 rxData;
+  makestuff_tlp_xcvr_pkg::SopBar rxSOP;
   logic rxEOP;
   logic rxValid;
   logic rxReady;
-  tlp_xcvr_pkg::uint64 txData;
+  makestuff_tlp_xcvr_pkg::uint64 txData;
   logic txSOP;
   logic txEOP;
   logic txValid;
