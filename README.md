@@ -10,7 +10,7 @@ Before you begin, you'll need to set `PROJ_HOME` to the location where you clone
       :
     $ cd altera-pcie
     $ export PROJ_HOME=$(pwd)
-    $ export ALTERA=$HOME/altera/16.1
+    $ export ALTERA=/usr/local/altera-16.1  # or wherever
     $ ls $ALTERA
     hld  hls  ip  licenses	logs  modelsim_ae  nios2eds  quartus  uninstall
     $
